@@ -1,0 +1,175 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Resolve SPM dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -scheme Convene \
+            -derivedDataPath /tmp/convene-build
+
+      - name: Extract version
+        id: ci-version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            tag="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+            if [[ -n "$tag" ]]; then
+              echo "VERSION=${tag#v}" >> "$GITHUB_OUTPUT"
+            else
+              echo "VERSION=0.0.0" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Build (Debug, no signing)
+        run: |
+          xcodebuild -scheme Convene \
+            -configuration Debug \
+            -derivedDataPath /tmp/convene-build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
+            build
+
+  release:
+    name: Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Import code-signing certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          p12-password: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Resolve SPM dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -scheme Convene \
+            -derivedDataPath /tmp/convene-build
+
+      - name: Archive
+        run: |
+          xcodebuild -scheme Convene \
+            -configuration Release \
+            -derivedDataPath /tmp/convene-build \
+            -archivePath /tmp/convene-build/Convene.xcarchive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            MARKETING_VERSION=${{ steps.version.outputs.VERSION }} \
+            archive
+
+      - name: Export archive
+        run: |
+          cat > /tmp/ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>developer-id</string>
+              <key>teamID</key>
+              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>signingCertificate</key>
+              <string>Developer ID Application</string>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath /tmp/convene-build/Convene.xcarchive \
+            -exportPath /tmp/convene-build/export \
+            -exportOptionsPlist /tmp/ExportOptions.plist
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Create DMG
+        run: |
+          DMG_PATH="/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg"
+          create-dmg \
+            --volname "Convene" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 96 \
+            --icon "Convene.app" 150 200 \
+            --app-drop-link 450 200 \
+            --hide-extension "Convene.app" \
+            --no-internet-enable \
+            "${DMG_PATH}" \
+            "/tmp/convene-build/export/Convene.app" \
+          || test -f "${DMG_PATH}"
+
+      - name: Notarize
+        run: |
+          xcrun notarytool submit "/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg" \
+            --apple-id "${{ secrets.NOTARIZE_APPLE_ID }}" \
+            --password "${{ secrets.NOTARIZE_PASSWORD }}" \
+            --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --wait
+
+      - name: Staple
+        run: xcrun stapler staple "/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Convene ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## Installation
+
+            1. Download **Convene-${{ steps.version.outputs.VERSION }}.dmg** below
+            2. Open the DMG and drag Convene to Applications
+            3. Launch Convene from Applications
+            4. Click the record icon in the menu bar → Settings → enter your OpenAI API key
+            5. Choose an output folder (iCloud Drive recommended for sync across devices)
+            6. Grant microphone, screen recording, calendar, and notification permissions when prompted
+
+            **Requires macOS 15.0 or later and an OpenAI API key.**
+          files: /tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg
+          draft: false
+          prerelease: false

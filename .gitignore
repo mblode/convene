@@ -1,0 +1,21 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# SPM
+.build/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Build artifacts
+/tmp/convene-build/
+*.dmg
+
+# Secrets
+.env
+Convene.xcodeproj/

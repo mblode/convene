@@ -1,0 +1,55 @@
+name: Convene
+options:
+  bundleIdPrefix: co.blode
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "0.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    SWIFT_STRICT_CONCURRENCY: minimal
+
+packages:
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: "2.0.0"
+
+targets:
+  Convene:
+    type: application
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Convene
+        excludes:
+          - "Info.plist"
+          - "Convene.entitlements"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene
+        INFOPLIST_FILE: Convene/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Convene/Convene.entitlements
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+    dependencies:
+      - package: KeyboardShortcuts
+        product: KeyboardShortcuts
+
+schemes:
+  Convene:
+    build:
+      targets:
+        Convene: all
+    run:
+      config: Debug
+    archive:
+      config: Release
