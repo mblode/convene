@@ -13,7 +13,12 @@ struct MenuBarView: View {
             content
         }
         .frame(width: 520)
-        .background(Color.menuBackground)
+        .background(
+            ZStack {
+                VisualEffectBackground(material: .menu, blendingMode: .behindWindow, state: .active)
+                Color.menuBackground.opacity(0.55)
+            }
+        )
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous)
@@ -56,6 +61,7 @@ struct MenuBarView: View {
                 action: { meetingStore.toggleRecording() }
             )
             .keyboardShortcut("r", modifiers: [.option, .shift])
+            .accessibilityLabel(meetingStore.captureCoordinator.isCapturing ? "Stop recording" : "Start recording")
 
             headerButton(
                 title: "Meeting",
@@ -63,6 +69,7 @@ struct MenuBarView: View {
                 action: { openMeetingWindow() }
             )
             .keyboardShortcut("m", modifiers: [.option, .shift])
+            .accessibilityLabel("Open meeting window")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -78,6 +85,8 @@ struct MenuBarView: View {
                 .foregroundStyle(Color.textSecondary)
                 .lineLimit(1)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Capture status: \(meetingStore.captureStatus)")
     }
 
     private func headerButton(
@@ -216,19 +225,21 @@ struct MenuBarView: View {
             dateBadge(now)
             Button {
                 SettingsWindowController.shared.show()
+                NSApp.activate(ignoringOtherApps: true)
             } label: {
                 HStack(spacing: 4) {
                     Text("Settings")
                         .font(.system(size: 13))
                         .foregroundStyle(Color.textPrimary)
-                    Text("⌥⇧,")
+                    Text("⌘,")
                         .font(.system(size: 10))
                         .foregroundStyle(Color.textTertiary)
                         .monospaced()
                 }
             }
             .buttonStyle(.plain)
-            .keyboardShortcut(",", modifiers: [.option, .shift])
+            .keyboardShortcut(",", modifiers: .command)
+            .accessibilityLabel("Settings")
 
             Spacer()
 
@@ -257,12 +268,8 @@ struct MenuBarView: View {
     }
 
     private func dateBadge(_ date: Date) -> some View {
-        let monthFormatter = DateFormatter()
-        monthFormatter.dateFormat = "MMM"
-        let dayFormatter = DateFormatter()
-        dayFormatter.dateFormat = "d"
-        let month = monthFormatter.string(from: date).uppercased()
-        let day = dayFormatter.string(from: date)
+        let month = date.formatted(.dateTime.month(.abbreviated)).uppercased()
+        let day = date.formatted(.dateTime.day())
         return VStack(spacing: 0) {
             Text(month)
                 .font(.system(size: 8, weight: .bold))
@@ -282,6 +289,8 @@ struct MenuBarView: View {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .stroke(Color.cardBorder, lineWidth: 0.5)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(date.formatted(.dateTime.day().month(.wide)))
     }
 
     // MARK: - No access
@@ -303,10 +312,13 @@ struct MenuBarView: View {
             .buttonStyle(OliveProminentButtonStyle())
             DashedDivider()
             HStack {
-                Button("Settings…") { SettingsWindowController.shared.show() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.textPrimary)
-                    .keyboardShortcut(",", modifiers: [.option, .shift])
+                Button("Settings…") {
+                    SettingsWindowController.shared.show()
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.textPrimary)
+                .keyboardShortcut(",", modifiers: .command)
                 Spacer()
                 Button("Quit Convene") { meetingStore.quit() }
                     .buttonStyle(.plain)
@@ -358,24 +370,22 @@ struct MenuBarView: View {
     }
 
     private func timeLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        formatter.amSymbol = "am"
-        formatter.pmSymbol = "pm"
-        return formatter.string(from: date)
+        date.formatted(date: .omitted, time: .shortened)
     }
 
     private func dayLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM"
-        return formatter.string(from: date)
+        date.formatted(.dateTime.day().month(.abbreviated))
     }
 
     private func numberWord(_ value: Int) -> String {
-        let words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
-        if value < words.count { return words[value] }
-        return String(value)
+        Self.spellOutFormatter.string(from: NSNumber(value: value)) ?? String(value)
     }
+
+    private static let spellOutFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .spellOut
+        return formatter
+    }()
 }
 
 private enum EventStatus {
@@ -423,6 +433,22 @@ private struct EventRow: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .animation(.easeInOut(duration: 0.12), value: hovering)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityDescription)
+        .accessibilityHint("Starts recording for this event")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var accessibilityDescription: String {
+        let timeRange = "\(formatted(event.startDate)) to \(formatted(event.endDate))"
+        let attendees = event.attendees.count >= 1 ? ", \(event.attendees.count) attendees" : ""
+        let statusWord: String
+        switch status {
+        case .past: statusWord = "past"
+        case .current: statusWord = "in progress"
+        case .upcoming: statusWord = "upcoming"
+        }
+        return "\(event.title), \(timeRange), \(statusWord)\(attendees)"
     }
 
     private var rowBackground: Color {
@@ -437,11 +463,7 @@ private struct EventRow: View {
     }
 
     private func formatted(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        formatter.amSymbol = "am"
-        formatter.pmSymbol = "pm"
-        return formatter.string(from: date)
+        date.formatted(date: .omitted, time: .shortened)
     }
 
     private var tint: Color {
