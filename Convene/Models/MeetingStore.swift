@@ -236,6 +236,15 @@ final class MeetingStore: ObservableObject {
         retryPendingSave()
     }
 
+    func refreshPermissionStates() async {
+        captureCoordinator.refreshPermissionStates()
+        await meetingDetector.refreshNotificationStatus()
+        calendarService.refreshAuthorizationStatus()
+        if calendarService.hasAccess {
+            await calendarService.refreshEvents()
+        }
+    }
+
     private func startRecording(eventOverride: MeetingEvent? = nil) async {
         guard hasAPIKey else {
             captureStatus = "API key required — open Settings"

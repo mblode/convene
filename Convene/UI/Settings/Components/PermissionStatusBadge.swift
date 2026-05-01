@@ -6,6 +6,7 @@ enum PermissionState {
     case notDetermined
     case restricted
     case provisional
+    case requiresSettings
 
     var label: String {
         switch self {
@@ -14,6 +15,7 @@ enum PermissionState {
         case .notDetermined: return "Not requested"
         case .restricted:    return "Restricted"
         case .provisional:   return "Provisional"
+        case .requiresSettings: return "Needs setup"
         }
     }
 
@@ -24,6 +26,7 @@ enum PermissionState {
         case .notDetermined: return Color.iconBadgeBackground
         case .restricted:    return Color.iconBadgeBackground
         case .provisional:   return Color.iconBadgeBackground
+        case .requiresSettings: return Color.iconBadgeBackground
         }
     }
 

@@ -5,6 +5,14 @@ import AppKit
 import CoreMedia
 import CoreGraphics
 
+enum SystemAudioPermissionState: String {
+    case notDetermined
+    case granted
+    case requiresSystemSettings
+
+    var isGranted: Bool { self == .granted }
+}
+
 /// Captures system audio via ScreenCaptureKit (macOS 13+) — the audio coming out of the
 /// laptop speakers / headphones, excluding our own process. Converts to 24 kHz PCM mono
 /// to match what the OpenAI Realtime API expects.
@@ -13,7 +21,7 @@ import CoreGraphics
 /// of a Zoom/Meet/Teams call gets captured here.
 final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     @MainActor @Published private(set) var isStreaming = false
-    @MainActor @Published private(set) var hasScreenRecordingPermission = false
+    @MainActor @Published private(set) var permissionState: SystemAudioPermissionState = .notDetermined
 
     /// Set before `start()`. Called from a non-main background queue per chunk.
     var onPCM16: (@Sendable (Data) -> Void)?
@@ -22,6 +30,7 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
 
     private var stream: SCStream?
     private let audioQueue = DispatchQueue(label: "co.blode.convene.systemaudio")
+    private static let permissionRequestedKey = "systemAudioPermissionRequested"
     /// Per-stream conversion state, confined to the audio queue.
     private let processorBox = ProcessorBox()
 
@@ -30,10 +39,19 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         Task { @MainActor in self.refreshPermissionState() }
     }
 
+    @MainActor
+    var hasScreenRecordingPermission: Bool {
+        permissionState.isGranted
+    }
+
     /// Non-prompting permission state read.
     @MainActor
     func refreshPermissionState() {
-        hasScreenRecordingPermission = CGPreflightScreenCaptureAccess()
+        if CGPreflightScreenCaptureAccess() {
+            permissionState = .granted
+        } else {
+            permissionState = Self.hasRequestedPermission ? .requiresSystemSettings : .notDetermined
+        }
     }
 
     /// Triggers the macOS Screen Recording TCC prompt if needed. Returns true if access is
@@ -42,9 +60,10 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
     @discardableResult
     func requestPermission() async -> Bool {
         if CGPreflightScreenCaptureAccess() {
-            hasScreenRecordingPermission = true
+            permissionState = .granted
             return true
         }
+        Self.markPermissionRequested()
         // Returns true the same session it was granted; usually false until restart.
         let granted = CGRequestScreenCaptureAccess()
         // Even if it returned false, fetching shareable content can sometimes succeed once
@@ -53,14 +72,14 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         if !granted {
             do {
                 _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-                hasScreenRecordingPermission = true
+                permissionState = .granted
                 return true
             } catch {
-                hasScreenRecordingPermission = false
+                permissionState = .requiresSystemSettings
                 return false
             }
         }
-        hasScreenRecordingPermission = true
+        permissionState = .granted
         return true
     }
 
@@ -78,9 +97,10 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         let content: SCShareableContent
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-            hasScreenRecordingPermission = true
+            permissionState = .granted
         } catch {
-            hasScreenRecordingPermission = false
+            Self.markPermissionRequested()
+            permissionState = .requiresSystemSettings
             throw NSError(
                 domain: "co.blode.convene.systemaudio",
                 code: -1,
@@ -186,6 +206,14 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
             self.isStreaming = false
             self.onStoppedWithError?(error)
         }
+    }
+
+    private static var hasRequestedPermission: Bool {
+        UserDefaults.standard.bool(forKey: permissionRequestedKey)
+    }
+
+    private static func markPermissionRequested() {
+        UserDefaults.standard.set(true, forKey: permissionRequestedKey)
     }
 }
 

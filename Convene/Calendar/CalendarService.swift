@@ -48,7 +48,7 @@ final class CalendarService: ObservableObject {
     }
 
     var hasAccess: Bool {
-        authorizationStatus == .fullAccess
+        authorizationStatus == .fullAccess || authorizationStatus == .authorized
     }
 
     func refreshAuthorizationStatus() {
@@ -57,6 +57,21 @@ final class CalendarService: ObservableObject {
 
     /// Triggers the macOS calendar permission prompt and refreshes events on success.
     func requestAccess() async {
+        refreshAuthorizationStatus()
+        switch authorizationStatus {
+        case .fullAccess, .authorized:
+            await refreshEvents()
+            return
+        case .denied:
+            lastError = "Calendar access denied — open System Settings to enable"
+            return
+        case .restricted:
+            lastError = "Calendar access restricted by system policy"
+            return
+        default:
+            break
+        }
+
         do {
             let granted = try await store.requestFullAccessToEvents()
             refreshAuthorizationStatus()

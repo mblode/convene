@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import AppKit
+import Combine
 
 /// One source of truth for starting/stopping a meeting recording.
 /// Owns MicCapture (You) and SystemAudioCapture (Others), exposes labeled PCM16 chunk callbacks,
@@ -23,6 +24,7 @@ final class AudioCaptureCoordinator: ObservableObject {
     /// Optional debug WAV writer. When non-nil, both streams are written to separate WAV files.
     private var youWAV: WAVFileWriter?
     private var othersWAV: WAVFileWriter?
+    private var nestedObjectCancellables = Set<AnyCancellable>()
 
     init() {
         // Audio callbacks fire on background queues; hop to MainActor before touching state.
@@ -54,6 +56,19 @@ final class AudioCaptureCoordinator: ObservableObject {
                 await self?.handleSystemError(error)
             }
         }
+        mic.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &nestedObjectCancellables)
+        system.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &nestedObjectCancellables)
+    }
+
+    func refreshPermissionStates() {
+        mic.refreshPermission()
+        system.refreshPermissionState()
     }
 
     private func appendYouFloat32(copy: Data) {

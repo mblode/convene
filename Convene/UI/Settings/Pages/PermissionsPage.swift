@@ -12,7 +12,7 @@ struct PermissionsPage: View {
                 SectionLabel("System access")
                 SettingsCard {
                     micRow
-                    screenRow
+                    systemAudioRow
                     notificationsRow
                     calendarRow
                 }
@@ -22,6 +22,12 @@ struct PermissionsPage: View {
                     .padding(.horizontal, 4)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        .task {
+            await meetingStore.refreshPermissionStates()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await meetingStore.refreshPermissionStates() }
         }
     }
 
@@ -36,42 +42,57 @@ struct PermissionsPage: View {
         ) {
             HStack(spacing: 8) {
                 PermissionStatusBadge(state: state)
-                if state != .granted {
-                    Button("Open Settings") {
-                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
-                            NSWorkspace.shared.open(url)
+                switch state {
+                case .notDetermined:
+                    permissionButton("Enable", systemImage: "mic.fill") {
+                        Task {
+                            _ = await meetingStore.captureCoordinator.mic.requestPermission()
+                            await meetingStore.refreshPermissionStates()
                         }
                     }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.accentOlive)
+                case .denied, .restricted:
+                    permissionButton("Open Settings", systemImage: "gearshape") {
+                        openMicrophoneSettings()
+                    }
+                case .granted, .provisional, .requiresSettings:
+                    EmptyView()
                 }
             }
         }
     }
 
-    // MARK: - Screen
+    // MARK: - System audio
 
-    private var screenRow: some View {
-        let granted = meetingStore.captureCoordinator.system.hasScreenRecordingPermission
-        let state: PermissionState = granted ? .granted : .denied
+    private var systemAudioRow: some View {
+        let permission = meetingStore.captureCoordinator.system.permissionState
+        let state = systemAudioState(permission)
+        let waitingForMic = micState != .granted && !permission.isGranted
+
         return SettingsRow(
-            icon: "rectangle.dashed.badge.record",
-            title: "Screen Recording",
-            description: granted ? "Granted" : "Required to capture system audio"
+            icon: "speaker.wave.2.fill",
+            title: "System Audio",
+            description: systemAudioDescription(permission, waitingForMic: waitingForMic),
+            isDisabled: waitingForMic
         ) {
             HStack(spacing: 8) {
-                PermissionStatusBadge(state: state)
-                if !granted {
-                    Button("Open Settings") {
-                        meetingStore.captureCoordinator.system.openSystemSettings()
+                PermissionStatusBadge(state: waitingForMic ? .notDetermined : state)
+                if !waitingForMic {
+                    switch permission {
+                    case .notDetermined:
+                        permissionButton("Enable", systemImage: "speaker.wave.2.fill") {
+                            enableSystemAudio()
+                        }
+                    case .requiresSystemSettings:
+                        permissionButton("Open Settings", systemImage: "gearshape") {
+                            meetingStore.captureCoordinator.system.openSystemSettings()
+                        }
+                    case .granted:
+                        EmptyView()
                     }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.accentOlive)
                 }
             }
         }
+        .disabled(waitingForMic)
     }
 
     // MARK: - Notifications
@@ -85,13 +106,17 @@ struct PermissionsPage: View {
         ) {
             HStack(spacing: 8) {
                 PermissionStatusBadge(state: state)
-                if state == .notDetermined {
-                    Button("Request") {
+                switch state {
+                case .notDetermined:
+                    permissionButton("Enable", systemImage: "bell.fill") {
                         Task { await meetingStore.meetingDetector.requestNotificationAuthorization() }
                     }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.accentOlive)
+                case .denied, .restricted:
+                    permissionButton("Open Settings", systemImage: "gearshape") {
+                        meetingStore.meetingDetector.openSystemSettings()
+                    }
+                case .granted, .provisional, .requiresSettings:
+                    EmptyView()
                 }
             }
         }
@@ -109,20 +134,26 @@ struct PermissionsPage: View {
         ) {
             HStack(spacing: 8) {
                 PermissionStatusBadge(state: state)
-                if !meetingStore.calendarService.hasAccess {
-                    Button("Request") {
-                        Task { await meetingStore.calendarService.requestAccess() }
-                    }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.accentOlive)
-                } else {
-                    Button("Refresh") {
+                if meetingStore.calendarService.hasAccess {
+                    permissionButton("Refresh", systemImage: "arrow.clockwise") {
                         Task { await meetingStore.calendarService.refreshEvents() }
                     }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.accentOlive)
+                } else {
+                    switch state {
+                    case .notDetermined, .requiresSettings:
+                        permissionButton("Enable", systemImage: "calendar") {
+                            Task {
+                                await meetingStore.calendarService.requestAccess()
+                                await meetingStore.refreshPermissionStates()
+                            }
+                        }
+                    case .denied, .restricted:
+                        permissionButton("Open Settings", systemImage: "gearshape") {
+                            meetingStore.calendarService.openSystemSettings()
+                        }
+                    case .granted, .provisional:
+                        EmptyView()
+                    }
                 }
             }
         }
@@ -141,11 +172,34 @@ struct PermissionsPage: View {
 
     private func micDescription(_ state: PermissionState) -> String {
         switch state {
-        case .granted:       return "Granted"
-        case .denied:        return "Denied — open System Settings to enable"
+        case .granted:       return "Ready to transcribe your voice"
+        case .denied:        return "Denied — enable in System Settings"
         case .restricted:    return "Restricted by system policy"
-        case .notDetermined: return "Not yet requested"
+        case .notDetermined: return "Required to transcribe your voice"
         case .provisional:   return "Provisional"
+        case .requiresSettings: return "Needs setup in System Settings"
+        }
+    }
+
+    private func systemAudioState(_ state: SystemAudioPermissionState) -> PermissionState {
+        switch state {
+        case .granted:                return .granted
+        case .notDetermined:          return .notDetermined
+        case .requiresSystemSettings: return .requiresSettings
+        }
+    }
+
+    private func systemAudioDescription(_ state: SystemAudioPermissionState, waitingForMic: Bool) -> String {
+        if waitingForMic {
+            return "Enable Microphone first"
+        }
+        switch state {
+        case .granted:
+            return "Ready to transcribe other people's voices"
+        case .notDetermined:
+            return "Required to capture meeting audio from other apps"
+        case .requiresSystemSettings:
+            return "Enable Screen & System Audio Recording in System Settings"
         }
     }
 
@@ -155,18 +209,16 @@ struct PermissionsPage: View {
         case .denied:        return .denied
         case .notDetermined: return .notDetermined
         case .provisional:   return .provisional
-        case .ephemeral:     return .provisional
         @unknown default:    return .notDetermined
         }
     }
 
     private var notificationDescription: String {
         switch meetingStore.meetingDetector.notificationStatus {
-        case .authorized:    return "Required for the meeting-detected banner to appear"
-        case .denied:        return "Banners disabled — re-enable in System Settings"
-        case .notDetermined: return "Not yet requested"
+        case .authorized:    return "Ready to show meeting-detected banners"
+        case .denied:        return "Banners disabled — enable in System Settings"
+        case .notDetermined: return "Required for the meeting-detected banner to appear"
         case .provisional:   return "Quiet delivery only"
-        case .ephemeral:     return "Ephemeral session"
         @unknown default:    return "Unknown"
         }
     }
@@ -177,8 +229,8 @@ struct PermissionsPage: View {
         case .denied:        return .denied
         case .restricted:    return .restricted
         case .notDetermined: return .notDetermined
+        case .writeOnly:     return .requiresSettings
         case .authorized, .fullAccess: return .granted
-        case .writeOnly:     return .denied
         @unknown default:    return .notDetermined
         }
     }
@@ -189,11 +241,43 @@ struct PermissionsPage: View {
             return "\(count) event\(count == 1 ? "" : "s") today"
         }
         switch meetingStore.calendarService.authorizationStatus {
-        case .denied:        return "Denied — open System Settings to enable"
+        case .denied:        return "Denied — enable in System Settings"
         case .restricted:    return "Restricted by system policy"
-        case .notDetermined: return "Not yet requested"
+        case .notDetermined: return "Required to attach meetings to calendar events"
         case .writeOnly:     return "Write-only — full access required"
         default:             return "Unknown"
+        }
+    }
+
+    // MARK: - Actions
+
+    private func permissionButton(
+        _ title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.titleAndIcon)
+        }
+        .buttonStyle(.borderless)
+        .font(.system(size: 12, weight: .medium))
+        .foregroundStyle(Color.accentOlive)
+    }
+
+    private func enableSystemAudio() {
+        Task {
+            let granted = await meetingStore.captureCoordinator.system.requestPermission()
+            await meetingStore.refreshPermissionStates()
+            if !granted {
+                meetingStore.captureCoordinator.system.openSystemSettings()
+            }
+        }
+    }
+
+    private func openMicrophoneSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+            NSWorkspace.shared.open(url)
         }
     }
 }

@@ -45,6 +45,7 @@ final class SettingsWindowController {
         }
 
         NSApp.activate(ignoringOtherApps: true)
+        Task { await meetingStore.refreshPermissionStates() }
         windowController?.showWindow(nil)
         windowController?.window?.makeKeyAndOrderFront(nil)
     }

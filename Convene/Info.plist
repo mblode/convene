@@ -30,6 +30,8 @@
     <string>Copyright © 2026 Matthew Blode. All rights reserved.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Convene captures your microphone to transcribe your side of the meeting.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Convene captures system audio to transcribe the other side of the meeting. No video is recorded.</string>
     <key>NSScreenCaptureUsageDescription</key>
     <string>Convene captures system audio to transcribe the other side of the meeting. No video is recorded.</string>
     <key>NSCalendarsUsageDescription</key>

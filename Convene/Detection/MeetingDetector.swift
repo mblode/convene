@@ -56,6 +56,12 @@ final class MeetingDetector: ObservableObject {
         await refreshNotificationStatus()
     }
 
+    func openSystemSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     private func startObserving() {
         guard launchObserver == nil else { return }
         // Seed with already-running apps so we don't re-notify on relaunch when the detector
@@ -95,7 +101,10 @@ final class MeetingDetector: ObservableObject {
     }
 
     private func postDetectionNotification(appName: String) async {
-        guard notificationStatus == .authorized || notificationStatus == .provisional else {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        notificationStatus = settings.authorizationStatus
+        guard (settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional),
+              settings.alertSetting != .disabled else {
             logInfo("MeetingDetector: \(appName) launched but notification permission missing")
             return
         }
