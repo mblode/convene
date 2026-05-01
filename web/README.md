@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Convene website
 
-## Getting Started
+Marketing landing page for [Convene](https://github.com/mblode/convene), the macOS meeting-transcription app. A single page that fetches the latest GitHub release server-side and surfaces a `.dmg` download.
 
-First, run the development server:
+Deployed at [convene.blode.co](https://convene.blode.co).
+
+## Develop
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build         # production build
+npm run start         # serve the production build
+npm run check-types   # tsc --noEmit
+npm run lint          # biome check
+npm run lint:fix      # biome check --write
+```
 
-## Learn More
+## Stack
 
-To learn more about Next.js, take a look at the following resources:
+- Next.js 16 (App Router, React Compiler, Turbopack)
+- React 19
+- Tailwind CSS v4 with the Tatem dark + Sky Gradient visual system
+- Glide variable font (`public/glide-variable*.woff2`)
+- Biome + ultracite for lint and format
+- Vercel for hosting (production tracks `main`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Layout
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+app/
+  layout.tsx        Glide font load, metadata, Agentation dev toolbar
+  page.tsx          Hero + download CTA, fetches latest GitHub release
+  globals.css       Tatem theme tokens (colors, type scale, gradient)
+  manifest.json     PWA manifest
+components/
+  site-footer.tsx   Author + version + GitHub link
+  ui/button.tsx     shadcn Button (unused on the landing — kept for future pages)
+lib/
+  config.ts         Site version + external links
+public/             Fonts, app icon, manifest icons
+```
 
-## Deploy on Vercel
+## Download CTA
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`app/page.tsx` calls `https://api.github.com/repos/mblode/convene/releases/latest` on the server (revalidate: 3600). It picks the first asset ending in `.dmg`, falls back to the GitHub releases page if the API call fails. No code change is needed when you cut a new Convene release — tag, push, and the page picks it up within the hour.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Visual system
+
+Tokens live in `app/globals.css` via Tailwind v4 `@theme`:
+
+- Colors: `--color-twilight-ink`, `--color-polar-white`, `--color-pewter-mist`, `--color-silver-tone`, `--color-obsidian-grey`, `--color-charcoal-black`, `--color-mist-grey`, `--color-cerulean-accent`
+- Type scale: `text-caption` (13), `text-body` (16), `text-subheading` (20), `text-display` (40), each with matching line-height and letter-spacing
+- Hero gradient: `var(--gradient-sky)`
+
+Prefer the named utilities (`text-polar-white`, `bg-twilight-ink`, `text-display`) over arbitrary hex values.
+
+## Deploy
+
+Pushed to Vercel via the linked project — production deploys run on every push to `main`, previews on every PR. No environment variables required.
+
+## Updating icons
+
+`public/app-icon.png`, `public/web-app-manifest-{192,512}.png`, `app/apple-icon.png`, `app/favicon.ico`, `app/icon0.svg`, and `app/icon1.png` should be regenerated from the Convene macOS app icon source at `../Convene/Assets.xcassets/AppIcon.appiconset/` whenever the app icon changes.
