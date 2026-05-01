@@ -5,33 +5,37 @@ struct ModelsPage: View {
     @State private var showAPIKeyPopover = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xxl) {
             PageTitle("Models")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("OpenAI")
                 SettingsCard {
-                    SettingsRow(
-                        icon: "key.fill",
-                        title: "API key",
-                        description: meetingStore.hasAPIKey ? "Saved to Keychain" : "Not set — required to transcribe",
-                        showsDivider: false
-                    ) {
-                        Button { showAPIKeyPopover = true } label: {
+                    Button {
+                        showAPIKeyPopover = true
+                    } label: {
+                        SettingsRow(
+                            icon: "key.fill",
+                            title: "API key",
+                            description: meetingStore.hasAPIKey ? "Saved to Keychain" : "Not set — required to transcribe",
+                            showsDivider: false
+                        ) {
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.system(size: 11))
                                 .foregroundStyle(Color.textTertiary)
                         }
-                        .buttonStyle(.plain)
-                        .popover(isPresented: $showAPIKeyPopover, arrowEdge: .trailing) {
-                            APIKeyPopover(isPresented: $showAPIKeyPopover)
-                                .environmentObject(meetingStore)
-                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showAPIKeyPopover, arrowEdge: .trailing) {
+                        APIKeyPopover(isPresented: $showAPIKeyPopover)
+                            .environmentObject(meetingStore)
                     }
                 }
             }
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("Transcription")
                 SettingsCard {
                     SettingsRow(
@@ -62,7 +66,7 @@ struct ModelsPage: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("Summary")
                 SettingsCard {
                     SettingsRow(
@@ -95,5 +99,6 @@ struct ModelsPage: View {
                 }
             }
         }
+        .padding(.top, Theme.Spacing.xl)
     }
 }

@@ -5,10 +5,10 @@ struct PermissionsPage: View {
     @EnvironmentObject var meetingStore: MeetingStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xxl) {
             PageTitle("Permissions")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("System access")
                 SettingsCard {
                     micRow
@@ -23,6 +23,7 @@ struct PermissionsPage: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .padding(.top, Theme.Spacing.xl)
         .task {
             await meetingStore.refreshPermissionStates()
         }
@@ -54,7 +55,7 @@ struct PermissionsPage: View {
                     permissionButton("Open Settings", systemImage: "gearshape") {
                         openMicrophoneSettings()
                     }
-                case .granted, .provisional, .requiresSettings:
+                case .granted, .provisional, .requiresSettings, .requiresRestart:
                     EmptyView()
                 }
             }
@@ -84,7 +85,11 @@ struct PermissionsPage: View {
                         }
                     case .requiresSystemSettings:
                         permissionButton("Open Settings", systemImage: "gearshape") {
-                            meetingStore.captureCoordinator.system.openSystemSettings()
+                            enableSystemAudio()
+                        }
+                    case .requiresRelaunch:
+                        permissionButton("Quit", systemImage: "power") {
+                            NSApp.terminate(nil)
                         }
                     case .granted:
                         EmptyView()
@@ -115,7 +120,7 @@ struct PermissionsPage: View {
                     permissionButton("Open Settings", systemImage: "gearshape") {
                         meetingStore.meetingDetector.openSystemSettings()
                     }
-                case .granted, .provisional, .requiresSettings:
+                case .granted, .provisional, .requiresSettings, .requiresRestart:
                     EmptyView()
                 }
             }
@@ -136,7 +141,7 @@ struct PermissionsPage: View {
                 PermissionStatusBadge(state: state)
                 if meetingStore.calendarService.hasAccess {
                     permissionButton("Refresh", systemImage: "arrow.clockwise") {
-                        Task { await meetingStore.calendarService.refreshEvents() }
+                        Task { await meetingStore.refreshPermissionStates() }
                     }
                 } else {
                     switch state {
@@ -151,7 +156,7 @@ struct PermissionsPage: View {
                         permissionButton("Open Settings", systemImage: "gearshape") {
                             meetingStore.calendarService.openSystemSettings()
                         }
-                    case .granted, .provisional:
+                    case .granted, .provisional, .requiresRestart:
                         EmptyView()
                     }
                 }
@@ -178,6 +183,7 @@ struct PermissionsPage: View {
         case .notDetermined: return "Required to transcribe your voice"
         case .provisional:   return "Provisional"
         case .requiresSettings: return "Needs setup in System Settings"
+        case .requiresRestart: return "Restart required"
         }
     }
 
@@ -186,6 +192,7 @@ struct PermissionsPage: View {
         case .granted:                return .granted
         case .notDetermined:          return .notDetermined
         case .requiresSystemSettings: return .requiresSettings
+        case .requiresRelaunch:       return .requiresRestart
         }
     }
 
@@ -199,7 +206,9 @@ struct PermissionsPage: View {
         case .notDetermined:
             return "Required to capture meeting audio from other apps"
         case .requiresSystemSettings:
-            return "Enable Screen & System Audio Recording in System Settings"
+            return "Turn on Convene in Screen & System Audio Recording"
+        case .requiresRelaunch:
+            return "Quit and reopen Convene to finish setup"
         }
     }
 
@@ -261,7 +270,7 @@ struct PermissionsPage: View {
                 .labelStyle(.titleAndIcon)
         }
         .buttonStyle(.borderless)
-        .font(.system(size: 12, weight: .medium))
+        .font(.system(size: 12))
         .foregroundStyle(Color.accentOlive)
     }
 
@@ -269,7 +278,7 @@ struct PermissionsPage: View {
         Task {
             let granted = await meetingStore.captureCoordinator.system.requestPermission()
             await meetingStore.refreshPermissionStates()
-            if !granted {
+            if !granted && meetingStore.captureCoordinator.system.permissionState == .requiresSystemSettings {
                 meetingStore.captureCoordinator.system.openSystemSettings()
             }
         }

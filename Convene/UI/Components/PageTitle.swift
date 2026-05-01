@@ -12,5 +12,6 @@ struct PageTitle: View {
             .font(.pageTitle)
             .foregroundStyle(Color.textPrimary)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, Theme.Spacing.sm)
     }
 }

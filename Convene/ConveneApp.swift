@@ -5,6 +5,7 @@ import AppKit
 struct ConveneApp: App {
     @StateObject private var meetingStore = MeetingStore()
     @StateObject private var hotkeyManager = HotkeyManager()
+    @State private var didRunCaptureSmokeTest = false
 
     init() {
         NotificationActionHandler.shared.install()
@@ -15,11 +16,17 @@ struct ConveneApp: App {
             MenuBarView()
                 .environmentObject(meetingStore)
                 .environmentObject(hotkeyManager)
-                .onAppear { configureSettingsWindow() }
+                .onAppear {
+                    configureSettingsWindow()
+                    runCaptureSmokeTestIfRequested()
+                }
         } label: {
             MenuBarLabel()
                 .environmentObject(meetingStore)
-                .onAppear { configureSettingsWindow() }
+                .onAppear {
+                    configureSettingsWindow()
+                    runCaptureSmokeTestIfRequested()
+                }
         }
         .menuBarExtraStyle(.window)
 
@@ -36,6 +43,49 @@ struct ConveneApp: App {
             meetingStore: meetingStore,
             hotkeyManager: hotkeyManager
         )
+    }
+
+    private func runCaptureSmokeTestIfRequested() {
+        #if DEBUG
+        guard !didRunCaptureSmokeTest else { return }
+        if let rawSeconds = ProcessInfo.processInfo.environment["CONVENE_TRANSCRIPTION_SMOKE_TEST_SECONDS"],
+           let seconds = Double(rawSeconds),
+           seconds > 0 {
+            didRunCaptureSmokeTest = true
+            Task { @MainActor in
+                logInfo("TranscriptionSmokeTest: starting for \(seconds)s")
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                await meetingStore.runTranscriptionSmokeTest(seconds: seconds)
+                NSApp.terminate(nil)
+            }
+            return
+        }
+
+        guard let rawSeconds = ProcessInfo.processInfo.environment["CONVENE_CAPTURE_SMOKE_TEST_SECONDS"],
+              let seconds = Double(rawSeconds),
+              seconds > 0 else { return }
+        didRunCaptureSmokeTest = true
+
+        let stamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        let baseURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("convene-smoke-\(stamp)")
+
+        Task { @MainActor in
+            logInfo("CaptureSmokeTest: starting for \(seconds)s at \(baseURL.path)")
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            await meetingStore.captureCoordinator.start(debugWAVBaseURL: baseURL)
+            if let error = meetingStore.captureCoordinator.startError {
+                logError("CaptureSmokeTest: start failed: \(error)")
+                NSApp.terminate(nil)
+                return
+            }
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            await meetingStore.captureCoordinator.stop()
+            logInfo("CaptureSmokeTest: finished at \(baseURL.path)")
+            NSApp.terminate(nil)
+        }
+        #endif
     }
 }
 

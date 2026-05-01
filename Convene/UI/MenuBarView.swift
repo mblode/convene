@@ -13,16 +13,11 @@ struct MenuBarView: View {
             content
         }
         .frame(width: 520)
-        .background(
-            ZStack {
-                VisualEffectBackground(material: .menu, blendingMode: .behindWindow, state: .active)
-                Color.menuBackground.opacity(0.55)
-            }
-        )
+        .background(Color.appBackground)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous)
-                .strokeBorder(Color.cardBorder, lineWidth: Theme.Stroke.hairline)
+                .strokeBorder(Color.cardBorder, lineWidth: 1)
         )
         .padding(8)
         .task {
@@ -98,7 +93,7 @@ struct MenuBarView: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Text(title)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 13))
                     .foregroundStyle(isPrimary ? .white : Color.textPrimary)
                 Text(shortcut)
                     .font(.system(size: 10))
@@ -110,7 +105,7 @@ struct MenuBarView: View {
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
         .background(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
                 .fill(isPrimary ? Color.accentOlive : Color.iconBadgeBackground)
         )
     }
@@ -121,7 +116,7 @@ struct MenuBarView: View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(greetingTitle(for: now))!")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17))
                     .foregroundStyle(Color.textPrimary)
                 summarySentence
                     .font(.system(size: 13))
@@ -153,12 +148,12 @@ struct MenuBarView: View {
 
         if total == 0 {
             return Text("You have ")
-                + Text("no events").fontWeight(.semibold)
+                + Text("no events")
                 + Text(" planned for today.")
         }
 
-        let totalText = Text("\(numberWord(total)) event\(total == 1 ? "" : "s")").fontWeight(.semibold)
-        let upcomingText = Text("\(numberWord(upcoming)) event\(upcoming == 1 ? "" : "s")").fontWeight(.semibold)
+        let totalText = Text("\(numberWord(total)) event\(total == 1 ? "" : "s")")
+        let upcomingText = Text("\(numberWord(upcoming)) event\(upcoming == 1 ? "" : "s")")
 
         return Text("You have ")
             + totalText
@@ -168,9 +163,9 @@ struct MenuBarView: View {
     }
 
     private func nextUpSentence(_ event: MeetingEvent) -> Text {
-        Text(event.title).fontWeight(.semibold)
+        Text(event.title)
             + Text("  starts in ")
-            + Text(relativeStart(event.startDate)).fontWeight(.semibold)
+            + Text(relativeStart(event.startDate))
             + Text(" at \(timeLabel(event.startDate)).")
     }
 
@@ -180,7 +175,7 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Text("Today")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 11))
                     .foregroundStyle(Color.textSecondary)
                     .textCase(.uppercase)
                 Text(dayLabel(now))
@@ -204,8 +199,8 @@ struct MenuBarView: View {
                     VStack(spacing: 2) {
                         ForEach(events) { event in
                             EventRow(event: event, status: status(for: event), now: now) {
-                                openWindow(id: "meeting")
-                                NSApp.activate(ignoringOtherApps: true)
+                                openMeetingWindow()
+                                guard !meetingStore.captureCoordinator.isCapturing else { return }
                                 meetingStore.startRecording(from: event)
                             }
                         }
@@ -272,21 +267,21 @@ struct MenuBarView: View {
         let day = date.formatted(.dateTime.day())
         return VStack(spacing: 0) {
             Text(month)
-                .font(.system(size: 8, weight: .bold))
+                .font(.system(size: 8))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 1)
                 .background(Color.accentOlive)
             Text(day)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 11))
                 .foregroundStyle(Color.textPrimary)
                 .frame(maxWidth: .infinity)
         }
         .frame(width: 28, height: 26)
         .background(Color.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
                 .stroke(Color.cardBorder, lineWidth: 0.5)
         )
         .accessibilityElement(children: .ignore)
@@ -299,7 +294,7 @@ struct MenuBarView: View {
         VStack(spacing: 14) {
             IconBadge(systemName: "calendar", size: 44, iconSize: 20)
             Text("Convene needs Calendar access")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 15))
                 .foregroundStyle(Color.textPrimary)
             Text("Grant access to see today's events and start recording from a meeting.")
                 .font(.system(size: 13))
@@ -427,7 +422,7 @@ private struct EventRow: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
-            .background(rowBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(rowBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -435,7 +430,7 @@ private struct EventRow: View {
         .animation(.easeInOut(duration: 0.12), value: hovering)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityHint("Starts recording for this event")
+        .accessibilityHint("Opens the meeting window and starts recording if idle")
         .accessibilityAddTraits(.isButton)
     }
 
@@ -485,7 +480,7 @@ private struct StatusCircle: View {
                 Circle()
                     .fill(color.opacity(0.18))
                 Image(systemName: "checkmark")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 9))
                     .foregroundStyle(color)
             case .current:
                 Circle()
@@ -505,12 +500,12 @@ private struct StatusCircle: View {
 private struct OliveProminentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 13, weight: .medium))
+            .font(.system(size: 13))
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
                     .fill(Color.accentOlive)
                     .opacity(configuration.isPressed ? 0.85 : 1)
             )

@@ -9,6 +9,7 @@ enum SystemAudioPermissionState: String {
     case notDetermined
     case granted
     case requiresSystemSettings
+    case requiresRelaunch
 
     var isGranted: Bool { self == .granted }
 }
@@ -31,6 +32,7 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
     private var stream: SCStream?
     private let audioQueue = DispatchQueue(label: "co.blode.convene.systemaudio")
     private static let permissionRequestedKey = "systemAudioPermissionRequested"
+    private static let permissionRequiresRelaunchKey = "systemAudioPermissionRequiresRelaunch"
     /// Per-stream conversion state, confined to the audio queue.
     private let processorBox = ProcessorBox()
 
@@ -48,9 +50,16 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
     @MainActor
     func refreshPermissionState() {
         if CGPreflightScreenCaptureAccess() {
+            Self.clearPermissionRequiresRelaunch()
             permissionState = .granted
         } else {
-            permissionState = Self.hasRequestedPermission ? .requiresSystemSettings : .notDetermined
+            permissionState = if Self.permissionRequiresRelaunch {
+                .requiresRelaunch
+            } else if Self.hasRequestedPermission {
+                .requiresSystemSettings
+            } else {
+                .notDetermined
+            }
         }
     }
 
@@ -60,27 +69,27 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
     @discardableResult
     func requestPermission() async -> Bool {
         if CGPreflightScreenCaptureAccess() {
+            Self.clearPermissionRequiresRelaunch()
             permissionState = .granted
             return true
         }
         Self.markPermissionRequested()
-        // Returns true the same session it was granted; usually false until restart.
         let granted = CGRequestScreenCaptureAccess()
-        // Even if it returned false, fetching shareable content can sometimes succeed once
-        // the user grants permission via System Settings. Probe SCShareableContent as a
-        // belt-and-braces check.
-        if !granted {
-            do {
-                _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-                permissionState = .granted
-                return true
-            } catch {
-                permissionState = .requiresSystemSettings
-                return false
-            }
+
+        if await Self.canReadShareableContent() {
+            Self.clearPermissionRequiresRelaunch()
+            permissionState = .granted
+            return true
         }
-        permissionState = .granted
-        return true
+
+        if granted {
+            Self.markPermissionRequiresRelaunch()
+            permissionState = .requiresRelaunch
+            return false
+        }
+
+        permissionState = .requiresSystemSettings
+        return false
     }
 
     @MainActor
@@ -97,10 +106,11 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         let content: SCShareableContent
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            Self.clearPermissionRequiresRelaunch()
             permissionState = .granted
         } catch {
             Self.markPermissionRequested()
-            permissionState = .requiresSystemSettings
+            permissionState = Self.permissionRequiresRelaunch ? .requiresRelaunch : .requiresSystemSettings
             throw NSError(
                 domain: "co.blode.convene.systemaudio",
                 code: -1,
@@ -108,7 +118,7 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
             )
         }
 
-        guard let display = content.displays.first else {
+        guard let display = Self.preferredDisplay(from: content.displays) else {
             throw NSError(domain: "co.blode.convene.systemaudio", code: -2,
                           userInfo: [NSLocalizedDescriptionKey: "No display found"])
         }
@@ -116,6 +126,7 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         let ourBundleID = Bundle.main.bundleIdentifier ?? "co.blode.convene"
         let excludedApps = content.applications.filter { $0.bundleIdentifier == ourBundleID }
         let filter = SCContentFilter(display: display, excludingApplications: excludedApps, exceptingWindows: [])
+        logInfo("SystemAudioCapture: using display \(display.displayID) (\(display.width)x\(display.height)); excluding \(excludedApps.count) app(s)")
 
         let config = SCStreamConfiguration()
         config.capturesAudio = true
@@ -212,8 +223,40 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         UserDefaults.standard.bool(forKey: permissionRequestedKey)
     }
 
+    private static var permissionRequiresRelaunch: Bool {
+        UserDefaults.standard.bool(forKey: permissionRequiresRelaunchKey)
+    }
+
     private static func markPermissionRequested() {
         UserDefaults.standard.set(true, forKey: permissionRequestedKey)
+    }
+
+    private static func markPermissionRequiresRelaunch() {
+        UserDefaults.standard.set(true, forKey: permissionRequiresRelaunchKey)
+    }
+
+    private static func clearPermissionRequiresRelaunch() {
+        UserDefaults.standard.removeObject(forKey: permissionRequiresRelaunchKey)
+    }
+
+    private static func canReadShareableContent() async -> Bool {
+        do {
+            _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private static func preferredDisplay(from displays: [SCDisplay]) -> SCDisplay? {
+        guard !displays.isEmpty else { return nil }
+        let screenNumberKey = NSDeviceDescriptionKey("NSScreenNumber")
+        let mainDisplayID = (NSScreen.main?.deviceDescription[screenNumberKey] as? NSNumber)?.uint32Value
+        if let mainDisplayID,
+           let display = displays.first(where: { $0.displayID == mainDisplayID }) {
+            return display
+        }
+        return displays.first
     }
 }
 
@@ -230,12 +273,18 @@ private final class ProcessorBox: @unchecked Sendable {
     private var converterInputFormat: AVAudioFormat?
     private var onPCM16: ((Data) -> Void)?
     private var onFloat32: ((UnsafePointer<Float>, Int) -> Void)?
+    #if DEBUG
+    private var debugChunkCount = 0
+    #endif
 
     func reset(onPCM16: ((Data) -> Void)?, onFloat32: ((UnsafePointer<Float>, Int) -> Void)?) {
         self.converter = nil
         self.converterInputFormat = nil
         self.onPCM16 = onPCM16
         self.onFloat32 = onFloat32
+        #if DEBUG
+        self.debugChunkCount = 0
+        #endif
     }
 
     func process(buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat) {
@@ -245,10 +294,9 @@ private final class ProcessorBox: @unchecked Sendable {
         }
         guard let converter else { return }
 
-        let outFrames = AVAudioFrameCount(Double(buffer.frameLength) * targetFormat.sampleRate / inputFormat.sampleRate)
+        let outFrames = AVAudioFrameCount(ceil(Double(buffer.frameLength) * targetFormat.sampleRate / inputFormat.sampleRate))
         guard outFrames > 0,
               let out = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: outFrames) else { return }
-        out.frameLength = outFrames
 
         // Capture buffer in a non-Sendable manner via a wrapper closure.
         var consumed = false
@@ -259,12 +307,26 @@ private final class ProcessorBox: @unchecked Sendable {
             return buffer
         }
         var error: NSError?
-        converter.convert(to: out, error: &error, withInputFrom: inputBlock)
-        if let error { logError("SystemAudioCapture: conversion error: \(error)"); return }
+        let status = converter.convert(to: out, error: &error, withInputFrom: inputBlock)
+        if status == .error || error != nil {
+            logError("SystemAudioCapture: conversion error: \(error?.localizedDescription ?? "unknown")")
+            return
+        }
 
         guard let floats = out.floatChannelData else { return }
         let frameCount = Int(out.frameLength)
         guard frameCount > 0 else { return }
+
+        #if DEBUG
+        if debugChunkCount < 6 {
+            let inputRMS = buffer.floatChannelData.map { rmsLevel($0[0], frameCount: Int(buffer.frameLength)) }
+            let outputRMS = rmsLevel(floats[0], frameCount: frameCount)
+            logInfo(
+                "SystemAudioCapture: chunk \(debugChunkCount + 1) input=\(formatSummary(inputFormat)) frames=\(buffer.frameLength) rms=\(inputRMS.map { "\($0)" } ?? "n/a") outputFrames=\(frameCount) outputRMS=\(outputRMS) status=\(status)"
+            )
+            debugChunkCount += 1
+        }
+        #endif
 
         onFloat32?(floats[0], frameCount)
 
@@ -278,4 +340,17 @@ private final class ProcessorBox: @unchecked Sendable {
         }
         onPCM16?(data)
     }
+
+    #if DEBUG
+    private func rmsLevel(_ samples: UnsafePointer<Float>, frameCount: Int) -> Float {
+        guard frameCount > 0 else { return 0 }
+        var sum: Float = 0
+        for i in 0..<frameCount { sum += samples[i] * samples[i] }
+        return (sum / Float(frameCount)).squareRoot()
+    }
+
+    private func formatSummary(_ format: AVAudioFormat) -> String {
+        "\(Int(format.sampleRate))Hz/\(format.channelCount)ch/\(format.commonFormat)/interleaved=\(format.isInterleaved)"
+    }
+    #endif
 }

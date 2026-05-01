@@ -3,10 +3,10 @@ import SwiftUI
 
 struct HotkeysPage: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xxl) {
             PageTitle("Hotkeys")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("Global shortcuts")
                 SettingsCard {
                     SettingsRow(
@@ -37,5 +37,6 @@ struct HotkeysPage: View {
                 }
             }
         }
+        .padding(.top, Theme.Spacing.xl)
     }
 }

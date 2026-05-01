@@ -126,6 +126,9 @@ final class AudioCaptureCoordinator: ObservableObject {
         mic.stop()
         mic.flushPendingAudio()
         await system.stop()
+        // Float32 debug callbacks hop to MainActor after the capture queues flush. Give
+        // those queued writes one turn before dropping the file handles.
+        await Task.yield()
         cleanupWriters()
         isCapturing = false
         logInfo("AudioCaptureCoordinator: stopped")
@@ -141,7 +144,12 @@ final class AudioCaptureCoordinator: ObservableObject {
         }
 
         guard await system.requestPermission() else {
-            startError = "Screen recording permission required"
+            startError = switch system.permissionState {
+            case .requiresRelaunch:
+                "Restart Convene to finish Screen & System Audio Recording setup"
+            default:
+                "Screen recording permission required"
+            }
             return false
         }
 

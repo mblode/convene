@@ -5,11 +5,12 @@ struct APIKeyPopover: View {
     @Binding var isPresented: Bool
 
     @State private var draft: String = ""
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("OpenAI API key")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 14))
                 .foregroundStyle(Color.textPrimary)
 
             Text("Stored in your macOS Keychain. Required for transcription and summary.")
@@ -20,6 +21,17 @@ struct APIKeyPopover: View {
             SecureField("sk-…", text: $draft)
                 .textFieldStyle(.roundedBorder)
                 .frame(minWidth: 280)
+
+            if let errorMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Color.recordingRed)
+                    Text(errorMessage)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.recordingRed)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
 
             if meetingStore.hasAPIKey {
                 HStack(spacing: 6) {
@@ -35,20 +47,28 @@ struct APIKeyPopover: View {
                 if meetingStore.hasAPIKey {
                     Button("Delete") {
                         meetingStore.apiKey = ""
-                        meetingStore.saveAPIKey()
-                        draft = ""
+                        if meetingStore.saveAPIKey() {
+                            draft = ""
+                            errorMessage = nil
+                        } else {
+                            errorMessage = meetingStore.apiKeyError
+                        }
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.recordingRed)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 12))
                 }
                 Spacer()
                 Button("Cancel") { isPresented = false }
                     .keyboardShortcut(.cancelAction)
                 Button("Save") {
                     meetingStore.apiKey = draft
-                    meetingStore.saveAPIKey()
-                    isPresented = false
+                    if meetingStore.saveAPIKey() {
+                        errorMessage = nil
+                        isPresented = false
+                    } else {
+                        errorMessage = meetingStore.apiKeyError
+                    }
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -56,6 +76,9 @@ struct APIKeyPopover: View {
         }
         .padding(16)
         .frame(width: 320)
-        .onAppear { draft = meetingStore.apiKey }
+        .onAppear {
+            draft = meetingStore.apiKey
+            errorMessage = meetingStore.apiKeyError
+        }
     }
 }

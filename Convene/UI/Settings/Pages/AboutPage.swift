@@ -3,10 +3,10 @@ import SwiftUI
 
 struct AboutPage: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xxl) {
             PageTitle("About")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("App")
                 SettingsCard {
                     SettingsRow(
@@ -14,6 +14,20 @@ struct AboutPage: View {
                         title: "Version",
                         description: versionString
                     ) {}
+                    SettingsRow(
+                        icon: "doc.text.magnifyingglass",
+                        title: "Logs",
+                        description: "Open the Convene log file"
+                    ) {
+                        Button {
+                            Logger.shared.openLogFile()
+                        } label: {
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.textSecondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
                     SettingsRow(
                         icon: "link",
                         title: "GitHub",
@@ -26,7 +40,7 @@ struct AboutPage: View {
                             }
                         } label: {
                             Image(systemName: "arrow.up.right.square")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(size: 12))
                                 .foregroundStyle(Color.textSecondary)
                         }
                         .buttonStyle(.plain)
@@ -34,6 +48,7 @@ struct AboutPage: View {
                 }
             }
         }
+        .padding(.top, Theme.Spacing.xl)
     }
 
     private var versionString: String {

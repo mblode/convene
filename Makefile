@@ -10,15 +10,51 @@ VERSION := $(shell tag=`git describe --tags --abbrev=0 2>/dev/null`; if [ -n "$$
 
 CODESIGN_IDENTITY ?= Developer ID Application
 TEAM_ID ?= $(APPLE_TEAM_ID)
-LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
+LOCAL_CODE_SIGN_IDENTITY ?= Convene Local Code Signing
+LOCAL_KEYCHAIN ?= $(HOME)/Library/Keychains/login.keychain-db
+LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM= ENABLE_DEBUG_DYLIB=NO
 
-.PHONY: project build debug install archive export dmg notarize clean
+.PHONY: project local-signing-identity build debug install archive export dmg notarize clean
 
 # Regenerate Convene.xcodeproj from project.yml. Required after adding Swift files.
 project:
 	xcodegen generate
 
-build: project
+local-signing-identity:
+	@if [ "$(LOCAL_CODE_SIGN_IDENTITY)" = "-" ]; then \
+		echo "Using ad-hoc local signing."; \
+	elif security find-identity -v -p codesigning -s "$(LOCAL_CODE_SIGN_IDENTITY)" | grep -q "1 valid identities found"; then \
+		echo "Using local signing identity: $(LOCAL_CODE_SIGN_IDENTITY)"; \
+	else \
+		tmpdir=$$(mktemp -d); \
+		pass="convene-local"; \
+		openssl req -new -newkey rsa:2048 -nodes -x509 -days 3650 \
+			-subj "/CN=$(LOCAL_CODE_SIGN_IDENTITY)/" \
+			-addext "keyUsage=digitalSignature" \
+			-addext "extendedKeyUsage=codeSigning" \
+			-keyout "$$tmpdir/key.pem" \
+			-out "$$tmpdir/cert.pem"; \
+		openssl pkcs12 -export -legacy \
+			-out "$$tmpdir/identity.p12" \
+			-inkey "$$tmpdir/key.pem" \
+			-in "$$tmpdir/cert.pem" \
+			-passout "pass:$$pass"; \
+		security import "$$tmpdir/identity.p12" \
+			-k "$(LOCAL_KEYCHAIN)" \
+			-P "$$pass" \
+			-A \
+			-T /usr/bin/codesign \
+			-T /usr/bin/security; \
+		security add-trusted-cert \
+			-r trustRoot \
+			-p codeSign \
+			-k "$(LOCAL_KEYCHAIN)" \
+			"$$tmpdir/cert.pem"; \
+		rm -rf "$$tmpdir"; \
+		echo "Created local signing identity: $(LOCAL_CODE_SIGN_IDENTITY)"; \
+	fi
+
+build: project local-signing-identity
 	xcodebuild -scheme $(SCHEME) \
 		-configuration $(CONFIGURATION) \
 		-derivedDataPath $(DERIVED_DATA) \
@@ -26,7 +62,7 @@ build: project
 		$(LOCAL_SIGNING) \
 		build
 
-debug: project
+debug: project local-signing-identity
 	xcodebuild -scheme $(SCHEME) \
 		-configuration Debug \
 		-derivedDataPath $(DERIVED_DATA) \

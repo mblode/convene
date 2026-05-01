@@ -11,9 +11,10 @@ final class TranscriptionCoordinator: ObservableObject {
     @Published private(set) var segments: [TranscriptSegment] = []
     @Published private(set) var isRunning = false
     @Published private(set) var lastError: String?
+    private(set) var transcriptionFailures: [String] = []
 
-    private let youStream = LiveTranscriptionStream()
-    private let othersStream = LiveTranscriptionStream()
+    private let youStream = LiveTranscriptionStream(label: "you")
+    private let othersStream = LiveTranscriptionStream(label: "others")
 
     /// Wall-clock time of when the meeting started — used as the `startedAt` reference.
     private var meetingStartedAt: Date?
@@ -33,6 +34,7 @@ final class TranscriptionCoordinator: ObservableObject {
             return
         }
         lastError = nil
+        transcriptionFailures = []
         segments = []
         segmentTable = [:]
         meetingStartedAt = Date()
@@ -48,8 +50,8 @@ final class TranscriptionCoordinator: ObservableObject {
         guard isRunning else { return }
         youStream.commitPendingAudio()
         othersStream.commitPendingAudio()
-        // Give the server time to emit the final transcription.completed events.
-        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        // Give the server time to emit final completed/failed transcription events.
+        try? await Task.sleep(nanoseconds: 3_000_000_000)
         youStream.disconnect()
         othersStream.disconnect()
         isRunning = false
@@ -67,6 +69,12 @@ final class TranscriptionCoordinator: ObservableObject {
 
     func snapshot() -> [TranscriptSegment] { segments }
 
+    func failureSummary() -> String? {
+        let failures = Array(Set(transcriptionFailures)).sorted()
+        guard !failures.isEmpty else { return nil }
+        return failures.joined(separator: "\n")
+    }
+
     // MARK: - Stream callbacks
 
     private func wire(stream: LiveTranscriptionStream, speaker: TranscriptSegment.Speaker) {
@@ -83,6 +91,11 @@ final class TranscriptionCoordinator: ObservableObject {
         stream.onSegmentCompleted = { [weak self] segmentId, finalText, audioEndMs in
             Task { @MainActor in
                 self?.handleCompleted(speaker: speaker, serverItemId: segmentId, finalText: finalText, audioEndMs: audioEndMs)
+            }
+        }
+        stream.onSegmentFailed = { [weak self] segmentId, message in
+            Task { @MainActor in
+                self?.handleFailed(speaker: speaker, serverItemId: segmentId, message: message)
             }
         }
         stream.onError = { [weak self] error in
@@ -139,6 +152,13 @@ final class TranscriptionCoordinator: ObservableObject {
             segmentTable[key] = segment
         }
         publishSorted()
+    }
+
+    private func handleFailed(speaker: TranscriptSegment.Speaker, serverItemId: String?, message: String) {
+        let formatted = "\(speaker.displayName) transcription failed: \(message)"
+        transcriptionFailures.append(formatted)
+        lastError = formatted
+        logError("TranscriptionCoordinator: \(speaker.rawValue) transcription failed\(serverItemId.map { " for \($0)" } ?? ""): \(message)")
     }
 
     private func mergeKey(speaker: TranscriptSegment.Speaker, serverItemId: String) -> String {

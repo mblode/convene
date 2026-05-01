@@ -51,7 +51,7 @@ final class SummaryService: ObservableObject {
             }
             guard (200..<300).contains(httpResponse.statusCode) else {
                 let serverMessage = parseServerError(data: data) ?? "HTTP \(httpResponse.statusCode)"
-                lastError = "Summary failed: \(serverMessage)"
+                lastError = serverMessage
                 logError("SummaryService: \(serverMessage)")
                 return nil
             }
@@ -139,7 +139,8 @@ final class SummaryService: ObservableObject {
     private func parseServerError(data: Data) -> String? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         if let error = json["error"] as? [String: Any], let message = error["message"] as? String {
-            return message
+            let code = error["code"] as? String
+            return OpenAIErrorFormatter.userMessage(code: code, message: message, operation: "Summary")
         }
         return nil
     }

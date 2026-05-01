@@ -6,7 +6,7 @@ struct SettingsSidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Convene")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 13))
                 .foregroundStyle(Color.textPrimary)
                 .padding(.horizontal, 12)
                 .padding(.top, 14)

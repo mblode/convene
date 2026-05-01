@@ -6,8 +6,8 @@ enum MicAudioConstants {
     static let sampleRate: Double = 24000
     static let captureBufferSize: AVAudioFrameCount = 1024
     static let channels: AVAudioChannelCount = 1
-    static let noiseGateThreshold: Float = 0.01
-    static let noiseGateThresholdWithoutAEC: Float = 0.02
+    static let noiseGateThreshold: Float = 0.002
+    static let noiseGateThresholdWithoutAEC: Float = 0.006
     static let noiseGateHoldTime: TimeInterval = 0.25
     static let noiseGateHoldTimeWithoutAEC: TimeInterval = 0.35
 }
@@ -43,6 +43,7 @@ final class MicCapture: ObservableObject {
 
     private var engine: AVAudioEngine?
     private var tapNode: AVAudioNode?
+    private var mixerNode: AVAudioMixerNode?
     private let audioQueue = DispatchQueue(label: "co.blode.convene.mic")
 
     init() {
@@ -105,7 +106,22 @@ final class MicCapture: ObservableObject {
             interleaved: false
         )!
 
-        let captureFormat = inputFormat
+        let captureFormat: AVAudioFormat
+        if inputFormat.channelCount == MicAudioConstants.channels {
+            captureFormat = inputFormat
+        } else {
+            captureFormat = AVAudioFormat(
+                standardFormatWithSampleRate: inputFormat.sampleRate,
+                channels: MicAudioConstants.channels
+            ) ?? targetFormat
+            logInfo("MicCapture: downmixing \(inputFormat.channelCount)-channel input to mono")
+        }
+
+        let mixer = AVAudioMixerNode()
+        mixer.volume = 1.0
+        engine.attach(mixer)
+        engine.connect(input, to: mixer, format: captureFormat)
+
         engine.prepare()
 
         // Per-stream state owned by the audio queue.
@@ -118,7 +134,7 @@ final class MicCapture: ObservableObject {
         let onFloat32 = self.onFloat32
         let queue = audioQueue
 
-        input.installTap(onBus: 0, bufferSize: MicAudioConstants.captureBufferSize, format: captureFormat) { buffer, _ in
+        mixer.installTap(onBus: 0, bufferSize: MicAudioConstants.captureBufferSize, format: captureFormat) { buffer, _ in
             queue.async {
                 processor.process(buffer: buffer, onFloat32: onFloat32, onPCM16: onPCM16)
             }
@@ -126,7 +142,8 @@ final class MicCapture: ObservableObject {
 
         try engine.start()
         self.engine = engine
-        self.tapNode = input
+        self.tapNode = mixer
+        self.mixerNode = mixer
         self.isStreaming = true
         self.isHardwareAECActive = voiceProcessingEnabled
         logInfo("MicCapture: started (hwAEC=\(voiceProcessingEnabled))")
@@ -138,6 +155,7 @@ final class MicCapture: ObservableObject {
         engine?.stop()
         tapNode?.removeTap(onBus: 0)
         tapNode = nil
+        mixerNode = nil
         engine = nil
         isStreaming = false
         isHardwareAECActive = false
@@ -156,7 +174,10 @@ private final class MicAudioProcessor: @unchecked Sendable {
     private let targetFormat: AVAudioFormat
     private let hwAEC: Bool
     private var converter: AVAudioConverter?
-    private var lastAboveThresholdTime: Date = .distantPast
+    private var lastAboveThresholdTime = Date()
+    #if DEBUG
+    private var debugChunkCount = 0
+    #endif
 
     init(captureFormat: AVAudioFormat, targetFormat: AVAudioFormat, hwAEC: Bool) {
         self.captureFormat = captureFormat
@@ -180,14 +201,28 @@ private final class MicAudioProcessor: @unchecked Sendable {
         let holdTime = hwAEC ? MicAudioConstants.noiseGateHoldTime : MicAudioConstants.noiseGateHoldTimeWithoutAEC
         let now = Date()
         let rms = rmsLevel(floatData[0], frameCount: frameCount)
+        var gated = false
+
+        // Debug WAVs should show what the mic produced before the local noise gate mutates it.
+        onFloat32?(floatData[0], frameCount)
 
         if rms >= threshold {
             lastAboveThresholdTime = now
         } else if now.timeIntervalSince(lastAboveThresholdTime) >= holdTime {
             for i in 0..<frameCount { floatData[0][i] = 0 }
+            gated = true
         }
 
-        onFloat32?(floatData[0], frameCount)
+        #if DEBUG
+        if debugChunkCount < 6 {
+            let outputRMS = rmsLevel(floatData[0], frameCount: frameCount)
+            logInfo(
+                "MicCapture: chunk \(debugChunkCount + 1) input=\(formatSummary(captureFormat)) frames=\(buffer.frameLength) convertedFrames=\(frameCount) rms=\(rms) outputRMS=\(outputRMS) threshold=\(threshold) gated=\(gated)"
+            )
+            debugChunkCount += 1
+        }
+        #endif
+
         if let pcm16 = pcm16(from: floatData[0], frameCount: frameCount) {
             onPCM16?(pcm16)
         }
@@ -197,19 +232,21 @@ private final class MicAudioProcessor: @unchecked Sendable {
         if captureFormat == targetFormat { return buffer }
         guard let converter else { return buffer }
 
-        let frameCount = AVAudioFrameCount(Float(buffer.frameLength) * Float(targetFormat.sampleRate) / Float(captureFormat.sampleRate))
+        let frameCount = AVAudioFrameCount(ceil(Float(buffer.frameLength) * Float(targetFormat.sampleRate) / Float(captureFormat.sampleRate)))
         guard let out = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else { return nil }
-        out.frameLength = frameCount
 
         var error: NSError?
         var consumed = false
-        converter.convert(to: out, error: &error) { _, status in
+        let status = converter.convert(to: out, error: &error) { _, status in
             if consumed { status.pointee = .noDataNow; return nil }
             consumed = true
             status.pointee = .haveData
             return buffer
         }
-        if let error { logError("MicCapture: conversion error: \(error)"); return nil }
+        if status == .error || error != nil {
+            logError("MicCapture: conversion error: \(error?.localizedDescription ?? "unknown")")
+            return nil
+        }
         return out
     }
 
@@ -230,4 +267,10 @@ private final class MicAudioProcessor: @unchecked Sendable {
         }
         return data
     }
+
+    #if DEBUG
+    private func formatSummary(_ format: AVAudioFormat) -> String {
+        "\(Int(format.sampleRate))Hz/\(format.channelCount)ch/\(format.commonFormat)/interleaved=\(format.isInterleaved)"
+    }
+    #endif
 }

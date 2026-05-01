@@ -44,15 +44,15 @@ struct MenuRow: View {
             }
             if showsChevron {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 10))
                     .foregroundStyle(Color.textTertiary)
             }
         }
         .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, 7)
+        .padding(.vertical, Theme.Spacing.sm)
         .contentShape(Rectangle())
         .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
                 .fill(isHovering && !isDisabled && action != nil ? Color.hoverBackground : .clear)
         )
         .onHover { isHovering = $0 }

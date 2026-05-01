@@ -4,10 +4,10 @@ struct CapturePage: View {
     @EnvironmentObject var meetingStore: MeetingStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 32) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xxl) {
             PageTitle("Capture")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("Detection")
                 SettingsCard {
                     SettingsRow(
@@ -38,13 +38,13 @@ struct CapturePage: View {
                     .padding(.horizontal, 4)
             }
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("Debug")
                 SettingsCard {
                     SettingsRow(
                         icon: "ant",
-                        title: "Save raw audio (WAV) to /tmp",
-                        description: "Useful for verifying mic + system-audio capture independently of transcription",
+                        title: "Save raw audio (WAV)",
+                        description: "Writes mic and system-audio captures to the app's temporary folder",
                         showsDivider: false
                     ) {
                         Toggle("", isOn: $meetingStore.saveDebugWAVs)
@@ -54,6 +54,7 @@ struct CapturePage: View {
                 }
             }
         }
+        .padding(.top, Theme.Spacing.xl)
     }
 
     private var shouldShowLastDetected: Bool {

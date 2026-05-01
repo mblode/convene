@@ -10,16 +10,16 @@ enum Theme {
         static let xxl: CGFloat = 32
         static let pageHorizontal: CGFloat = 40
         static let pageVertical: CGFloat = 32
-        static let sectionGap: CGFloat = 24
+        static let sectionGap: CGFloat = 28
         static let rowVertical: CGFloat = 14
         static let rowHorizontal: CGFloat = 16
     }
 
     enum Radius {
-        static let card: CGFloat = 20
+        static let card: CGFloat = 16
         static let iconBadge: CGFloat = 10
-        static let menu: CGFloat = 12
-        static let control: CGFloat = 8
+        static let menu: CGFloat = 10
+        static let control: CGFloat = 6
         static let bubble: CGFloat = 16
     }
 
@@ -34,7 +34,7 @@ enum Theme {
     }
 
     enum Shadow {
-        static let menu = ShadowToken(color: .black.opacity(0.12), radius: 16, y: 4)
+        static let menu = ShadowToken(color: .black.opacity(0.20), radius: 8, y: 2)
     }
 }
 

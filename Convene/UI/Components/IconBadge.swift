@@ -13,7 +13,7 @@ struct IconBadge: View {
             .frame(width: size, height: size)
             .overlay(
                 Image(systemName: systemName)
-                    .font(.system(size: iconSize, weight: .medium))
+                    .font(.system(size: iconSize))
                     .foregroundStyle(tint)
             )
     }

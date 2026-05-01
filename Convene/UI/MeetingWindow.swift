@@ -2,30 +2,23 @@ import AppKit
 import SwiftUI
 
 struct MeetingWindow: View {
-    enum RightPane: String, Hashable, CaseIterable {
-        case notes = "Notes"
-        case summary = "Summary"
-    }
-
     @EnvironmentObject var meetingStore: MeetingStore
-    @State private var autoScroll: Bool = true
-    @State private var rightPane: RightPane = .notes
-    @State private var pulse = false
+    @State private var showTranscript = false
 
     var body: some View {
         VStack(spacing: 0) {
             header
             DashedDivider()
-            HSplitView {
-                transcriptPane
-                    .frame(minWidth: 320, idealWidth: 420)
-                notesPane
-                    .frame(minWidth: 320)
+            noteSurface
+            if showTranscript {
+                transcriptDrawer
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             footer
         }
         .frame(minWidth: 720, minHeight: 480)
         .background(Color.appBackground)
+        .animation(.easeInOut(duration: 0.16), value: showTranscript)
     }
 
     // MARK: - Header
@@ -36,207 +29,159 @@ struct MeetingWindow: View {
 
             TextField("Meeting title", text: $meetingStore.meetingTitle)
                 .textFieldStyle(.plain)
-                .font(.system(size: 20, weight: .medium))
+                .font(.system(size: 20))
                 .foregroundStyle(Color.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 6) {
-                Text("Auto-scroll")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.textSecondary)
-                Toggle("", isOn: $autoScroll)
-                    .toggleStyle(OliveToggleStyle())
-                    .labelsHidden()
+            Button {
+                showTranscript.toggle()
+            } label: {
+                Label(showTranscript ? "Hide transcript" : "Transcript", systemImage: "text.bubble")
+                    .font(.system(size: 13))
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.textPrimary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                    .fill(showTranscript ? Color.accentOliveSoft : Color.iconBadgeBackground)
+            )
 
             Button {
                 meetingStore.toggleRecording()
             } label: {
-                Text(meetingStore.captureCoordinator.isCapturing ? "Stop" : "Start")
-                    .font(.system(size: 13, weight: .semibold))
+                Text(recordingButtonTitle)
+                    .font(.system(size: 13))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
+                    .frame(minWidth: 64)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 7)
                     .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
                             .fill(meetingStore.captureCoordinator.isCapturing ? Color.recordingRed : Color.accentOlive)
                     )
             }
             .buttonStyle(.plain)
             .keyboardShortcut("r", modifiers: [.command])
+            .disabled(meetingStore.isToggling)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
     }
 
+    private var recordingButtonTitle: String {
+        if meetingStore.isToggling { return "Working" }
+        return meetingStore.captureCoordinator.isCapturing ? "Stop" : "Start"
+    }
+
     private var recordingDot: some View {
-        ZStack {
-            if meetingStore.captureCoordinator.isCapturing {
-                Circle()
-                    .fill(Color.recordingRed.opacity(0.25))
-                    .frame(width: 18, height: 18)
-                    .scaleEffect(pulse ? 1.4 : 0.9)
-                    .opacity(pulse ? 0 : 0.6)
-                    .animation(.easeOut(duration: 1.2).repeatForever(autoreverses: false), value: pulse)
-            }
-            Circle()
-                .fill(meetingStore.captureCoordinator.isCapturing ? Color.recordingRed : Color.textTertiary)
-                .frame(width: 10, height: 10)
-        }
-        .frame(width: 18, height: 18)
-        .onAppear { pulse = true }
+        Circle()
+            .fill(meetingStore.captureCoordinator.isCapturing ? Color.recordingRed : Color.textTertiary)
+            .frame(width: 10, height: 10)
     }
 
-    // MARK: - Transcript pane
+    // MARK: - Notes
 
-    private var transcriptPane: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            paneTitle("Transcript")
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        if meetingStore.transcriptionCoordinator.segments.isEmpty {
-                            transcriptEmptyState
-                        } else {
-                            ForEach(meetingStore.transcriptionCoordinator.segments) { segment in
-                                TranscriptSegmentRow(segment: segment)
-                                    .id(segment.id)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .onChange(of: meetingStore.transcriptionCoordinator.segments.count) { _, _ in
-                    guard autoScroll, let last = meetingStore.transcriptionCoordinator.segments.last else { return }
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        proxy.scrollTo(last.id, anchor: .bottom)
-                    }
-                }
-            }
-        }
-    }
-
-    private var transcriptEmptyState: some View {
-        VStack(spacing: 14) {
-            IconBadge(systemName: "waveform", size: 44, iconSize: 20, tint: Color.textSecondary)
-            Text("Transcript will appear here when you start recording.")
-                .foregroundStyle(Color.textSecondary)
-                .font(.system(size: 13))
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.vertical, 60)
-    }
-
-    // MARK: - Notes / Summary pane
-
-    private var notesPane: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            paneSwitcher
-            switch rightPane {
-            case .notes:
+    private var noteSurface: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            summaryStatus
+            ZStack(alignment: .topLeading) {
                 TextEditor(text: $meetingStore.meetingNotes)
-                    .font(.system(size: 14))
+                    .font(.system(size: 15))
                     .foregroundStyle(Color.textPrimary)
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-            case .summary:
-                summaryView
-            }
-        }
-    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-    private var paneSwitcher: some View {
-        HStack {
-            Picker("", selection: $rightPane) {
-                ForEach(RightPane.allCases, id: \.self) { pane in
-                    Text(pane.rawValue).tag(pane)
+                if meetingStore.meetingNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("Write notes here.")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.textTertiary)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 18)
+                        .allowsHitTesting(false)
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(maxWidth: 220)
-
-            Spacer()
-
-            if rightPane == .summary, meetingStore.summaryService.isGenerating {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Generating…")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.textSecondary)
-            }
+            .background(Color.appBackground)
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 14)
-        .padding(.bottom, 6)
+        .padding(.horizontal, 10)
+        .padding(.top, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
-    private var summaryView: some View {
-        if let summary = meetingStore.currentSummary {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    if !summary.overview.isEmpty {
-                        Text(summary.overview)
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.textPrimary)
-                            .textSelection(.enabled)
-                    }
-                    summarySection(title: "Key points", items: summary.keyPoints, glyph: "circle.fill")
-                    summarySection(title: "Decisions", items: summary.decisions, glyph: "checkmark.circle.fill")
-                    summarySection(title: "Action items", items: summary.actionItems, glyph: "square")
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        } else if meetingStore.summaryService.isGenerating {
-            VStack(spacing: 12) {
-                ProgressView()
-                Text("Summarizing transcript…")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.textSecondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            VStack(spacing: 14) {
-                IconBadge(systemName: "sparkles", size: 44, iconSize: 20, tint: Color.accentOlive)
-                Text("Stop the meeting to generate a summary.")
-                    .foregroundStyle(Color.textSecondary)
-                    .font(.system(size: 13))
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.vertical, 60)
+    private var summaryStatus: some View {
+        if meetingStore.summaryService.isGenerating {
+            statusBanner(icon: "sparkles", text: "Generating summary for the saved note.")
+        } else if let error = meetingStore.summaryService.lastError {
+            statusBanner(icon: "exclamationmark.triangle", text: error, tint: Color.recordingRed)
+        } else if meetingStore.currentSummary != nil {
+            statusBanner(icon: "checkmark.circle", text: "Summary added to the saved note.")
         }
     }
 
-    @ViewBuilder
-    private func summarySection(title: String, items: [String], glyph: String) -> some View {
-        if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                    .font(.system(size: 11, weight: .semibold))
+    private func statusBanner(icon: String, text: String, tint: Color = Color.accentOlive) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundStyle(tint)
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundStyle(Color.textSecondary)
+                .lineLimit(2)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                .fill(Color.iconBadgeBackground)
+        )
+    }
+
+    // MARK: - Transcript
+
+    private var transcriptDrawer: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Transcript")
+                    .font(.system(size: 11))
                     .foregroundStyle(Color.textSecondary)
                     .textCase(.uppercase)
-                ForEach(items, id: \.self) { item in
-                    HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Image(systemName: glyph)
-                            .font(.system(size: 7))
-                            .foregroundStyle(Color.accentOlive)
-                            .frame(width: 12, alignment: .center)
-                            .offset(y: -2)
-                        Text(item)
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.textPrimary)
-                            .textSelection(.enabled)
+                Spacer()
+                Text("\(meetingStore.transcriptionCoordinator.segments.count)")
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(Color.textTertiary)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    if meetingStore.transcriptionCoordinator.segments.isEmpty {
+                        Text("Transcript will appear here when recording starts.")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                    } else {
+                        ForEach(meetingStore.transcriptionCoordinator.segments) { segment in
+                            TranscriptSegmentRow(segment: segment)
+                        }
                     }
                 }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 12)
             }
+        }
+        .frame(maxHeight: 190)
+        .background(Color.sidebarBackground)
+        .overlay(alignment: .top) {
+            DashedDivider()
         }
     }
 
@@ -247,31 +192,33 @@ struct MeetingWindow: View {
             Text(meetingStore.captureStatus)
                 .font(.system(size: 12))
                 .foregroundStyle(Color.textSecondary)
+                .lineLimit(1)
 
             Spacer()
 
-            if let savedURL = meetingStore.lastSavedURL {
-                Button {
-                    meetingStore.persistence.revealInFinder(savedURL)
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "doc.text")
-                            .font(.system(size: 11))
-                        Text(savedURL.lastPathComponent)
-                            .font(.system(size: 12))
-                    }
-                    .foregroundStyle(Color.textSecondary)
+            if let obsidianURL = meetingStore.persistence.lastObsidianFileURL {
+                Button("Open Obsidian note") {
+                    meetingStore.persistence.openFile(obsidianURL)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
+                .font(.system(size: 12))
+                .foregroundStyle(Color.accentOlive)
+            } else if let savedURL = meetingStore.lastSavedURL {
+                Button("Open note") {
+                    meetingStore.persistence.openFile(savedURL)
+                }
+                .buttonStyle(.borderless)
+                .font(.system(size: 12))
+                .foregroundStyle(Color.accentOlive)
             }
 
-            if meetingStore.persistence.outputFolderURL == nil {
-                Button("Choose output folder…") {
+            if !meetingStore.persistence.hasConfiguredOutputFolder {
+                Button("Choose folder") {
                     meetingStore.chooseOutputFolderAndRetrySave()
                 }
                 .buttonStyle(.borderless)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.accentOlive)
+                .font(.system(size: 12))
+                .foregroundStyle(Color.textSecondary)
             }
         }
         .padding(.horizontal, 24)
@@ -281,16 +228,6 @@ struct MeetingWindow: View {
             DashedDivider()
         }
     }
-
-    private func paneTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(Color.textSecondary)
-            .textCase(.uppercase)
-            .padding(.horizontal, 18)
-            .padding(.top, 14)
-            .padding(.bottom, 6)
-    }
 }
 
 private struct TranscriptSegmentRow: View {
@@ -299,15 +236,15 @@ private struct TranscriptSegmentRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Text(segment.speaker.displayName.lowercased())
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 11))
                 .foregroundStyle(speakerColor)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(speakerColor.opacity(0.12), in: Capsule())
+                .background(Color.cardBackground, in: Capsule())
                 .frame(width: 72, alignment: .center)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(segment.text.isEmpty ? "…" : segment.text)
+                Text(segment.text.isEmpty ? "..." : segment.text)
                     .font(.system(size: 14))
                     .foregroundStyle(segment.isFinal ? Color.textPrimary : Color.textSecondary)
                     .textSelection(.enabled)
@@ -335,7 +272,7 @@ private struct TranscriptSegmentRow: View {
 
     private var speakerColor: Color {
         switch segment.speaker {
-        case .you:    return Color.accentOlive
+        case .you: return Color.accentOlive
         case .others: return Color.textSecondary
         }
     }

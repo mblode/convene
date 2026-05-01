@@ -12,7 +12,7 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
         case failed(Error)
     }
 
-    enum StreamError: Error, CustomStringConvertible {
+    enum StreamError: Error, CustomStringConvertible, LocalizedError {
         case invalidURL
         case notConnected
         case server(String)
@@ -21,9 +21,11 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
             switch self {
             case .invalidURL: return "Invalid Realtime API URL"
             case .notConnected: return "WebSocket not connected"
-            case .server(let msg): return "Realtime server error: \(msg)"
+            case .server(let msg): return msg
             }
         }
+
+        var errorDescription: String? { description }
     }
 
     private(set) var state: State = .disconnected
@@ -35,6 +37,9 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
     private let lock = NSLock()
     private var connectedAt: Date?
     private var isDisconnecting = false
+    private var hasActiveSpeech = false
+    private var uncommittedByteCount = 0
+    private static let minimumCommitBytes = 4_800 // 100 ms of 24 kHz mono PCM16.
 
     /// Fired when the server detects the start of a new speech segment.
     /// `audioStartMs` is the offset in ms from when audio first started flowing on this stream.
@@ -43,7 +48,15 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
     var onSegmentDelta: ((_ segmentId: String, _ delta: String) -> Void)?
     /// Fired when transcription for a segment is finalized.
     var onSegmentCompleted: ((_ segmentId: String, _ finalText: String, _ audioEndMs: Int?) -> Void)?
+    var onSegmentFailed: ((_ segmentId: String?, _ message: String) -> Void)?
     var onError: ((Error) -> Void)?
+
+    private let label: String
+
+    init(label: String = "stream") {
+        self.label = label
+        super.init()
+    }
 
     func connect(apiKey: String, model: String = "gpt-4o-mini-transcribe", language: String = "") {
         lock.lock()
@@ -56,6 +69,8 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
         pendingByteCount = 0
         connectedAt = nil
         isDisconnecting = false
+        hasActiveSpeech = false
+        uncommittedByteCount = 0
 
         guard let url = URL(string: "wss://api.openai.com/v1/realtime?intent=transcription") else {
             state = .failed(StreamError.invalidURL)
@@ -103,15 +118,21 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
     /// `transcription.completed` event for the current segment shortly after.
     /// Caller is expected to wait briefly before calling `disconnect()` so the completion
     /// event can land while the socket is still open.
-    func commitPendingAudio() {
+    @discardableResult
+    func commitPendingAudio() -> Bool {
         lock.lock()
         let isReady: Bool = {
             if case .ready = state { return true }
             return false
         }()
+        let shouldCommit = isReady && hasActiveSpeech && uncommittedByteCount >= Self.minimumCommitBytes
         lock.unlock()
-        guard isReady else { return }
+        guard shouldCommit else {
+            logDebug("LiveTranscriptionStream[\(label)]: skipping commit (no active speech, buffer too small, or stream not ready)")
+            return false
+        }
         sendJSON(["type": "input_audio_buffer.commit"])
+        return true
     }
 
     func disconnect() {
@@ -125,6 +146,8 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
         urlSession = nil
         pendingChunks.removeAll()
         pendingByteCount = 0
+        hasActiveSpeech = false
+        uncommittedByteCount = 0
         state = .disconnected
         lock.unlock()
         task?.cancel(with: .normalClosure, reason: nil)
@@ -152,6 +175,9 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
                 "threshold": 0.5,
                 "prefix_padding_ms": 300,
                 "silence_duration_ms": 500
+            ] as [String: Any],
+            "input_audio_noise_reduction": [
+                "type": "far_field"
             ] as [String: Any]
         ]
         sendJSON([
@@ -166,6 +192,9 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
             "type": "input_audio_buffer.append",
             "audio": base64
         ])
+        lock.lock()
+        uncommittedByteCount += pcm16.count
+        lock.unlock()
     }
 
     private func sendJSON(_ dict: [String: Any]) {
@@ -191,7 +220,9 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
                 }
                 self.listen()
             case .failure(let error):
-                logError("LiveTranscriptionStream: receive error: \(error.localizedDescription)")
+                if self.shouldReportDisconnectError() {
+                    logError("LiveTranscriptionStream: receive error: \(error.localizedDescription)")
+                }
                 self.handleDisconnect(error: error)
             }
         }
@@ -216,16 +247,19 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
                 pendingChunks.removeAll()
                 pendingByteCount = 0
                 lock.unlock()
-                logInfo("LiveTranscriptionStream: ready (flushing \(buffered.count) buffered chunks)")
+                logInfo("LiveTranscriptionStream[\(label)]: ready (flushing \(buffered.count) buffered chunks)")
                 for chunk in buffered { sendAudioAppend(chunk) }
             } else {
                 lock.unlock()
             }
 
         case "session.created", "transcription_session.created":
-            logDebug("LiveTranscriptionStream: event \(type)")
+            logDebug("LiveTranscriptionStream[\(label)]: event \(type)")
 
         case "input_audio_buffer.speech_started":
+            lock.lock()
+            hasActiveSpeech = true
+            lock.unlock()
             let segmentId = (json["item_id"] as? String) ?? UUID().uuidString
             let audioStartMs = (json["audio_start_ms"] as? Int) ?? 0
             onSegmentStarted?(segmentId, audioStartMs)
@@ -241,18 +275,68 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
             let audioEndMs = json["audio_end_ms"] as? Int
             onSegmentCompleted?(segmentId, transcript, audioEndMs)
 
+        case "conversation.item.input_audio_transcription.segment":
+            let segmentId = (json["item_id"] as? String) ?? (json["id"] as? String) ?? UUID().uuidString
+            let text = (json["text"] as? String) ?? ""
+            guard !text.isEmpty else { return }
+            let start = json["start"] as? Double
+            let end = json["end"] as? Double
+            onSegmentStarted?(segmentId, Int((start ?? relativeAudioTime()) * 1000))
+            onSegmentCompleted?(segmentId, text, end.map { Int($0 * 1000) })
+
+        case "conversation.item.input_audio_transcription.failed":
+            let segmentId = json["item_id"] as? String
+            let error = json["error"] as? [String: Any]
+            let code = error?["code"] as? String
+            let message = error?["message"] as? String ?? "Transcription failed"
+            let formatted = OpenAIErrorFormatter.userMessage(
+                code: code,
+                message: message,
+                operation: "Transcription"
+            )
+            logError("LiveTranscriptionStream[\(label)]: transcription failed\(segmentId.map { " for \($0)" } ?? ""): \(formatted)")
+            onSegmentFailed?(segmentId, formatted)
+
         case "input_audio_buffer.speech_stopped":
-            // Speech stopped fires before the completion event; nothing to do here.
-            break
+            lock.lock()
+            hasActiveSpeech = false
+            uncommittedByteCount = 0
+            lock.unlock()
+
+        case "input_audio_buffer.committed":
+            lock.lock()
+            uncommittedByteCount = 0
+            lock.unlock()
 
         case "error":
-            let msg = (json["error"] as? [String: Any])?["message"] as? String ?? "unknown"
-            logError("LiveTranscriptionStream: error event: \(msg)")
+            let error = json["error"] as? [String: Any]
+            let rawMessage = error?["message"] as? String ?? "unknown"
+            if Self.isEmptyCommitError(rawMessage) {
+                lock.lock()
+                hasActiveSpeech = false
+                uncommittedByteCount = 0
+                lock.unlock()
+                logDebug("LiveTranscriptionStream[\(label)]: ignoring empty commit error: \(rawMessage)")
+                return
+            }
+            let code = error?["code"] as? String
+            let msg = OpenAIErrorFormatter.userMessage(code: code, message: rawMessage, operation: "Transcription")
+            logError("LiveTranscriptionStream[\(label)]: error event: \(msg)")
             fail(with: StreamError.server(msg))
 
         default:
-            logDebug("LiveTranscriptionStream: event \(type)")
+            logDebug("LiveTranscriptionStream[\(label)]: event \(type)")
         }
+    }
+
+    private func relativeAudioTime() -> Double {
+        guard let connectedAt else { return 0 }
+        return Date().timeIntervalSince(connectedAt)
+    }
+
+    private static func isEmptyCommitError(_ message: String) -> Bool {
+        message.localizedCaseInsensitiveContains("input audio buffer")
+            && message.localizedCaseInsensitiveContains("buffer too small")
     }
 
     private func handleDisconnect(error: Error) {
@@ -266,6 +350,8 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
         urlSession = nil
         pendingChunks.removeAll()
         pendingByteCount = 0
+        hasActiveSpeech = false
+        uncommittedByteCount = 0
         isDisconnecting = false
         lock.unlock()
         if shouldReport {
@@ -301,6 +387,8 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
         state = .failed(error)
         pendingChunks.removeAll()
         pendingByteCount = 0
+        hasActiveSpeech = false
+        uncommittedByteCount = 0
         isDisconnecting = true
         task = webSocketTask
         session = urlSession
@@ -313,13 +401,19 @@ final class LiveTranscriptionStream: NSObject, URLSessionWebSocketDelegate {
         onError?(error)
     }
 
+    private func shouldReportDisconnectError() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return !isDisconnecting
+    }
+
     // MARK: - URLSessionWebSocketDelegate
 
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-        logInfo("LiveTranscriptionStream: WebSocket connected")
+        logInfo("LiveTranscriptionStream[\(label)]: WebSocket connected")
     }
 
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        logInfo("LiveTranscriptionStream: WebSocket closed (code: \(closeCode.rawValue))")
+        logInfo("LiveTranscriptionStream[\(label)]: WebSocket closed (code: \(closeCode.rawValue))")
     }
 }

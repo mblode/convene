@@ -11,6 +11,7 @@ struct Meeting: Identifiable, Codable, Equatable {
     var transcript: [TranscriptSegment]
     var notes: String
     var summary: MeetingSummary?
+    var transcriptionError: String?
     /// Path (relative to the output folder) of the saved audio file, if any.
     var audioFilename: String?
 
@@ -23,6 +24,7 @@ struct Meeting: Identifiable, Codable, Equatable {
         transcript: [TranscriptSegment] = [],
         notes: String = "",
         summary: MeetingSummary? = nil,
+        transcriptionError: String? = nil,
         audioFilename: String? = nil
     ) {
         self.id = id
@@ -33,6 +35,7 @@ struct Meeting: Identifiable, Codable, Equatable {
         self.transcript = transcript
         self.notes = notes
         self.summary = summary
+        self.transcriptionError = transcriptionError
         self.audioFilename = audioFilename
     }
 }

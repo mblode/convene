@@ -11,7 +11,10 @@ final class MeetingStore: ObservableObject {
     // Settings (persisted via UserDefaults / Keychain)
     @Published var apiKey: String = ""
     @Published var hasAPIKey: Bool = false
-    @Published var saveDebugWAVs: Bool = false
+    @Published private(set) var apiKeyError: String?
+    @Published var saveDebugWAVs: Bool = UserDefaults.standard.object(forKey: "saveDebugWAVs") as? Bool ?? false {
+        didSet { UserDefaults.standard.set(saveDebugWAVs, forKey: "saveDebugWAVs") }
+    }
     @Published var transcriptionModel: String = UserDefaults.standard.string(forKey: "transcriptionModel") ?? "gpt-4o-mini-transcribe" {
         didSet { UserDefaults.standard.set(transcriptionModel, forKey: "transcriptionModel") }
     }
@@ -56,8 +59,8 @@ final class MeetingStore: ObservableObject {
     private var nestedObjectCancellables = Set<AnyCancellable>()
     private var hotkeyObservers: [NSObjectProtocol] = []
     /// True while a start/stop transition is mid-flight. Guards against double-toggle while
-    /// `transcriptionCoordinator.stop()` is sleeping through its 1.5 s flush grace period.
-    private var isToggling: Bool = false
+    /// `transcriptionCoordinator.stop()` is sleeping through its flush grace period.
+    @Published private(set) var isToggling: Bool = false
 
     init() {
         if let saved = KeychainManager.loadAPIKey() {
@@ -95,8 +98,9 @@ final class MeetingStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] error in
                 guard let self, let error, !error.isEmpty else { return }
-                self.captureStatus = "Transcription error: \(error)"
-                if self.captureCoordinator.isCapturing {
+                let isSegmentFailure = error.contains("transcription failed:")
+                self.captureStatus = "\(isSegmentFailure ? "Transcription warning" : "Transcription error"): \(error)"
+                if !isSegmentFailure && self.captureCoordinator.isCapturing {
                     Task { @MainActor [weak self] in
                         await self?.stopRecording()
                     }
@@ -169,15 +173,28 @@ final class MeetingStore: ObservableObject {
         target.makeKeyAndOrderFront(nil)
     }
 
-    func saveAPIKey() {
+    @discardableResult
+    func saveAPIKey() -> Bool {
         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            KeychainManager.deleteAPIKey()
+            guard KeychainManager.deleteAPIKey() else {
+                apiKeyError = "Could not delete the key from Keychain."
+                return false
+            }
+            apiKey = ""
             hasAPIKey = false
+            apiKeyError = nil
+            return true
         } else {
-            KeychainManager.saveAPIKey(trimmed)
+            guard KeychainManager.saveAPIKey(trimmed) else {
+                apiKeyError = "Could not save the key to Keychain."
+                hasAPIKey = false
+                return false
+            }
             apiKey = trimmed
             hasAPIKey = true
+            apiKeyError = nil
+            return true
         }
     }
 
@@ -199,6 +216,10 @@ final class MeetingStore: ObservableObject {
 
     /// Start recording with metadata prefilled from a calendar event.
     func startRecording(from event: MeetingEvent) {
+        guard !captureCoordinator.isCapturing else {
+            captureStatus = "Already recording"
+            return
+        }
         guard !isToggling else {
             captureStatus = "Busy - wait for previous action to finish"
             return
@@ -236,6 +257,15 @@ final class MeetingStore: ObservableObject {
         retryPendingSave()
     }
 
+    func chooseObsidianFolder() {
+        persistence.chooseObsidianFolder()
+        retryPendingSave()
+    }
+
+    func clearObsidianFolder() {
+        persistence.clearObsidianFolder()
+    }
+
     func refreshPermissionStates() async {
         captureCoordinator.refreshPermissionStates()
         await meetingDetector.refreshNotificationStatus()
@@ -244,6 +274,33 @@ final class MeetingStore: ObservableObject {
             await calendarService.refreshEvents()
         }
     }
+
+    #if DEBUG
+    func runTranscriptionSmokeTest(seconds: Double) async {
+        guard seconds > 0 else { return }
+        let previousDebugWAVs = saveDebugWAVs
+        let previousSummary = generateSummaryAfterMeeting
+        saveDebugWAVs = true
+        generateSummaryAfterMeeting = false
+        meetingTitle = "Convene transcription smoke test"
+
+        await startRecording()
+        guard captureCoordinator.isCapturing else {
+            logError("TranscriptionSmokeTest: capture did not start (\(captureCoordinator.startError ?? captureStatus))")
+            saveDebugWAVs = previousDebugWAVs
+            generateSummaryAfterMeeting = previousSummary
+            return
+        }
+
+        logInfo("TranscriptionSmokeTest: recording for \(seconds)s")
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        await stopRecording()
+        logInfo("TranscriptionSmokeTest: finished")
+
+        saveDebugWAVs = previousDebugWAVs
+        generateSummaryAfterMeeting = previousSummary
+    }
+    #endif
 
     private func startRecording(eventOverride: MeetingEvent? = nil) async {
         guard hasAPIKey else {
@@ -300,13 +357,7 @@ final class MeetingStore: ObservableObject {
         let trimmedTitle = meetingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedNotes = meetingNotes.trimmingCharacters(in: .whitespacesAndNewlines)
         let transcript = transcriptionCoordinator.snapshot()
-
-        // Don't write empty meetings (start → stop with no audio / notes).
-        if transcript.isEmpty && trimmedNotes.isEmpty {
-            logInfo("MeetingStore: skipping persistence — no transcript or notes")
-            meetingStartedAt = nil
-            return
-        }
+        let transcriptionError = transcriptionCoordinator.failureSummary()
 
         let meeting = Meeting(
             title: trimmedTitle.isEmpty ? "Untitled meeting" : trimmedTitle,
@@ -316,16 +367,20 @@ final class MeetingStore: ObservableObject {
             transcript: transcript,
             notes: trimmedNotes,
             summary: nil,
+            transcriptionError: transcriptionError,
             audioFilename: nil
         )
         activeMeetingId = meeting.id
 
-        saveMeeting(meeting) { url in "Saved \(url.lastPathComponent)" }
+        if transcript.isEmpty && trimmedNotes.isEmpty && transcriptionError == nil {
+            logInfo("MeetingStore: saving meeting with no transcript or notes")
+        }
+        saveMeeting(meeting)
         meetingStartedAt = nil
 
         // Kick off summary generation in the background. When it lands, we re-save and
         // update UI state — but only if the user hasn't started a new meeting in the meantime.
-        if generateSummaryAfterMeeting {
+        if generateSummaryAfterMeeting && (!transcript.isEmpty || !trimmedNotes.isEmpty) {
             captureStatus = "Generating summary…"
             let apiKey = self.apiKey
             let model = self.summaryModel
@@ -357,7 +412,9 @@ final class MeetingStore: ObservableObject {
                         self.currentSummary = summary
                         var enriched = meeting
                         enriched.summary = summary
-                        self.saveMeeting(enriched) { url in "Summary saved to \(url.lastPathComponent)" }
+                        self.saveMeeting(enriched) { [weak self] url in
+                            self?.saveStatus(for: url, action: "Summary saved") ?? "Summary saved to \(url.lastPathComponent)"
+                        }
                     } else if let err = self.summaryService.lastError {
                         self.captureStatus = err
                     }
@@ -382,7 +439,7 @@ final class MeetingStore: ObservableObject {
                 lastSavedURL = url
             }
             if updateStatus {
-                captureStatus = statusMessage?(url) ?? "Saved \(url.lastPathComponent)"
+                captureStatus = statusMessage?(url) ?? saveStatus(for: url)
             }
             return url
         }
@@ -398,7 +455,17 @@ final class MeetingStore: ObservableObject {
 
     private func retryPendingSave() {
         guard let meeting = pendingUnsavedMeeting else { return }
-        saveMeeting(meeting) { url in "Saved \(url.lastPathComponent)" }
+        saveMeeting(meeting)
+    }
+
+    private func saveStatus(for url: URL, action: String = "Saved") -> String {
+        if let obsidianURL = persistence.lastObsidianFileURL {
+            return "\(action) to Obsidian: \(obsidianURL.lastPathComponent)"
+        }
+        if persistence.lastPrimaryWasFallback {
+            return "\(action) locally: \(url.lastPathComponent)"
+        }
+        return "\(action): \(url.lastPathComponent)"
     }
 
     private func stopAfterCaptureFailure() async {

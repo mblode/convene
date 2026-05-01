@@ -15,7 +15,6 @@ struct OliveToggleStyle: ToggleStyle {
                     .fill(configuration.isOn ? Color.accentOlive : Color.toggleOffBackground)
                 Circle()
                     .fill(Color.white)
-                    .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
                     .frame(width: knobSize, height: knobSize)
                     .padding(inset)
             }
