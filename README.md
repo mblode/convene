@@ -89,6 +89,8 @@ Tag-driven via GitHub Actions:
 git tag v0.1.0 && git push origin main --tags
 ```
 
-The `release.yml` workflow builds → signs (Developer ID) → notarizes → creates a GitHub Release with the DMG attached. Required secrets: `DEVELOPER_ID_CERT_P12`, `DEVELOPER_ID_CERT_PASSWORD`, `APPLE_TEAM_ID`, `NOTARIZE_APPLE_ID`, `NOTARIZE_PASSWORD`.
+The `release.yml` workflow builds → signs (Developer ID) → notarizes → creates a GitHub Release with the DMG attached → signs and publishes the Sparkle appcast → updates the Homebrew tap.
 
-The Homebrew cask in `homebrew/convene.rb` is a template — publish to `mblode/homebrew-tap` after the first release. Sparkle auto-updates aren't wired yet (would require adding the Sparkle SPM dep + appcast generation step in the workflow).
+Required secrets: `DEVELOPER_ID_CERT_P12`, `DEVELOPER_ID_CERT_PASSWORD`, `APPLE_TEAM_ID`, `NOTARIZE_APPLE_ID`, `NOTARIZE_PASSWORD`, `SPARKLE_PRIVATE_ED_KEY`, and `HOMEBREW_TAP_TOKEN`.
+
+Sparkle checks `https://raw.githubusercontent.com/mblode/convene/main/appcast.xml`, and the generated Homebrew cask is published to `mblode/homebrew-tap`.

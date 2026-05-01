@@ -5,6 +5,8 @@ ARCHIVE_PATH = $(DERIVED_DATA)/Convene.xcarchive
 EXPORT_PATH = $(DERIVED_DATA)/export
 APP_NAME = Convene
 DMG_PATH = $(DERIVED_DATA)/$(APP_NAME)-$(VERSION).dmg
+DMG_BG_SCRIPT = installer/make-dmg-bg.swift
+DMG_BG = installer/dmg-background.png
 BUNDLE_ID = co.blode.convene
 VERSION := $(shell tag=`git describe --tags --abbrev=0 2>/dev/null`; if [ -n "$$tag" ]; then printf "%s" "$$tag" | sed 's/^v//'; else printf "0.0.0"; fi)
 
@@ -14,7 +16,7 @@ LOCAL_CODE_SIGN_IDENTITY ?= Convene Local Code Signing
 LOCAL_KEYCHAIN ?= $(HOME)/Library/Keychains/login.keychain-db
 LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM= ENABLE_DEBUG_DYLIB=NO
 
-.PHONY: project local-signing-identity build debug install archive export dmg notarize clean
+.PHONY: project local-signing-identity build debug install archive export dmg-background dmg notarize clean
 
 # Regenerate Convene.xcodeproj from project.yml. Required after adding Swift files.
 project:
@@ -109,16 +111,22 @@ export: archive
 		-exportPath $(EXPORT_PATH) \
 		-exportOptionsPlist $(DERIVED_DATA)/ExportOptions.plist
 
-dmg: export
+dmg-background:
+	@echo "Generating DMG background..."
+	swift $(DMG_BG_SCRIPT)
+
+dmg: export dmg-background
 	@rm -f $(DMG_PATH)
 	create-dmg \
 		--volname "$(APP_NAME)" \
+		--background "$(DMG_BG)" \
 		--window-pos 200 120 \
-		--window-size 600 400 \
-		--icon-size 96 \
-		--icon "$(APP_NAME).app" 150 200 \
-		--app-drop-link 450 200 \
+		--window-size 700 460 \
+		--icon-size 128 \
+		--icon "$(APP_NAME).app" 175 230 \
+		--app-drop-link 525 230 \
 		--hide-extension "$(APP_NAME).app" \
+		--text-size 14 \
 		--no-internet-enable \
 		$(DMG_PATH) \
 		$(EXPORT_PATH)/$(APP_NAME).app || test -f $(DMG_PATH)

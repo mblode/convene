@@ -26,6 +26,14 @@
     <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
     <key>LSUIElement</key>
     <true/>
+    <key>SUEnableAutomaticChecks</key>
+    <false/>
+    <key>SUEnableInstallerLauncherService</key>
+    <true/>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/mblode/convene/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>XixKc6GN3QZ6JQUP1q/z9Q2jn1jG9od3EQurbsG6Lww=</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Matthew Blode. All rights reserved.</string>
     <key>NSMicrophoneUsageDescription</key>

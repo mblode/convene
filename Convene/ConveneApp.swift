@@ -5,6 +5,7 @@ import AppKit
 struct ConveneApp: App {
     @StateObject private var meetingStore = MeetingStore()
     @StateObject private var hotkeyManager = HotkeyManager()
+    @StateObject private var updateManager = UpdateManager()
     @State private var didRunCaptureSmokeTest = false
 
     init() {
@@ -41,7 +42,8 @@ struct ConveneApp: App {
     private func configureSettingsWindow() {
         SettingsWindowController.shared.configure(
             meetingStore: meetingStore,
-            hotkeyManager: hotkeyManager
+            hotkeyManager: hotkeyManager,
+            updateManager: updateManager
         )
     }
 
@@ -96,10 +98,12 @@ private struct MenuBarLabel: View {
     private var isCapturing: Bool { meetingStore.captureCoordinator.isCapturing }
 
     var body: some View {
-        Image(systemName: "waveform")
-            .symbolRenderingMode(isCapturing ? .palette : .monochrome)
+        Image("MenuBarIcon")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 18, height: 18)
             .foregroundStyle(isCapturing ? Color.recordingRed : Color.primary)
-            .symbolEffect(.variableColor.iterative.reversing, isActive: isCapturing)
             .accessibilityLabel(isCapturing ? "Convene — recording" : "Convene")
             .help(isCapturing ? "Convene is recording" : "Convene")
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ConveneOpenMeetingWindow"))) { _ in

@@ -8,7 +8,7 @@ cask "convene" do
   homepage "https://github.com/mblode/convene"
 
   depends_on macos: ">= :sequoia"
-  auto_updates false
+  auto_updates true
 
   app "Convene.app"
 
