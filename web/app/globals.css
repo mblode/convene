@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-glide), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@theme {
+  --color-twilight-ink: #000000;
+  --color-polar-white: #ffffff;
+  --color-pewter-mist: #919191;
+  --color-silver-tone: #b5b5b5;
+  --color-obsidian-grey: #606060;
+  --color-charcoal-black: #3b3b3b;
+  --color-mist-grey: #c2c2c2;
+  --color-cerulean-accent: #007eed;
+
+  --text-caption: 13px;
+  --text-caption--line-height: 1.5;
+  --text-caption--letter-spacing: -0.1px;
+
+  --text-body: 16px;
+  --text-body--line-height: 1.5;
+  --text-body--letter-spacing: -0.1px;
+
+  --text-subheading: 20px;
+  --text-subheading--line-height: 1.2;
+  --text-subheading--letter-spacing: -0.14px;
+
+  --text-display: 40px;
+  --text-display--line-height: 1.2;
+  --text-display--letter-spacing: -0.28px;
+
+  --radius-default: 6px;
+  --radius-large: 10px;
+  --radius-hero: 16px;
+}
+
+:root {
+  --gradient-sky: linear-gradient(
+    rgb(90, 118, 148) 0%,
+    rgb(117, 141, 165) 17%,
+    rgb(126, 150, 168) 47%,
+    rgb(156, 173, 179) 75%,
+    rgb(171, 183, 181) 100%
+  );
+}
+
+html,
+body {
+  background: var(--color-twilight-ink);
+  color: var(--color-polar-white);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
