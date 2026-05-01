@@ -7,17 +7,23 @@ final class SettingsWindowController {
 
     private weak var meetingStore: MeetingStore?
     private weak var hotkeyManager: HotkeyManager?
+    private weak var updateManager: UpdateManager?
     private var windowController: NSWindowController?
 
     private init() {}
 
-    func configure(meetingStore: MeetingStore, hotkeyManager: HotkeyManager) {
+    func configure(
+        meetingStore: MeetingStore,
+        hotkeyManager: HotkeyManager,
+        updateManager: UpdateManager
+    ) {
         self.meetingStore = meetingStore
         self.hotkeyManager = hotkeyManager
+        self.updateManager = updateManager
     }
 
     func show() {
-        guard let meetingStore, let hotkeyManager else {
+        guard let meetingStore, let hotkeyManager, let updateManager else {
             logError("SettingsWindowController: not configured")
             return
         }
@@ -27,6 +33,7 @@ final class SettingsWindowController {
                 rootView: SettingsView()
                     .environmentObject(meetingStore)
                     .environmentObject(hotkeyManager)
+                    .environmentObject(updateManager)
             )
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 860, height: 680),

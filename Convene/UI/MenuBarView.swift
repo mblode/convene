@@ -6,24 +6,26 @@ struct MenuBarView: View {
     @Environment(\.openWindow) private var openWindow
 
     @State private var now: Date = Date()
-    private let tick = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+    @State private var recordingStartedAt: Date?
+    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 0) {
             content
         }
-        .frame(width: 520)
-        .background(Color.appBackground)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous)
-                .strokeBorder(Color.cardBorder, lineWidth: 1)
-        )
-        .padding(8)
+        .frame(width: 360)
         .task {
             await meetingStore.calendarService.refreshEvents()
         }
         .onReceive(tick) { now = $0 }
+        .onAppear {
+            if meetingStore.captureCoordinator.isCapturing && recordingStartedAt == nil {
+                recordingStartedAt = Date()
+            }
+        }
+        .onChange(of: meetingStore.captureCoordinator.isCapturing) { _, capturing in
+            recordingStartedAt = capturing ? Date() : nil
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ConveneOpenMeetingWindow"))) { _ in
             openMeetingWindow()
         }
@@ -35,9 +37,6 @@ struct MenuBarView: View {
             noAccessState
         } else {
             header
-            DashedDivider().padding(.horizontal, 14)
-            greetingBlock
-            DashedDivider().padding(.horizontal, 14)
             agenda
             footer
         }
@@ -47,156 +46,67 @@ struct MenuBarView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            statusPill
             Spacer()
-            headerButton(
-                title: meetingStore.captureCoordinator.isCapturing ? "Stop" : "Record",
-                shortcut: "⌥⇧R",
-                isPrimary: meetingStore.captureCoordinator.isCapturing,
-                action: { meetingStore.toggleRecording() }
-            )
-            .keyboardShortcut("r", modifiers: [.option, .shift])
-            .accessibilityLabel(meetingStore.captureCoordinator.isCapturing ? "Stop recording" : "Start recording")
-
-            headerButton(
-                title: "Meeting",
-                shortcut: "⌥⇧M",
-                action: { openMeetingWindow() }
-            )
-            .keyboardShortcut("m", modifiers: [.option, .shift])
-            .accessibilityLabel("Open meeting window")
+            recordButton
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 12)
         .padding(.vertical, 10)
     }
 
-    private var statusPill: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(meetingStore.captureCoordinator.isCapturing ? Color.recordingRed : Color.textTertiary)
-                .frame(width: 7, height: 7)
-            Text(meetingStore.captureStatus)
-                .font(.system(size: 12))
-                .foregroundStyle(Color.textSecondary)
-                .lineLimit(1)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Capture status: \(meetingStore.captureStatus)")
-    }
-
-    private func headerButton(
-        title: String,
-        shortcut: String,
-        isPrimary: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
+    private var recordButton: some View {
+        let isCapturing = meetingStore.captureCoordinator.isCapturing
+        return Button(action: { meetingStore.toggleRecording() }) {
             HStack(spacing: 6) {
-                Text(title)
-                    .font(.system(size: 13))
-                    .foregroundStyle(isPrimary ? .white : Color.textPrimary)
-                Text(shortcut)
+                Image(systemName: isCapturing ? "stop.fill" : "record.circle.fill")
+                    .font(.system(size: 11))
+                Text(isCapturing ? recordingDurationText : "Record")
+                    .font(.system(size: 13, weight: .medium))
+                    .monospacedDigit()
+                Text("⌥⇧R")
                     .font(.system(size: 10))
-                    .foregroundStyle(isPrimary ? Color.white.opacity(0.7) : Color.textTertiary)
                     .monospaced()
+                    .opacity(0.65)
             }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                    .fill(isCapturing ? Color.recordingRed : Color.accentOlive)
+            )
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
-                .fill(isPrimary ? Color.accentOlive : Color.iconBadgeBackground)
-        )
+        .keyboardShortcut("r", modifiers: [.option, .shift])
+        .accessibilityLabel(isCapturing ? "Stop recording" : "Start recording")
     }
 
-    // MARK: - Greeting
-
-    private var greetingBlock: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(greetingTitle(for: now))!")
-                    .font(.system(size: 17))
-                    .foregroundStyle(Color.textPrimary)
-                summarySentence
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-            if let next = nextUpcomingEvent() {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Next up")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color.textTertiary)
-                        .textCase(.uppercase)
-                    nextUpSentence(next)
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: 240, alignment: .leading)
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-    }
-
-    private var summarySentence: Text {
-        let total = meetingStore.calendarService.todaysEvents.count
-        let upcoming = meetingStore.calendarService.todaysEvents.filter { $0.startDate > now }.count
-
-        if total == 0 {
-            return Text("You have ")
-                + Text("no events")
-                + Text(" planned for today.")
-        }
-
-        let totalText = Text("\(numberWord(total)) event\(total == 1 ? "" : "s")")
-        let upcomingText = Text("\(numberWord(upcoming)) event\(upcoming == 1 ? "" : "s")")
-
-        return Text("You have ")
-            + totalText
-            + Text(" planned for today and ")
-            + upcomingText
-            + Text(" \(upcoming == 1 ? "is" : "are") upcoming.")
-    }
-
-    private func nextUpSentence(_ event: MeetingEvent) -> Text {
-        Text(event.title)
-            + Text("  starts in ")
-            + Text(relativeStart(event.startDate))
-            + Text(" at \(timeLabel(event.startDate)).")
+    private var recordingDurationText: String {
+        guard let start = recordingStartedAt else { return "Stop" }
+        let total = max(0, Int(now.timeIntervalSince(start)))
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        return h > 0
+            ? String(format: "Stop  %d:%02d:%02d", h, m, s)
+            : String(format: "Stop  %d:%02d", m, s)
     }
 
     // MARK: - Agenda
 
     private var agenda: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Text("Today")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.textSecondary)
-                    .textCase(.uppercase)
-                Text(dayLabel(now))
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.textTertiary)
-                Spacer()
-            }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 6)
+            sectionHeader("TODAY", date: now)
 
             let events = meetingStore.calendarService.todaysEvents
             if events.isEmpty {
                 Text("Nothing on your calendar.")
                     .font(.system(size: 13))
-                    .foregroundStyle(Color.textSecondary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 2) {
+                    VStack(spacing: 1) {
                         ForEach(events) { event in
                             EventRow(event: event, status: status(for: event), now: now) {
                                 openMeetingWindow()
@@ -205,122 +115,122 @@ struct MenuBarView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 6)
                     .padding(.bottom, 6)
                 }
-                .frame(maxHeight: 280)
+                .frame(maxHeight: 320)
             }
         }
+    }
+
+    private func sectionHeader(_ title: String, date: Date) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+                .tracking(0.5)
+            Text("·")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+            Text(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Footer
 
     private var footer: some View {
-        HStack(spacing: 10) {
-            dateBadge(now)
+        HStack(spacing: 0) {
             Button {
                 SettingsWindowController.shared.show()
                 NSApp.activate(ignoringOtherApps: true)
             } label: {
-                HStack(spacing: 4) {
-                    Text("Settings")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.textPrimary)
-                    Text("⌘,")
-                        .font(.system(size: 10))
-                        .foregroundStyle(Color.textTertiary)
-                        .monospaced()
-                }
+                Image(systemName: "gear")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 28)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .keyboardShortcut(",", modifiers: .command)
+            .help("Settings  ⌘,")
             .accessibilityLabel("Settings")
 
             Spacer()
 
-            Button {
-                meetingStore.quit()
-            } label: {
-                HStack(spacing: 4) {
-                    Text("Quit Convene")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.textPrimary)
-                    Text("⌘Q")
-                        .font(.system(size: 10))
-                        .foregroundStyle(Color.textTertiary)
-                        .monospaced()
+            Menu {
+                Button("Open Meeting Window") {
+                    openMeetingWindow()
                 }
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut("q")
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color.sidebarBackground)
-        .overlay(alignment: .top) {
-            DashedDivider()
-        }
-    }
+                .keyboardShortcut("m", modifiers: [.option, .shift])
 
-    private func dateBadge(_ date: Date) -> some View {
-        let month = date.formatted(.dateTime.month(.abbreviated)).uppercased()
-        let day = date.formatted(.dateTime.day())
-        return VStack(spacing: 0) {
-            Text(month)
-                .font(.system(size: 8))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 1)
-                .background(Color.accentOlive)
-            Text(day)
-                .font(.system(size: 11))
-                .foregroundStyle(Color.textPrimary)
-                .frame(maxWidth: .infinity)
+                Divider()
+
+                Button("Quit Convene") {
+                    meetingStore.quit()
+                }
+                .keyboardShortcut("q")
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .frame(width: 32, height: 28)
+            .help("More")
+            .accessibilityLabel("More options")
         }
-        .frame(width: 28, height: 26)
-        .background(Color.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
-                .stroke(Color.cardBorder, lineWidth: 0.5)
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(date.formatted(.dateTime.day().month(.wide)))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .overlay(alignment: .top) {
+            Divider().opacity(0.5)
+        }
     }
 
     // MARK: - No access
 
     private var noAccessState: some View {
-        VStack(spacing: 14) {
-            IconBadge(systemName: "calendar", size: 44, iconSize: 20)
-            Text("Convene needs Calendar access")
-                .font(.system(size: 15))
-                .foregroundStyle(Color.textPrimary)
-            Text("Grant access to see today's events and start recording from a meeting.")
-                .font(.system(size: 13))
-                .foregroundStyle(Color.textSecondary)
+        VStack(spacing: 12) {
+            Image(systemName: "calendar")
+                .font(.system(size: 28))
+                .foregroundStyle(.secondary)
+            Text("Calendar access required")
+                .font(.system(size: 14, weight: .medium))
+            Text("Convene needs access to show today's events and start recording from a meeting.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Grant Calendar Access…") {
                 Task { await meetingStore.calendarService.requestAccess() }
             }
             .buttonStyle(OliveProminentButtonStyle())
-            DashedDivider()
+            .padding(.top, 4)
+
             HStack {
-                Button("Settings…") {
+                Button("Settings") {
                     SettingsWindowController.shared.show()
                     NSApp.activate(ignoringOtherApps: true)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(Color.textPrimary)
+                .foregroundStyle(.secondary)
                 .keyboardShortcut(",", modifiers: .command)
                 Spacer()
-                Button("Quit Convene") { meetingStore.quit() }
+                Button("Quit") { meetingStore.quit() }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color.textPrimary)
+                    .foregroundStyle(.secondary)
                     .keyboardShortcut("q")
             }
-            .font(.system(size: 13))
+            .font(.system(size: 12))
+            .padding(.top, 4)
         }
         .padding(20)
     }
@@ -332,55 +242,11 @@ struct MenuBarView: View {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func nextUpcomingEvent() -> MeetingEvent? {
-        meetingStore.calendarService.todaysEvents
-            .first(where: { $0.startDate > now })
-    }
-
     private func status(for event: MeetingEvent) -> EventStatus {
         if event.endDate < now { return .past }
         if event.startDate <= now && now <= event.endDate { return .current }
         return .upcoming
     }
-
-    private func greetingTitle(for date: Date) -> String {
-        let hour = Calendar.current.component(.hour, from: date)
-        switch hour {
-        case 5..<12: return "Good Morning"
-        case 12..<17: return "Good Afternoon"
-        default: return "Good Evening"
-        }
-    }
-
-    private func relativeStart(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        let interval = date.timeIntervalSince(now)
-        if interval <= 0 { return "now" }
-        let raw = formatter.localizedString(fromTimeInterval: interval)
-        if raw.hasPrefix("in ") {
-            return String(raw.dropFirst(3))
-        }
-        return raw
-    }
-
-    private func timeLabel(_ date: Date) -> String {
-        date.formatted(date: .omitted, time: .shortened)
-    }
-
-    private func dayLabel(_ date: Date) -> String {
-        date.formatted(.dateTime.day().month(.abbreviated))
-    }
-
-    private func numberWord(_ value: Int) -> String {
-        Self.spellOutFormatter.string(from: NSNumber(value: value)) ?? String(value)
-    }
-
-    private static let spellOutFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .spellOut
-        return formatter
-    }()
 }
 
 private enum EventStatus {
@@ -397,37 +263,34 @@ private struct EventRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 StatusCircle(status: status, color: tint)
                 timeRange
-                    .font(.system(size: 13).monospacedDigit())
+                    .font(.system(size: 12).monospacedDigit())
                 Text(event.title)
                     .font(.system(size: 13))
-                    .foregroundStyle(Color.textPrimary)
+                    .foregroundStyle(status == .past ? Color.secondary : Color.primary)
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 if event.attendees.count >= 1 {
                     HStack(spacing: 3) {
                         Image(systemName: "person")
-                            .font(.system(size: 11))
-                            .foregroundStyle(Color.textTertiary)
+                            .font(.system(size: 10))
                         Text("\(event.attendees.count)")
                             .font(.system(size: 11).monospacedDigit())
-                            .foregroundStyle(Color.textTertiary)
                     }
+                    .foregroundStyle(.tertiary)
                 }
-                Image(systemName: "calendar")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.textTertiary)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
             .background(rowBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .animation(.easeInOut(duration: 0.12), value: hovering)
+        .opacity(status == .past ? 0.65 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityHint("Opens the meeting window and starts recording if idle")
@@ -453,8 +316,8 @@ private struct EventRow: View {
     }
 
     private var timeRange: Text {
-        Text(formatted(event.startDate)).foregroundColor(Color.textPrimary)
-            + Text(" – \(formatted(event.endDate))").foregroundColor(Color.textTertiary)
+        Text(formatted(event.startDate)).foregroundColor(Color.primary)
+            + Text(" – \(formatted(event.endDate))").foregroundColor(Color.secondary)
     }
 
     private func formatted(_ date: Date) -> String {
@@ -477,30 +340,25 @@ private struct StatusCircle: View {
         ZStack {
             switch status {
             case .past:
-                Circle()
-                    .fill(color.opacity(0.18))
+                Circle().fill(color.opacity(0.18))
                 Image(systemName: "checkmark")
-                    .font(.system(size: 9))
+                    .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(color)
             case .current:
-                Circle()
-                    .stroke(color, lineWidth: 2)
-                Circle()
-                    .fill(color)
-                    .frame(width: 6, height: 6)
+                Circle().stroke(color, lineWidth: 2)
+                Circle().fill(color).frame(width: 5, height: 5)
             case .upcoming:
-                Circle()
-                    .stroke(color, lineWidth: 1.5)
+                Circle().stroke(color, lineWidth: 1.5)
             }
         }
-        .frame(width: 16, height: 16)
+        .frame(width: 14, height: 14)
     }
 }
 
 private struct OliveProminentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 13))
+            .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 7)

@@ -22,6 +22,9 @@ packages:
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: "2.0.0"
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.8.1"
 
 targets:
   Convene:
@@ -36,6 +39,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_FILE: Convene/Info.plist
         CODE_SIGN_ENTITLEMENTS: Convene/Convene.entitlements
         INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
@@ -43,6 +47,8 @@ targets:
     dependencies:
       - package: KeyboardShortcuts
         product: KeyboardShortcuts
+      - package: Sparkle
+        product: Sparkle
 
 schemes:
   Convene:

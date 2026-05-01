@@ -8,7 +8,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -24,6 +24,9 @@ jobs:
 
       - name: Generate Xcode project
         run: xcodegen generate
+
+      - name: Clear stale SPM artifact cache
+        run: rm -rf ~/Library/Caches/org.swift.swiftpm/artifacts/
 
       - name: Resolve SPM dependencies
         run: |
@@ -60,8 +63,10 @@ jobs:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-15
-    permissions:
-      contents: write
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      NOTARIZE_APPLE_ID: ${{ secrets.NOTARIZE_APPLE_ID }}
+      NOTARIZE_PASSWORD: ${{ secrets.NOTARIZE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,7 +77,7 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
       - name: Import code-signing certificate
-        uses: apple-actions/import-codesign-certs@v3
+        uses: apple-actions/import-codesign-certs@v5
         with:
           p12-file-base64: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
           p12-password: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
@@ -82,6 +87,9 @@ jobs:
 
       - name: Generate Xcode project
         run: xcodegen generate
+
+      - name: Clear stale SPM artifact cache
+        run: rm -rf ~/Library/Caches/org.swift.swiftpm/artifacts/
 
       - name: Resolve SPM dependencies
         run: |
@@ -97,7 +105,7 @@ jobs:
             -archivePath /tmp/convene-build/Convene.xcarchive \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Developer ID Application" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            DEVELOPMENT_TEAM="${{ env.APPLE_TEAM_ID }}" \
             MARKETING_VERSION=${{ steps.version.outputs.VERSION }} \
             archive
 
@@ -111,7 +119,7 @@ jobs:
               <key>method</key>
               <string>developer-id</string>
               <key>teamID</key>
-              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <string>${{ env.APPLE_TEAM_ID }}</string>
               <key>signingStyle</key>
               <string>manual</string>
               <key>signingCertificate</key>
@@ -128,31 +136,35 @@ jobs:
       - name: Install create-dmg
         run: brew install create-dmg
 
+      - name: Generate DMG background
+        run: swift installer/make-dmg-bg.swift
+
       - name: Create DMG
         run: |
-          DMG_PATH="/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg"
           create-dmg \
             --volname "Convene" \
+            --background "installer/dmg-background.png" \
             --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 96 \
-            --icon "Convene.app" 150 200 \
-            --app-drop-link 450 200 \
+            --window-size 700 460 \
+            --icon-size 128 \
+            --icon "Convene.app" 175 230 \
+            --app-drop-link 525 230 \
             --hide-extension "Convene.app" \
+            --text-size 14 \
             --no-internet-enable \
-            "${DMG_PATH}" \
+            "/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg" \
             "/tmp/convene-build/export/Convene.app" \
-          || test -f "${DMG_PATH}"
+          || test -f "/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg"
 
-      - name: Notarize
+      - name: Notarize DMG
         run: |
           xcrun notarytool submit "/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg" \
-            --apple-id "${{ secrets.NOTARIZE_APPLE_ID }}" \
-            --password "${{ secrets.NOTARIZE_PASSWORD }}" \
-            --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --apple-id "${{ env.NOTARIZE_APPLE_ID }}" \
+            --password "${{ env.NOTARIZE_PASSWORD }}" \
+            --team-id "${{ env.APPLE_TEAM_ID }}" \
             --wait
 
-      - name: Staple
+      - name: Staple notarization ticket
         run: xcrun stapler staple "/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg"
 
       - name: Create GitHub Release
@@ -165,7 +177,7 @@ jobs:
             1. Download **Convene-${{ steps.version.outputs.VERSION }}.dmg** below
             2. Open the DMG and drag Convene to Applications
             3. Launch Convene from Applications
-            4. Click the record icon in the menu bar → Settings → enter your OpenAI API key
+            4. Click the record icon in the menu bar -> Settings -> enter your OpenAI API key
             5. Choose an output folder (iCloud Drive recommended for sync across devices)
             6. Grant microphone, screen recording, calendar, and notification permissions when prompted
 
@@ -173,3 +185,122 @@ jobs:
           files: /tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg
           draft: false
           prerelease: false
+
+      - name: Generate Sparkle appcast
+        env:
+          SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          DMG_PATH="/tmp/convene-build/Convene-${VERSION}.dmg"
+          DMG_SIZE=$(stat -f%z "${DMG_PATH}")
+          RELEASE_URL="https://github.com/mblode/convene/releases/tag/v${VERSION}"
+          DOWNLOAD_URL="https://github.com/mblode/convene/releases/download/v${VERSION}/Convene-${VERSION}.dmg"
+          PUB_DATE=$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")
+          SPARKLE_SIGN_UPDATE="/tmp/convene-build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
+
+          if [[ -z "${SPARKLE_PRIVATE_ED_KEY}" ]]; then
+            echo "SPARKLE_PRIVATE_ED_KEY secret is required for signed appcasts"
+            exit 1
+          fi
+
+          ED_SIGNATURE=$(printf '%s' "${SPARKLE_PRIVATE_ED_KEY}" | "${SPARKLE_SIGN_UPDATE}" --ed-key-file - -p "${DMG_PATH}")
+
+          cat > /tmp/appcast.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0"
+              xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+              xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>Convene</title>
+              <link>https://github.com/mblode/convene</link>
+              <description>Convene updates</description>
+              <language>en</language>
+              <item>
+                <title>Version ${VERSION}</title>
+                <pubDate>${PUB_DATE}</pubDate>
+                <link>${RELEASE_URL}</link>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+                <enclosure
+                  url="${DOWNLOAD_URL}"
+                  sparkle:version="${VERSION}"
+                  sparkle:shortVersionString="${VERSION}"
+                  sparkle:edSignature="${ED_SIGNATURE}"
+                  type="application/octet-stream"
+                  length="${DMG_SIZE}" />
+              </item>
+            </channel>
+          </rss>
+          EOF
+
+      - name: Publish appcast to main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch origin main
+          git checkout -B main origin/main
+
+          cp /tmp/appcast.xml appcast.xml
+
+          if git diff --quiet -- appcast.xml; then
+            echo "appcast.xml unchanged"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git commit -m "Update appcast for v${{ steps.version.outputs.VERSION }}"
+          git push origin main
+
+      - name: Compute DMG SHA256
+        id: sha
+        run: echo "SHA256=$(shasum -a 256 /tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Update Homebrew tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          SHA256="${{ steps.sha.outputs.SHA256 }}"
+          CASK_PATH="Casks/convene.rb"
+
+          cat > /tmp/convene.rb << EOF
+          cask "convene" do
+            version "${VERSION}"
+            sha256 "${SHA256}"
+
+            url "https://github.com/mblode/convene/releases/download/v#{version}/Convene-#{version}.dmg"
+            name "Convene"
+            desc "macOS meeting transcription app - BYO OpenAI API key"
+            homepage "https://github.com/mblode/convene"
+
+            depends_on macos: ">= :sequoia"
+            auto_updates true
+
+            app "Convene.app"
+
+            zap trash: [
+              "~/Library/Containers/co.blode.convene",
+              "~/Library/Preferences/co.blode.convene.plist",
+              "~/Library/Application Support/co.blode.convene",
+              "~/Library/Logs/Convene.log",
+            ]
+          end
+          EOF
+          CONTENT_B64="$(base64 < /tmp/convene.rb | tr -d '\n')"
+
+          if FILE_SHA=$(gh api "repos/mblode/homebrew-tap/contents/${CASK_PATH}" --jq '.sha' 2>/dev/null); then
+            gh api "repos/mblode/homebrew-tap/contents/${CASK_PATH}" \
+              -X PUT \
+              -f message="Update convene to ${VERSION}" \
+              -f content="${CONTENT_B64}" \
+              -f sha="${FILE_SHA}"
+          else
+            gh api "repos/mblode/homebrew-tap/contents/${CASK_PATH}" \
+              -X PUT \
+              -f message="Add convene cask ${VERSION}" \
+              -f content="${CONTENT_B64}"
+          fi
