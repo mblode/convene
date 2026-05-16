@@ -1,7 +1,5 @@
 import Foundation
 
-/// A complete meeting record: metadata + transcript + notes + (later) summary.
-/// Persisted as a Markdown file plus a JSON sidecar with the raw transcript.
 struct Meeting: Identifiable, Codable, Equatable {
     let id: UUID
     var title: String
@@ -12,7 +10,6 @@ struct Meeting: Identifiable, Codable, Equatable {
     var notes: String
     var summary: MeetingSummary?
     var transcriptionError: String?
-    /// Path (relative to the output folder) of the saved audio file, if any.
     var audioFilename: String?
 
     init(
@@ -40,12 +37,10 @@ struct Meeting: Identifiable, Codable, Equatable {
     }
 }
 
-/// LLM-generated summary. Populated in Phase 4.
 struct MeetingSummary: Codable, Equatable {
     var overview: String
     var keyPoints: [String]
     var actionItems: [String]
     var decisions: [String]
-    /// Wall-clock time the summary was produced.
     var generatedAt: Date
 }

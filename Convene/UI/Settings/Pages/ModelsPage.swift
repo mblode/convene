@@ -9,16 +9,31 @@ struct ModelsPage: View {
             PageTitle("Models")
 
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                SectionLabel("OpenAI")
+                SectionLabel("Transcription")
+                SettingsCard {
+                    SettingsRow(
+                        icon: "waveform.badge.mic",
+                        title: "Engine",
+                        description: "On-device, private, no API key needed",
+                        showsDivider: false
+                    ) {
+                        Text("FluidAudio (Parakeet)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.textSecondary)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                SectionLabel("Summary")
                 SettingsCard {
                     Button {
                         showAPIKeyPopover = true
                     } label: {
                         SettingsRow(
                             icon: "key.fill",
-                            title: "API key",
-                            description: meetingStore.hasAPIKey ? "Saved to Keychain" : "Not set — required to transcribe",
-                            showsDivider: false
+                            title: "OpenAI API key",
+                            description: meetingStore.hasAPIKey ? "Saved to Keychain" : "Optional — used for summaries"
                         ) {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 11))
@@ -32,43 +47,6 @@ struct ModelsPage: View {
                         APIKeyPopover(isPresented: $showAPIKeyPopover)
                             .environmentObject(meetingStore)
                     }
-                }
-            }
-
-            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                SectionLabel("Transcription")
-                SettingsCard {
-                    SettingsRow(
-                        icon: "waveform.badge.mic",
-                        title: "Transcription model",
-                        description: "Choose speed vs. quality"
-                    ) {
-                        Picker("", selection: $meetingStore.transcriptionModel) {
-                            Text("gpt-4o-mini-transcribe").tag("gpt-4o-mini-transcribe")
-                            Text("gpt-4o-transcribe").tag("gpt-4o-transcribe")
-                            Text("whisper-1").tag("whisper-1")
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .frame(minWidth: 180)
-                    }
-                    SettingsRow(
-                        icon: "character.bubble",
-                        title: "Language hint",
-                        description: "Optional, e.g. \"en\" or \"es\"",
-                        showsDivider: false
-                    ) {
-                        TextField("auto", text: $meetingStore.transcriptionLanguage)
-                            .textFieldStyle(.roundedBorder)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 90)
-                    }
-                }
-            }
-
-            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                SectionLabel("Summary")
-                SettingsCard {
                     SettingsRow(
                         icon: "text.append",
                         title: "Generate summary after each meeting",

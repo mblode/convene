@@ -3,23 +3,13 @@ import SwiftUI
 import AppKit
 import Combine
 
-/// Single source of truth for in-flight meeting state.
-/// Owns the audio capture coordinator and transcription coordinator, wires them together,
-/// and surfaces a unified status to the UI.
 @MainActor
 final class MeetingStore: ObservableObject {
-    // Settings (persisted via UserDefaults / Keychain)
     @Published var apiKey: String = ""
     @Published var hasAPIKey: Bool = false
     @Published private(set) var apiKeyError: String?
     @Published var saveDebugWAVs: Bool = UserDefaults.standard.object(forKey: "saveDebugWAVs") as? Bool ?? false {
         didSet { UserDefaults.standard.set(saveDebugWAVs, forKey: "saveDebugWAVs") }
-    }
-    @Published var transcriptionModel: String = UserDefaults.standard.string(forKey: "transcriptionModel") ?? "gpt-4o-mini-transcribe" {
-        didSet { UserDefaults.standard.set(transcriptionModel, forKey: "transcriptionModel") }
-    }
-    @Published var transcriptionLanguage: String = UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "" {
-        didSet { UserDefaults.standard.set(transcriptionLanguage, forKey: "transcriptionLanguage") }
     }
     @Published var summaryModel: String = UserDefaults.standard.string(forKey: "summaryModel") ?? "gpt-4o-mini" {
         didSet { UserDefaults.standard.set(summaryModel, forKey: "summaryModel") }
@@ -36,7 +26,7 @@ final class MeetingStore: ObservableObject {
     @Published private(set) var currentSummary: MeetingSummary?
 
     let captureCoordinator = AudioCaptureCoordinator()
-    let transcriptionCoordinator = TranscriptionCoordinator()
+    let transcriber = FluidTranscriber()
     let persistence = PersistenceService()
     let summaryService = SummaryService()
     let calendarService = CalendarService()
@@ -71,11 +61,8 @@ final class MeetingStore: ObservableObject {
         // Wire audio chunks into the transcription coordinator. Note: this fires from the
         // audio capture queue but TranscriptionCoordinator routes through @MainActor so the
         // outbound WebSocket writes happen on the main run loop alongside its segment state.
-        captureCoordinator.onPCM16 = { [weak self] speaker, data in
-            // Re-enter MainActor; weak capture avoids cycles if MeetingStore is torn down.
-            Task { @MainActor [weak self] in
-                self?.transcriptionCoordinator.ingest(speaker: speaker, pcm16: data)
-            }
+        captureCoordinator.onPCM16 = { [weak self] _, data in
+            self?.transcriber.ingestPCM16(data)
         }
 
         captureCancellable = captureCoordinator.$isCapturing
@@ -88,19 +75,19 @@ final class MeetingStore: ObservableObject {
             .sink { [weak self] error in
                 guard let self, let error, !error.isEmpty else { return }
                 self.captureStatus = "Error: \(error)"
-                if self.transcriptionCoordinator.isRunning {
+                if self.transcriber.isRunning {
                     Task { @MainActor [weak self] in
                         await self?.stopAfterCaptureFailure()
                     }
                 }
             }
-        transcriptionErrorCancellable = transcriptionCoordinator.$lastError
+        transcriptionErrorCancellable = transcriber.$lastError
             .receive(on: DispatchQueue.main)
             .sink { [weak self] error in
                 guard let self, let error, !error.isEmpty else { return }
                 let isSegmentFailure = error.contains("transcription failed:")
                 self.captureStatus = "\(isSegmentFailure ? "Transcription warning" : "Transcription error"): \(error)"
-                if !isSegmentFailure && self.captureCoordinator.isCapturing {
+                if !isSegmentFailure && self.transcriber.isRunning {
                     Task { @MainActor [weak self] in
                         await self?.stopRecording()
                     }
@@ -111,7 +98,7 @@ final class MeetingStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &nestedObjectCancellables)
-        transcriptionCoordinator.objectWillChange
+        transcriber.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &nestedObjectCancellables)
@@ -257,13 +244,8 @@ final class MeetingStore: ObservableObject {
         retryPendingSave()
     }
 
-    func chooseObsidianFolder() {
-        persistence.chooseObsidianFolder()
-        retryPendingSave()
-    }
-
-    func clearObsidianFolder() {
-        persistence.clearObsidianFolder()
+    func clearOutputFolder() {
+        persistence.clearOutputFolder()
     }
 
     func refreshPermissionStates() async {
@@ -303,11 +285,6 @@ final class MeetingStore: ObservableObject {
     #endif
 
     private func startRecording(eventOverride: MeetingEvent? = nil) async {
-        guard hasAPIKey else {
-            captureStatus = "API key required — open Settings"
-            return
-        }
-        // Reset meeting state.
         if let event = eventOverride {
             meetingTitle = event.title
         } else {
@@ -317,8 +294,6 @@ final class MeetingStore: ObservableObject {
         meetingNotes = ""
         lastSavedURL = nil
         currentSummary = nil
-        // Invalidate any in-flight summary task from the previous meeting so its result
-        // doesn't overwrite this meeting's UI state when it returns.
         activeMeetingId = nil
         meetingStartedAt = Date()
 
@@ -327,18 +302,12 @@ final class MeetingStore: ObservableObject {
             return
         }
 
-        // Connect transcription before opening the audio engines so startup chunks are buffered
-        // by the streams instead of dropped while `isRunning` is still false.
-        transcriptionCoordinator.start(
-            apiKey: apiKey,
-            model: transcriptionModel,
-            language: transcriptionLanguage
-        )
+        await transcriber.start()
 
         let baseURL = saveDebugWAVs ? debugWAVBaseURL() : nil
         await captureCoordinator.start(debugWAVBaseURL: baseURL)
         if !captureCoordinator.isCapturing {
-            await transcriptionCoordinator.stop()
+            await transcriber.stop()
             meetingStartedAt = nil
         }
     }
@@ -348,7 +317,7 @@ final class MeetingStore: ObservableObject {
         await Task.yield()
         // Awaits the buffer-flush grace period so the final segment's completed event
         // lands before we snapshot the transcript for persistence.
-        await transcriptionCoordinator.stop()
+        await transcriber.stop()
         persistCurrentMeeting()
     }
 
@@ -356,8 +325,8 @@ final class MeetingStore: ObservableObject {
         guard let started = meetingStartedAt else { return }
         let trimmedTitle = meetingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedNotes = meetingNotes.trimmingCharacters(in: .whitespacesAndNewlines)
-        let transcript = transcriptionCoordinator.snapshot()
-        let transcriptionError = transcriptionCoordinator.failureSummary()
+        let transcript = transcriber.segments
+        let transcriptionError = transcriber.lastError
 
         let meeting = Meeting(
             title: trimmedTitle.isEmpty ? "Untitled meeting" : trimmedTitle,
@@ -459,17 +428,14 @@ final class MeetingStore: ObservableObject {
     }
 
     private func saveStatus(for url: URL, action: String = "Saved") -> String {
-        if let obsidianURL = persistence.lastObsidianFileURL {
-            return "\(action) to Obsidian: \(obsidianURL.lastPathComponent)"
-        }
-        if persistence.lastPrimaryWasFallback {
+        if persistence.lastUsedFallback {
             return "\(action) locally: \(url.lastPathComponent)"
         }
         return "\(action): \(url.lastPathComponent)"
     }
 
     private func stopAfterCaptureFailure() async {
-        await transcriptionCoordinator.stop()
+        await transcriber.stop()
         persistCurrentMeeting()
     }
 

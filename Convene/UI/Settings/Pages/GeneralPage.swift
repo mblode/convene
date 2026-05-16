@@ -12,32 +12,20 @@ struct GeneralPage: View {
                 SettingsCard {
                     SettingsRow(
                         icon: "folder",
-                        title: "Output folder",
+                        title: "Save folder",
                         description: outputFolderDescription
                     ) {
-                        Button("Choose…") {
-                            meetingStore.chooseOutputFolderAndRetrySave()
-                        }
-                        .buttonStyle(.borderless)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.accentOlive)
-                    }
-                    SettingsRow(
-                        icon: "square.and.arrow.down",
-                        title: "Obsidian folder",
-                        description: obsidianFolderDescription
-                    ) {
                         HStack(spacing: 8) {
-                            if meetingStore.persistence.obsidianFolderURL != nil {
+                            if meetingStore.persistence.outputFolderURL != nil {
                                 Button("Clear") {
-                                    meetingStore.clearObsidianFolder()
+                                    meetingStore.clearOutputFolder()
                                 }
                                 .buttonStyle(.borderless)
                                 .font(.system(size: 12))
                                 .foregroundStyle(Color.textSecondary)
                             }
                             Button("Choose…") {
-                                meetingStore.chooseObsidianFolder()
+                                meetingStore.chooseOutputFolderAndRetrySave()
                             }
                             .buttonStyle(.borderless)
                             .font(.system(size: 12))
@@ -64,7 +52,7 @@ struct GeneralPage: View {
                         .disabled(meetingStore.persistence.lastSavedFileURL == nil)
                     }
                 }
-                Text("Tip: pick your Obsidian vault's Meetings folder if you want notes to appear there automatically.")
+                Text("Tip: pick your Obsidian vault's meeting folder if you want notes to appear there automatically.")
                     .font(.captionWarm)
                     .foregroundStyle(Color.textSecondary)
                     .padding(.horizontal, 4)
@@ -77,23 +65,10 @@ struct GeneralPage: View {
         if let url = meetingStore.persistence.outputFolderURL {
             return truncatedPath(url.path)
         }
-        return "Not set; Convene will keep a local fallback copy."
-    }
-
-    private var obsidianFolderDescription: String {
-        if let error = meetingStore.persistence.lastObsidianError {
-            return error
-        }
-        if let url = meetingStore.persistence.obsidianFolderURL {
-            return truncatedPath(url.path)
-        }
-        return "Off"
+        return "Not set; saves will use a local fallback."
     }
 
     private var lastSavedDescription: String {
-        if let url = meetingStore.persistence.lastObsidianFileURL {
-            return "Obsidian: \(url.lastPathComponent)"
-        }
         return meetingStore.persistence.lastSavedFileURL?.lastPathComponent ?? "No saves yet"
     }
 
