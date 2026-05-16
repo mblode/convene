@@ -9,6 +9,7 @@ final class FluidTranscriber: ObservableObject {
     @Published private(set) var isLoadingModels = false
     @Published private(set) var segments: [TranscriptSegment] = []
     @Published private(set) var lastError: String?
+    var onSegmentConfirmed: ((TranscriptSegment) -> Void)?
 
     private var asrManager: SlidingWindowAsrManager?
     private var diarizer: SortformerDiarizer?
@@ -176,6 +177,7 @@ final class FluidTranscriber: ObservableObject {
                 segments.removeLast()
             }
             appendSegment(text: text, startTime: startTime, endTime: endTime, isConfirmed: true)
+            if let last = segments.last { onSegmentConfirmed?(last) }
         } else {
             if let lastIndex = segments.indices.last, !segments[lastIndex].isFinal {
                 segments[lastIndex].text = text

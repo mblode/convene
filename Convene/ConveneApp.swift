@@ -19,6 +19,7 @@ struct ConveneApp: App {
                 .environmentObject(hotkeyManager)
                 .onAppear {
                     configureSettingsWindow()
+                    meetingStore.recoverOrphanedMeetings()
                     runCaptureSmokeTestIfRequested()
                 }
         } label: {

@@ -1,0 +1,140 @@
+import Foundation
+
+final class TranscriptWALService: Sendable {
+    private struct Header: Codable {
+        let version: Int
+        let meetingId: UUID
+        let title: String
+        let attendees: [String]
+        let startedAt: Date
+    }
+
+    private let queue = DispatchQueue(label: "co.blode.convene.wal")
+    private let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        return e
+    }()
+
+    private nonisolated(unsafe) var fileHandle: FileHandle?
+    private nonisolated(unsafe) var walURL: URL?
+
+    func beginSession(meetingId: UUID, title: String, attendees: [String], startedAt: Date) {
+        queue.sync {
+            let dir = Self.walDirectory()
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+            let url = dir.appendingPathComponent("\(meetingId.uuidString).wal.jsonl")
+            FileManager.default.createFile(atPath: url.path, contents: nil)
+
+            guard let handle = try? FileHandle(forWritingTo: url) else {
+                logError("TranscriptWAL: failed to open \(url.path)")
+                return
+            }
+
+            let header = Header(
+                version: 1,
+                meetingId: meetingId,
+                title: title,
+                attendees: attendees,
+                startedAt: startedAt
+            )
+            if let data = try? encoder.encode(header) {
+                handle.write(data)
+                handle.write(Data("\n".utf8))
+                handle.synchronizeFile()
+            }
+
+            self.fileHandle = handle
+            self.walURL = url
+            logInfo("TranscriptWAL: began session \(meetingId)")
+        }
+    }
+
+    func appendSegment(_ segment: TranscriptSegment) {
+        queue.async { [encoder] in
+            guard let handle = self.fileHandle else { return }
+            guard let data = try? encoder.encode(segment) else { return }
+            handle.write(data)
+            handle.write(Data("\n".utf8))
+            handle.synchronizeFile()
+        }
+    }
+
+    @discardableResult
+    func endSession() -> URL? {
+        queue.sync {
+            fileHandle?.closeFile()
+            fileHandle = nil
+            let url = walURL
+            walURL = nil
+            if let url {
+                logInfo("TranscriptWAL: ended session \(url.lastPathComponent)")
+            }
+            return url
+        }
+    }
+
+    // MARK: - Recovery
+
+    static func findOrphanedWALs() -> [URL] {
+        let dir = walDirectory()
+        guard let contents = try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: nil
+        ) else { return [] }
+        return contents.filter { $0.pathExtension == "jsonl" }
+    }
+
+    static func recoverMeeting(from walURL: URL) throws -> Meeting {
+        let text = try String(contentsOf: walURL, encoding: .utf8)
+        let lines = text.components(separatedBy: "\n").filter { !$0.isEmpty }
+        guard let headerLine = lines.first,
+              let headerData = headerLine.data(using: .utf8) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let header = try decoder.decode(Header.self, from: headerData)
+
+        var segments: [TranscriptSegment] = []
+        for line in lines.dropFirst() {
+            guard let data = line.data(using: .utf8) else { continue }
+            guard let segment = try? decoder.decode(TranscriptSegment.self, from: data) else {
+                continue
+            }
+            segments.append(segment)
+        }
+
+        let endedAt: Date
+        if let lastEnd = segments.last?.endedAt {
+            endedAt = header.startedAt.addingTimeInterval(lastEnd)
+        } else {
+            endedAt = header.startedAt
+        }
+
+        return Meeting(
+            id: header.meetingId,
+            title: "[Recovered] \(header.title)",
+            attendees: header.attendees,
+            startedAt: header.startedAt,
+            endedAt: endedAt,
+            transcript: segments,
+            notes: "",
+            transcriptionError: segments.isEmpty ? nil : "Recovered from crash — speaker labels not available"
+        )
+    }
+
+    static func deleteWAL(at url: URL) {
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    private static func walDirectory() -> URL {
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask
+        ).first!
+        return appSupport
+            .appendingPathComponent("Convene", isDirectory: true)
+            .appendingPathComponent("WAL", isDirectory: true)
+    }
+}
