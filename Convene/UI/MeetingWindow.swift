@@ -151,7 +151,7 @@ struct MeetingWindow: View {
                     .foregroundStyle(Color.textSecondary)
                     .textCase(.uppercase)
                 Spacer()
-                Text("\(meetingStore.transcriptionCoordinator.segments.count)")
+                Text("\(meetingStore.transcriber.segments.count)")
                     .font(.system(size: 11).monospacedDigit())
                     .foregroundStyle(Color.textTertiary)
             }
@@ -161,7 +161,7 @@ struct MeetingWindow: View {
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    if meetingStore.transcriptionCoordinator.segments.isEmpty {
+                    if meetingStore.transcriber.segments.isEmpty {
                         Text("Transcript will appear here when recording starts.")
                             .font(.system(size: 13))
                             .foregroundStyle(Color.textSecondary)
@@ -169,7 +169,7 @@ struct MeetingWindow: View {
                             .padding(.horizontal, 24)
                             .padding(.vertical, 12)
                     } else {
-                        ForEach(meetingStore.transcriptionCoordinator.segments) { segment in
+                        ForEach(meetingStore.transcriber.segments) { segment in
                             TranscriptSegmentRow(segment: segment)
                         }
                     }
@@ -196,14 +196,7 @@ struct MeetingWindow: View {
 
             Spacer()
 
-            if let obsidianURL = meetingStore.persistence.lastObsidianFileURL {
-                Button("Open Obsidian note") {
-                    meetingStore.persistence.openFile(obsidianURL)
-                }
-                .buttonStyle(.borderless)
-                .font(.system(size: 12))
-                .foregroundStyle(Color.accentOlive)
-            } else if let savedURL = meetingStore.lastSavedURL {
+            if let savedURL = meetingStore.lastSavedURL {
                 Button("Open note") {
                     meetingStore.persistence.openFile(savedURL)
                 }
@@ -274,6 +267,7 @@ private struct TranscriptSegmentRow: View {
         switch segment.speaker {
         case .you: return Color.accentOlive
         case .others: return Color.textSecondary
+        case .named: return Color.textSecondary
         }
     }
 

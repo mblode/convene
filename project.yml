@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: co.blode
   deploymentTarget:
     macOS: "15.0"
+    iOS: "17.0"
   createIntermediateGroups: true
   defaultConfig: Debug
   generateEmptyDirectories: true
@@ -25,6 +26,9 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     from: "2.8.1"
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    from: "0.14.4"
 
 targets:
   Convene:
@@ -32,6 +36,7 @@ targets:
     platform: macOS
     deploymentTarget: "15.0"
     sources:
+      - path: Shared
       - path: Convene
         excludes:
           - "Info.plist"
@@ -49,12 +54,44 @@ targets:
         product: KeyboardShortcuts
       - package: Sparkle
         product: Sparkle
+      - package: FluidAudio
+        product: FluidAudio
+
+  ConveneMobile:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Shared
+      - path: ConveneMobile
+        excludes:
+          - "Info.plist"
+          - "ConveneMobile.entitlements"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene.mobile
+        INFOPLIST_FILE: ConveneMobile/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ConveneMobile/ConveneMobile.entitlements
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
+    dependencies:
+      - package: FluidAudio
+        product: FluidAudio
 
 schemes:
   Convene:
     build:
       targets:
         Convene: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
+  ConveneMobile:
+    build:
+      targets:
+        ConveneMobile: all
     run:
       config: Debug
     archive:

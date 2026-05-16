@@ -1,7 +1,5 @@
 import Foundation
 
-/// Posts the transcript + notes to OpenAI Chat Completions with a JSON-schema response format
-/// to produce a structured `MeetingSummary`.
 @MainActor
 final class SummaryService: ObservableObject {
     @Published private(set) var isGenerating: Bool = false
@@ -16,7 +14,6 @@ final class SummaryService: ObservableObject {
         let actionItems: [String]
     }
 
-    /// Returns a `MeetingSummary` or nil on failure (`lastError` populated).
     func generate(meeting: Meeting, apiKey: String, model: String) async -> MeetingSummary? {
         guard !apiKey.isEmpty else {
             lastError = "API key required"
@@ -140,7 +137,7 @@ final class SummaryService: ObservableObject {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         if let error = json["error"] as? [String: Any], let message = error["message"] as? String {
             let code = error["code"] as? String
-            return OpenAIErrorFormatter.userMessage(code: code, message: message, operation: "Summary")
+            return SummaryService.userMessage(code: code, message: message, operation: "Summary")
         }
         return nil
     }
@@ -169,5 +166,25 @@ final class SummaryService: ObservableObject {
             decisions: parsed.decisions,
             generatedAt: Date()
         )
+    }
+
+    static func userMessage(code: String?, message: String, operation: String) -> String {
+        let normalizedCode = code?.lowercased()
+        let normalizedMessage = message.lowercased()
+
+        if normalizedCode == "insufficient_quota" || normalizedMessage.contains("insufficient quota") {
+            return "\(operation) could not run because this OpenAI project has no usable quota."
+        }
+        if normalizedCode == "invalid_api_key" || normalizedCode == "incorrect_api_key"
+            || normalizedMessage.contains("invalid api key") || normalizedMessage.contains("incorrect api key") {
+            return "\(operation) could not run because the API key was rejected. Update the key in Settings."
+        }
+        if normalizedCode == "rate_limit_exceeded" || normalizedMessage.contains("rate limit") {
+            return "\(operation) hit a rate limit. Wait a moment, then retry."
+        }
+        if normalizedCode == "model_not_found" || (normalizedMessage.contains("model") && normalizedMessage.contains("not found")) {
+            return "\(operation) could not run because the selected model is unavailable."
+        }
+        return "\(operation) failed: \(message)"
     }
 }

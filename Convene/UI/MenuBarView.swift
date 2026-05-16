@@ -62,10 +62,6 @@ struct MenuBarView: View {
                 Text(isCapturing ? recordingDurationText : "Record")
                     .font(.system(size: 13, weight: .medium))
                     .monospacedDigit()
-                Text("⌥⇧R")
-                    .font(.system(size: 10))
-                    .monospaced()
-                    .opacity(0.65)
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 10)
@@ -158,7 +154,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut(",", modifiers: .command)
-            .help("Settings  ⌘,")
+            .help("Settings")
             .accessibilityLabel("Settings")
 
             Spacer()
