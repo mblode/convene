@@ -31,6 +31,7 @@ final class MeetingStore: ObservableObject {
     let summaryService = SummaryService()
     let calendarService = CalendarService()
     let meetingDetector = MeetingDetector()
+    private let walService = TranscriptWALService()
 
     /// Currently associated calendar event, if the user started recording from one.
     @Published private(set) var currentEvent: MeetingEvent?
@@ -304,10 +305,22 @@ final class MeetingStore: ObservableObject {
 
         await transcriber.start()
 
+        let walMeetingId = UUID()
+        walService.beginSession(
+            meetingId: walMeetingId,
+            title: meetingTitle,
+            attendees: currentEvent?.attendees ?? [],
+            startedAt: meetingStartedAt!
+        )
+        transcriber.onSegmentConfirmed = { [walService] segment in
+            walService.appendSegment(segment)
+        }
+
         let baseURL = saveDebugWAVs ? debugWAVBaseURL() : nil
         await captureCoordinator.start(debugWAVBaseURL: baseURL)
         if !captureCoordinator.isCapturing {
             await transcriber.stop()
+            walService.endSession()
             meetingStartedAt = nil
         }
     }
@@ -315,10 +328,12 @@ final class MeetingStore: ObservableObject {
     private func stopRecording() async {
         await captureCoordinator.stop()
         await Task.yield()
-        // Awaits the buffer-flush grace period so the final segment's completed event
-        // lands before we snapshot the transcript for persistence.
         await transcriber.stop()
+        transcriber.onSegmentConfirmed = nil
         persistCurrentMeeting()
+        if let walURL = walService.endSession() {
+            TranscriptWALService.deleteWAL(at: walURL)
+        }
     }
 
     private func persistCurrentMeeting() {
@@ -436,7 +451,29 @@ final class MeetingStore: ObservableObject {
 
     private func stopAfterCaptureFailure() async {
         await transcriber.stop()
+        transcriber.onSegmentConfirmed = nil
         persistCurrentMeeting()
+        if let walURL = walService.endSession() {
+            TranscriptWALService.deleteWAL(at: walURL)
+        }
+    }
+
+    func recoverOrphanedMeetings() {
+        let orphans = TranscriptWALService.findOrphanedWALs()
+        guard !orphans.isEmpty else { return }
+
+        for walURL in orphans {
+            do {
+                let meeting = try TranscriptWALService.recoverMeeting(from: walURL)
+                if !meeting.transcript.isEmpty {
+                    persistence.save(meeting)
+                    logInfo("MeetingStore: recovered meeting from WAL: \(meeting.title)")
+                }
+                TranscriptWALService.deleteWAL(at: walURL)
+            } catch {
+                logError("MeetingStore: WAL recovery failed: \(error)")
+            }
+        }
     }
 
     private func defaultTitle() -> String {
