@@ -7,5 +7,20 @@
     <link>https://github.com/mblode/convene</link>
     <description>Convene updates</description>
     <language>en</language>
+    <item>
+      <title>Version 0.1.0</title>
+      <pubDate>Fri, 22 May 2026 00:49:25 +0000</pubDate>
+      <link>https://github.com/mblode/convene/releases/tag/v0.1.0</link>
+      <sparkle:version>0.1.0</sparkle:version>
+      <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/mblode/convene/releases/download/v0.1.0/Convene-0.1.0.dmg"
+        sparkle:version="0.1.0"
+        sparkle:shortVersionString="0.1.0"
+        sparkle:edSignature="Zhs0jiHjHPY/hyljSg1gtj41PTzfuJGCm6qVvFo7J9AsTawMEfivQ60cDDvJfCFLrb8ij4D/Ix3J0Y0td17FAQ=="
+        type="application/octet-stream"
+        length="5723670" />
+    </item>
   </channel>
 </rss>
