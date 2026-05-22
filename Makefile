@@ -12,9 +12,9 @@ VERSION := $(shell tag=`git describe --tags --abbrev=0 2>/dev/null`; if [ -n "$$
 
 CODESIGN_IDENTITY ?= Developer ID Application
 TEAM_ID ?= $(APPLE_TEAM_ID)
-LOCAL_CODE_SIGN_IDENTITY ?= Convene Local Code Signing
+LOCAL_CODE_SIGN_IDENTITY ?= Developer ID Application
 LOCAL_KEYCHAIN ?= $(HOME)/Library/Keychains/login.keychain-db
-LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM= ENABLE_DEBUG_DYLIB=NO
+LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM=$(TEAM_ID) ENABLE_DEBUG_DYLIB=NO
 
 .PHONY: project local-signing-identity build debug install archive export dmg-background dmg notarize clean
 
