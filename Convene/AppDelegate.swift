@@ -20,7 +20,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hotkeyManager: hotkeyManager,
             updateManager: updateManager
         )
-        MeetingWindowController.shared.configure(meetingStore: meetingStore)
         MeetingLauncher.shared.configure(meetingStore: meetingStore)
         StatusItemController.shared.configure(meetingStore: meetingStore, hotkeyManager: hotkeyManager)
         StatusItemController.shared.installStatusItem()

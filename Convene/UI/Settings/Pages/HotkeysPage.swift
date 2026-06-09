@@ -18,14 +18,6 @@ struct HotkeysPage: View {
                             .controlSize(.small)
                     }
                     SettingsRow(
-                        icon: "rectangle.on.rectangle",
-                        title: "Open meeting window",
-                        description: "Bring the live transcript to the front"
-                    ) {
-                        KeyboardShortcuts.Recorder("", name: .openMeetingWindow)
-                            .controlSize(.small)
-                    }
-                    SettingsRow(
                         icon: "gearshape",
                         title: "Open settings",
                         description: "Open this window",

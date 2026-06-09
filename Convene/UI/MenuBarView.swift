@@ -176,10 +176,10 @@ struct MenuBarView: View {
     private func rowTapped(_ event: MeetingEvent) {
         if event.meetingURL != nil {
             MeetingLauncher.shared.join(event)
-            StatusItemController.shared.hidePanel()
-        } else {
-            openMeetingWindow()
+        } else if !meetingStore.captureCoordinator.isCapturing {
+            meetingStore.startRecording(from: event)
         }
+        StatusItemController.shared.hidePanel()
     }
 
     // MARK: - Footer
@@ -205,10 +205,13 @@ struct MenuBarView: View {
             Spacer()
 
             Menu {
-                Button("Open Meeting Window") {
-                    openMeetingWindow()
+                Button("Open Latest Transcript") {
+                    if let url = meetingStore.persistence.latestTranscriptURL() {
+                        meetingStore.persistence.openFile(url)
+                    }
                 }
-                .keyboardShortcut("m", modifiers: [.option, .shift])
+                .disabled(meetingStore.persistence.outputFolderURL == nil
+                    && meetingStore.persistence.lastSavedFileURL == nil)
 
                 Divider()
 
@@ -278,11 +281,6 @@ struct MenuBarView: View {
     }
 
     // MARK: - Helpers
-
-    private func openMeetingWindow() {
-        StatusItemController.shared.hidePanel()
-        MeetingWindowController.shared.show()
-    }
 
     private func status(for event: MeetingEvent) -> EventStatus {
         if event.endDate < now { return .past }
@@ -361,7 +359,7 @@ private struct EventRow: View {
         .opacity(status == .past ? 0.65 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityHint(canJoin ? "Joins the meeting in the right account" : "Opens the meeting window")
+        .accessibilityHint(canJoin ? "Joins the meeting in the right account" : "Starts recording this meeting")
         .accessibilityAddTraits(.isButton)
     }
 
