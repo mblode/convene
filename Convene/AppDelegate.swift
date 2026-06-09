@@ -21,10 +21,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             updateManager: updateManager
         )
         MeetingWindowController.shared.configure(meetingStore: meetingStore)
+        MeetingLauncher.shared.configure(meetingStore: meetingStore)
         StatusItemController.shared.configure(meetingStore: meetingStore, hotkeyManager: hotkeyManager)
         StatusItemController.shared.installStatusItem()
 
         meetingStore.recoverOrphanedMeetings()
+        Task { await meetingStore.calendarService.refreshEvents() }
+        // Warm the transcription models in the background so the first recording starts instantly.
+        Task(priority: .utility) { await meetingStore.transcriber.warmUp() }
 
         runCaptureSmokeTestIfRequested()
     }

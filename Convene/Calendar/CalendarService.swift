@@ -2,6 +2,40 @@ import Foundation
 import EventKit
 import AppKit
 
+/// Conferencing provider detected from a meeting URL. Drives the "Join <service>" label.
+enum MeetingService: String {
+    case googleMeet
+    case zoom
+    case teams
+    case webex
+    case jitsi
+    case whereby
+    case other
+
+    var joinLabel: String {
+        switch self {
+        case .googleMeet: return "Join Google Meet"
+        case .zoom:       return "Join Zoom"
+        case .teams:      return "Join Microsoft Teams"
+        case .webex:      return "Join Webex"
+        case .jitsi:      return "Join Jitsi"
+        case .whereby:    return "Join Whereby"
+        case .other:      return "Join Meeting"
+        }
+    }
+
+    static func from(url: URL?) -> MeetingService? {
+        guard let host = url?.host?.lowercased() else { return nil }
+        if host.contains("meet.google.com") { return .googleMeet }
+        if host.contains("zoom.us") { return .zoom }
+        if host.contains("teams.microsoft.com") { return .teams }
+        if host.contains("webex.com") { return .webex }
+        if host.contains("meet.jit.si") { return .jitsi }
+        if host.contains("whereby.com") { return .whereby }
+        return .other
+    }
+}
+
 /// Lightweight projection of an EKEvent for the UI / Meeting model.
 struct MeetingEvent: Identifiable, Hashable {
     let id: String
@@ -11,7 +45,11 @@ struct MeetingEvent: Identifiable, Hashable {
     let attendees: [String]
     let calendarTitle: String
     let calendarColor: NSColor?
+    let calendarIdentifier: String
+    /// Email of the account that owns the calendar this event lives on (for Google `authuser`).
+    let accountEmail: String?
     let meetingURL: URL?
+    let meetingService: MeetingService?
 
     var isInProgress: Bool {
         let now = Date()
@@ -29,12 +67,15 @@ struct MeetingEvent: Identifiable, Hashable {
 /// need per-provider auth.
 @MainActor
 final class CalendarService: ObservableObject {
-    @Published private(set) var todaysEvents: [MeetingEvent] = []
+    /// All non-all-day events in the lookahead window, across every enabled calendar, sorted by start.
+    @Published private(set) var events: [MeetingEvent] = []
     @Published private(set) var authorizationStatus: EKAuthorizationStatus = .notDetermined
     @Published private(set) var lastError: String?
 
     private let store = EKEventStore()
     private var changeObserver: NSObjectProtocol?
+    /// Days of events to load ahead — enough for the Today/Tomorrow/this-week schedule.
+    private let lookaheadDays = 7
 
     init() {
         refreshAuthorizationStatus()
@@ -49,6 +90,22 @@ final class CalendarService: ObservableObject {
 
     var hasAccess: Bool {
         authorizationStatus == .fullAccess || authorizationStatus == .authorized
+    }
+
+    /// Events happening today only (kept for back-compat with existing call sites).
+    var todaysEvents: [MeetingEvent] {
+        let cal = Calendar.current
+        return visibleEvents.filter { cal.isDateInToday($0.startDate) }
+    }
+
+    /// Events after applying the user's calendar/meeting filters.
+    var visibleEvents: [MeetingEvent] {
+        let settings = CalendarSettings.shared
+        return events.filter { event in
+            guard settings.isCalendarEnabled(event.calendarIdentifier) else { return false }
+            if settings.onlyShowEventsWithMeetings && event.meetingURL == nil { return false }
+            return true
+        }
     }
 
     func refreshAuthorizationStatus() {
@@ -92,21 +149,77 @@ final class CalendarService: ObservableObject {
         }
     }
 
-    /// Reload today's events across every calendar in the system store.
+    /// All event-type calendars, for the settings page's enable/disable list.
+    func allCalendars() -> [EKCalendar] {
+        guard hasAccess else { return [] }
+        return store.calendars(for: .event)
+    }
+
+    /// Reload events across every calendar in the system store for the lookahead window.
     func refreshEvents() async {
         guard hasAccess else { return }
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: Date())
-        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return }
+        guard let end = calendar.date(byAdding: .day, value: lookaheadDays, to: start) else { return }
 
         // Passing `calendars: nil` matches every configured source — iCloud, Google, Fastmail, etc.
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
-        let events = store.events(matching: predicate)
-        todaysEvents = events
+        let raw = store.events(matching: predicate)
+        events = raw
             .filter { !$0.isAllDay }
             .map(MeetingEvent.init(event:))
             .sorted { $0.startDate < $1.startDate }
         lastError = nil
+    }
+
+    // MARK: - Schedule helpers
+
+    /// The event to surface in the menu bar: the soonest non-dismissed, enabled event that is either
+    /// in progress or starts within `leadMinutes`.
+    func menuBarEvent(leadMinutes: Int) -> MeetingEvent? {
+        let now = Date()
+        let lead = TimeInterval(leadMinutes * 60)
+        let dismissed = CalendarSettings.shared.dismissedEventIDs
+        return visibleEvents.first { event in
+            guard !dismissed.contains(event.id) else { return false }
+            if event.isInProgress { return true }
+            let untilStart = event.startDate.timeIntervalSince(now)
+            return untilStart > 0 && untilStart <= lead
+        }
+    }
+
+    /// Visible events grouped into ordered day buckets for the popover, e.g. "Today, 9 June".
+    func groupedByDay() -> [DaySection] {
+        let cal = Calendar.current
+        let now = Date()
+        // Only show events from now onward (skip earlier-today events that already finished long ago,
+        // but keep in-progress ones).
+        let upcoming = visibleEvents.filter { $0.endDate >= now }
+        let buckets = Dictionary(grouping: upcoming) { cal.startOfDay(for: $0.startDate) }
+        return buckets.keys.sorted().map { day in
+            DaySection(
+                id: day,
+                title: Self.dayLabel(for: day, now: now, calendar: cal),
+                events: (buckets[day] ?? []).sorted { $0.startDate < $1.startDate }
+            )
+        }
+    }
+
+    struct DaySection: Identifiable {
+        let id: Date
+        let title: String
+        let events: [MeetingEvent]
+    }
+
+    private static func dayLabel(for day: Date, now: Date, calendar: Calendar) -> String {
+        let today = calendar.startOfDay(for: now)
+        let dayStart = calendar.startOfDay(for: day)
+        let dateText = day.formatted(.dateTime.weekday(.wide).day().month(.wide))
+        if dayStart == today { return "Today, " + day.formatted(.dateTime.day().month(.wide)) }
+        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: today), dayStart == tomorrow {
+            return "Tomorrow, " + day.formatted(.dateTime.day().month(.wide))
+        }
+        return dateText
     }
 
     private func observeStoreChanges() {
@@ -135,7 +248,30 @@ private extension MeetingEvent {
         }
         self.calendarTitle = event.calendar?.title ?? ""
         self.calendarColor = event.calendar?.color
-        self.meetingURL = MeetingEvent.detectMeetingURL(in: event)
+        self.calendarIdentifier = event.calendar?.calendarIdentifier ?? ""
+        self.accountEmail = MeetingEvent.accountEmail(for: event)
+        let url = MeetingEvent.detectMeetingURL(in: event)
+        self.meetingURL = url
+        self.meetingService = MeetingService.from(url: url)
+    }
+
+    /// Email of the account that owns the event's calendar. Google CalDAV sources in macOS Calendar
+    /// expose the account email either as the source title or inside `source.description` as a
+    /// `mailto:` (the approach MeetingBar uses); fall back to the current-user attendee.
+    static func accountEmail(for event: EKEvent) -> String? {
+        if let sourceTitle = event.calendar?.source?.title, sourceTitle.contains("@") {
+            return sourceTitle
+        }
+        if let description = event.calendar?.source?.description,
+           let regex = try? NSRegularExpression(pattern: #"mailto:([^"\s>]+@[^"\s>]+)"#),
+           let match = regex.firstMatch(in: description, range: NSRange(description.startIndex..., in: description)),
+           let range = Range(match.range(at: 1), in: description) {
+            return String(description[range])
+        }
+        if let me = (event.attendees ?? []).first(where: { $0.isCurrentUser }) {
+            return me.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
+        }
+        return nil
     }
 
     static func detectMeetingURL(in event: EKEvent) -> URL? {
