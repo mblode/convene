@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     @EnvironmentObject var meetingStore: MeetingStore
+    @ObservedObject private var calendarSettings = CalendarSettings.shared
 
     @State private var now: Date = Date()
     @State private var recordingStartedAt: Date?
@@ -33,9 +34,18 @@ struct MenuBarView: View {
             noAccessState
         } else {
             header
-            agenda
+            if let active = activeEvent {
+                contextualActions(for: active)
+                Divider().opacity(0.5).padding(.horizontal, 12)
+            }
+            schedule
             footer
         }
+    }
+
+    /// The imminent/in-progress event surfaced in the menu bar pill — the one the top actions target.
+    private var activeEvent: MeetingEvent? {
+        meetingStore.calendarService.menuBarEvent(leadMinutes: calendarSettings.leadTimeMinutes)
     }
 
     // MARK: - Header
@@ -51,13 +61,24 @@ struct MenuBarView: View {
 
     private var recordButton: some View {
         let isCapturing = meetingStore.captureCoordinator.isCapturing
+        // Starting a recording takes a moment (permissions, model load, capture start). Show a
+        // spinner while that's in flight so the click has immediate affordance.
+        let isBusy = meetingStore.isToggling
         return Button(action: { meetingStore.toggleRecording() }) {
             HStack(spacing: 6) {
-                Image(systemName: isCapturing ? "stop.fill" : "record.circle.fill")
-                    .font(.system(size: 11))
-                Text(isCapturing ? recordingDurationText : "Record")
-                    .font(.system(size: 13, weight: .medium))
-                    .monospacedDigit()
+                if isBusy {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.white)
+                    Text(isCapturing ? "Stopping…" : "Starting…")
+                        .font(.system(size: 13, weight: .medium))
+                } else {
+                    Image(systemName: isCapturing ? "stop.fill" : "record.circle.fill")
+                        .font(.system(size: 11))
+                    Text(isCapturing ? recordingDurationText : "Record")
+                        .font(.system(size: 13, weight: .medium))
+                        .monospacedDigit()
+                }
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 10)
@@ -68,6 +89,7 @@ struct MenuBarView: View {
             )
         }
         .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.15), value: isBusy)
         .keyboardShortcut("r", modifiers: [.option, .shift])
         .accessibilityLabel(isCapturing ? "Stop recording" : "Start recording")
     }
@@ -83,55 +105,81 @@ struct MenuBarView: View {
             : String(format: "Stop  %d:%02d", m, s)
     }
 
-    // MARK: - Agenda
+    // MARK: - Contextual actions (active event)
 
-    private var agenda: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sectionHeader("TODAY", date: now)
+    @ViewBuilder
+    private func contextualActions(for event: MeetingEvent) -> some View {
+        VStack(spacing: 1) {
+            if event.meetingURL != nil {
+                ActionRow(icon: "video.fill", label: event.meetingService?.joinLabel ?? "Join Meeting") {
+                    MeetingLauncher.shared.join(event)
+                    StatusItemController.shared.hidePanel()
+                }
+            }
+            ActionRow(icon: "calendar", label: "Open in Calendar") {
+                MeetingLauncher.shared.openInCalendar(event)
+                StatusItemController.shared.hidePanel()
+            }
+            ActionRow(icon: "xmark.circle", label: "Dismiss Event", tint: Color.secondary) {
+                MeetingLauncher.shared.dismiss(event)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.top, 4)
+    }
 
-            let events = meetingStore.calendarService.todaysEvents
+    // MARK: - Schedule
+
+    private var schedule: some View {
+        let events = meetingStore.calendarService.todaysEvents
+        return VStack(alignment: .leading, spacing: 0) {
+            dayHeader("Today, " + now.formatted(.dateTime.day().month(.wide)))
             if events.isEmpty {
-                Text("Nothing on your calendar.")
+                Text("Nothing else today.")
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 1) {
                         ForEach(events) { event in
-                            EventRow(event: event, status: status(for: event), now: now) {
-                                openMeetingWindow()
-                                guard !meetingStore.captureCoordinator.isCapturing else { return }
-                                meetingStore.startRecording(from: event)
+                            EventRow(
+                                event: event,
+                                status: status(for: event),
+                                now: now,
+                                canJoin: event.meetingURL != nil
+                            ) {
+                                rowTapped(event)
                             }
                         }
                     }
                     .padding(.horizontal, 6)
                     .padding(.bottom, 6)
                 }
-                .frame(maxHeight: 320)
+                .frame(maxHeight: 360)
             }
         }
     }
 
-    private func sectionHeader(_ title: String, date: Date) -> some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
-                .tracking(0.5)
-            Text("·")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-            Text(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-            Spacer()
+    private func dayHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
+    }
+
+    private func rowTapped(_ event: MeetingEvent) {
+        if event.meetingURL != nil {
+            MeetingLauncher.shared.join(event)
+            StatusItemController.shared.hidePanel()
+        } else {
+            openMeetingWindow()
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 4)
     }
 
     // MARK: - Footer
@@ -197,7 +245,7 @@ struct MenuBarView: View {
                 .foregroundStyle(.secondary)
             Text("Calendar access required")
                 .font(.system(size: 14, weight: .medium))
-            Text("Convene needs access to show today's events and start recording from a meeting.")
+            Text("Convene needs access to show your schedule and join meetings.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -247,10 +295,43 @@ private enum EventStatus {
     case past, current, upcoming
 }
 
+private struct ActionRow: View {
+    let icon: String
+    let label: String
+    var tint: Color = .primary
+    let action: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 13))
+                    .frame(width: 18)
+                Text(label)
+                    .font(.system(size: 13))
+                Spacer()
+            }
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(hovering ? Color.hoverBackground : .clear,
+                       in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(.easeInOut(duration: 0.12), value: hovering)
+        .accessibilityLabel(label)
+    }
+}
+
 private struct EventRow: View {
     let event: MeetingEvent
     let status: EventStatus
     let now: Date
+    let canJoin: Bool
     let action: () -> Void
 
     @State private var hovering = false
@@ -266,16 +347,9 @@ private struct EventRow: View {
                     .foregroundStyle(status == .past ? Color.secondary : Color.primary)
                     .lineLimit(1)
                 Spacer(minLength: 8)
-                if event.attendees.count >= 1 {
-                    HStack(spacing: 3) {
-                        Image(systemName: "person")
-                            .font(.system(size: 10))
-                        Text("\(event.attendees.count)")
-                            .font(.system(size: 11).monospacedDigit())
-                    }
-                    .foregroundStyle(.tertiary)
-                }
+                trailing
             }
+            .frame(height: 22)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(rowBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
@@ -287,8 +361,29 @@ private struct EventRow: View {
         .opacity(status == .past ? 0.65 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityHint("Opens the meeting window and starts recording if idle")
+        .accessibilityHint(canJoin ? "Joins the meeting in the right account" : "Opens the meeting window")
         .accessibilityAddTraits(.isButton)
+    }
+
+    @ViewBuilder
+    private var trailing: some View {
+        if hovering && canJoin {
+            Text("Join")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.accentOlive))
+                .fixedSize()
+        } else if event.attendees.count >= 1 {
+            HStack(spacing: 3) {
+                Image(systemName: "person")
+                    .font(.system(size: 10))
+                Text("\(event.attendees.count)")
+                    .font(.system(size: 11).monospacedDigit())
+            }
+            .foregroundStyle(.tertiary)
+        }
     }
 
     private var accessibilityDescription: String {

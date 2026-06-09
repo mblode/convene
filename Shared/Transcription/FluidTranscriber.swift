@@ -13,6 +13,10 @@ final class FluidTranscriber: ObservableObject {
 
     private var asrManager: SlidingWindowAsrManager?
     private var diarizer: SortformerDiarizer?
+    /// Loaded CoreML models, cached for the app's lifetime so each recording starts instantly
+    /// instead of re-loading/compiling the models every time.
+    private var cachedAsrModels: AsrModels?
+    private var cachedSortformerModels: SortformerModels?
     private var updateTask: Task<Void, Never>?
     private var meetingStartedAt: Date?
     private var audioSubmissionTask: Task<Void, Never>?
@@ -26,6 +30,23 @@ final class FluidTranscriber: ObservableObject {
         interleaved: false
     )!
 
+    /// Pre-load the ASR + diarization models in the background (e.g. at app launch) so the first
+    /// recording starts without the multi-second model-load delay.
+    func warmUp() async {
+        guard cachedAsrModels == nil || cachedSortformerModels == nil else { return }
+        do {
+            if cachedAsrModels == nil {
+                cachedAsrModels = try await AsrModels.downloadAndLoad()
+            }
+            if cachedSortformerModels == nil {
+                cachedSortformerModels = try await SortformerModels.loadFromHuggingFace(config: .default)
+            }
+            logInfo("FluidTranscriber: models warmed up")
+        } catch {
+            logError("FluidTranscriber: warm-up failed: \(error.localizedDescription)")
+        }
+    }
+
     func start() async {
         guard !isRunning else { return }
         lastError = nil
@@ -33,11 +54,27 @@ final class FluidTranscriber: ObservableObject {
         meetingStartedAt = Date()
 
         do {
-            isLoadingModels = true
-            let asr = SlidingWindowAsrManager(config: .streaming)
-            try await asr.loadModels()
+            // Reuse cached models when available; only the first start (or a failed warm-up) pays the
+            // load cost. This is what removes the few-second spinner on subsequent recordings.
+            isLoadingModels = (cachedAsrModels == nil || cachedSortformerModels == nil)
 
-            let sortformerModels = try await SortformerModels.loadFromHuggingFace(config: .default)
+            let asrModels: AsrModels
+            if let cached = cachedAsrModels {
+                asrModels = cached
+            } else {
+                asrModels = try await AsrModels.downloadAndLoad()
+                cachedAsrModels = asrModels
+            }
+            let asr = SlidingWindowAsrManager(config: .streaming)
+            try await asr.loadModels(asrModels)
+
+            let sortformerModels: SortformerModels
+            if let cached = cachedSortformerModels {
+                sortformerModels = cached
+            } else {
+                sortformerModels = try await SortformerModels.loadFromHuggingFace(config: .default)
+                cachedSortformerModels = sortformerModels
+            }
             let diar = SortformerDiarizer()
             diar.initialize(models: sortformerModels)
             isLoadingModels = false

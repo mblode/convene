@@ -4,6 +4,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     case general
     case models
     case capture
+    case calendar
     case hotkeys
     case permissions
     case about
@@ -15,6 +16,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .general:     return "General"
         case .models:      return "Models"
         case .capture:     return "Capture"
+        case .calendar:    return "Calendar"
         case .hotkeys:     return "Hotkeys"
         case .permissions: return "Permissions"
         case .about:       return "About"
@@ -26,6 +28,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .general:     return "gearshape"
         case .models:      return "sparkles"
         case .capture:     return "waveform"
+        case .calendar:    return "calendar"
         case .hotkeys:     return "keyboard"
         case .permissions: return "lock.shield"
         case .about:       return "info.circle"

@@ -17,6 +17,7 @@ struct SettingsShell: View {
                         case .general:     GeneralPage()
                         case .models:      ModelsPage()
                         case .capture:     CapturePage()
+                        case .calendar:    CalendarPage()
                         case .hotkeys:     HotkeysPage()
                         case .permissions: PermissionsPage()
                         case .about:       AboutPage()
