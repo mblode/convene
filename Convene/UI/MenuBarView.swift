@@ -3,7 +3,6 @@ import SwiftUI
 
 struct MenuBarView: View {
     @EnvironmentObject var meetingStore: MeetingStore
-    @Environment(\.openWindow) private var openWindow
 
     @State private var now: Date = Date()
     @State private var recordingStartedAt: Date?
@@ -25,9 +24,6 @@ struct MenuBarView: View {
         }
         .onChange(of: meetingStore.captureCoordinator.isCapturing) { _, capturing in
             recordingStartedAt = capturing ? Date() : nil
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ConveneOpenMeetingWindow"))) { _ in
-            openMeetingWindow()
         }
     }
 
@@ -143,6 +139,7 @@ struct MenuBarView: View {
     private var footer: some View {
         HStack(spacing: 0) {
             Button {
+                StatusItemController.shared.hidePanel()
                 SettingsWindowController.shared.show()
                 NSApp.activate(ignoringOtherApps: true)
             } label: {
@@ -213,6 +210,7 @@ struct MenuBarView: View {
 
             HStack {
                 Button("Settings") {
+                    StatusItemController.shared.hidePanel()
                     SettingsWindowController.shared.show()
                     NSApp.activate(ignoringOtherApps: true)
                 }
@@ -234,8 +232,8 @@ struct MenuBarView: View {
     // MARK: - Helpers
 
     private func openMeetingWindow() {
-        openWindow(id: "meeting")
-        NSApp.activate(ignoringOtherApps: true)
+        StatusItemController.shared.hidePanel()
+        MeetingWindowController.shared.show()
     }
 
     private func status(for event: MeetingEvent) -> EventStatus {

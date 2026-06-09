@@ -148,13 +148,13 @@ final class MeetingStore: ObservableObject {
     }
 
     private static func bringMeetingWindowToFront() {
-        // Window scene with id "meeting" — find the matching NSWindow and surface it.
-        // If no window has been opened yet this session, the menu-bar action handles it.
+        // Find the AppKit-managed meeting window and surface it. If it hasn't been created yet this
+        // session, MeetingWindowController creates it.
         let target = NSApp.windows.first { window in
             window.title == "Meeting" || window.identifier?.rawValue.contains("meeting") == true
         }
         guard let target else {
-            logInfo("MeetingStore: no meeting window found — open via menu bar first")
+            MeetingWindowController.shared.show()
             return
         }
         NSApp.activate(ignoringOtherApps: true)

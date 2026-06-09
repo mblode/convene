@@ -84,14 +84,12 @@ final class MicCapture: ObservableObject {
         let engine = AVAudioEngine()
         let input = engine.inputNode
 
-        var voiceProcessingEnabled = true
-        do {
-            try input.setVoiceProcessingEnabled(true)
-            logInfo("MicCapture: VoiceProcessingIO enabled (hardware AEC)")
-        } catch {
-            logInfo("MicCapture: VoiceProcessingIO unavailable, falling back to standard input")
-            voiceProcessingEnabled = false
-        }
+        // We deliberately do NOT enable VoiceProcessingIO. It provides hardware AEC, but as a
+        // side effect macOS ducks all other system audio while it's active, making whatever is
+        // playing through the speakers go quiet during a recording. Like Granola, we capture the
+        // mic and system audio as two separate raw streams and rely on diarization instead, so
+        // the speaker stays at full volume. The higher no-AEC noise-gate threshold compensates.
+        let voiceProcessingEnabled = false
 
         let inputFormat = input.outputFormat(forBus: 0)
         guard inputFormat.channelCount > 0, inputFormat.sampleRate > 0 else {
