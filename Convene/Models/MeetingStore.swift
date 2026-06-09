@@ -127,13 +127,6 @@ final class MeetingStore: ObservableObject {
             }
         )
         hotkeyObservers.append(
-            center.addObserver(forName: NSNotification.Name("ConveneOpenMeetingWindow"), object: nil, queue: .main) { _ in
-                Task { @MainActor in
-                    Self.bringMeetingWindowToFront()
-                }
-            }
-        )
-        hotkeyObservers.append(
             center.addObserver(forName: NSNotification.Name("ConveneStartRecordingIfIdle"), object: nil, queue: .main) { [weak self] _ in
                 Task { @MainActor in self?.startRecordingIfIdle() }
             }
@@ -145,20 +138,6 @@ final class MeetingStore: ObservableObject {
         for observer in observers {
             NotificationCenter.default.removeObserver(observer)
         }
-    }
-
-    private static func bringMeetingWindowToFront() {
-        // Find the AppKit-managed meeting window and surface it. If it hasn't been created yet this
-        // session, MeetingWindowController creates it.
-        let target = NSApp.windows.first { window in
-            window.title == "Meeting" || window.identifier?.rawValue.contains("meeting") == true
-        }
-        guard let target else {
-            MeetingWindowController.shared.show()
-            return
-        }
-        NSApp.activate(ignoringOtherApps: true)
-        target.makeKeyAndOrderFront(nil)
     }
 
     @discardableResult

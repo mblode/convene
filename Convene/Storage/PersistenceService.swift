@@ -188,7 +188,44 @@ final class PersistenceService: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
+    /// The most recently modified saved transcript (.md). Looked up from the output folder so it
+    /// survives relaunches, falling back to the file saved this session.
+    func latestTranscriptURL() -> URL? {
+        guard let folder = outputFolderURL else { return lastSavedFileURL }
+        let didStart = folder.startAccessingSecurityScopedResource()
+        defer { if didStart { folder.stopAccessingSecurityScopedResource() } }
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: folder,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        )) ?? []
+        let latest = files
+            .filter { $0.pathExtension == "md" }
+            .max { Self.modifiedDate($0) < Self.modifiedDate($1) }
+        return latest ?? lastSavedFileURL
+    }
+
+    private static func modifiedDate(_ url: URL) -> Date {
+        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+    }
+
+    /// Open a saved note in Obsidian (notes live in the user's vault), falling back to the default app.
     func openFile(_ url: URL) {
+        if openInObsidian(path: url.path) { return }
         NSWorkspace.shared.open(url)
+    }
+
+    /// Open a note in Obsidian via its URL scheme. Returns false if Obsidian isn't installed or the
+    /// URL couldn't be built.
+    private func openInObsidian(path: String) -> Bool {
+        guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "md.obsidian") != nil else { return false }
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "/-._~")
+        guard let encoded = path.addingPercentEncoding(withAllowedCharacters: allowed),
+              let obsidianURL = URL(string: "obsidian://open?path=\(encoded)") else {
+            return false
+        }
+        NSWorkspace.shared.open(obsidianURL)
+        return true
     }
 }

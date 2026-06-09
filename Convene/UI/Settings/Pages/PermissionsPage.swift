@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PermissionsPage: View {
     @EnvironmentObject var meetingStore: MeetingStore
+    @State private var isRefreshing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xxl) {
@@ -140,9 +141,7 @@ struct PermissionsPage: View {
             HStack(spacing: 8) {
                 PermissionStatusBadge(state: state)
                 if meetingStore.calendarService.hasAccess {
-                    permissionButton("Refresh", systemImage: "arrow.clockwise") {
-                        Task { await meetingStore.refreshPermissionStates() }
-                    }
+                    refreshButton
                 } else {
                     switch state {
                     case .notDetermined, .requiresSettings:
@@ -256,6 +255,36 @@ struct PermissionsPage: View {
         case .writeOnly:     return "Write-only — full access required"
         default:             return "Unknown"
         }
+    }
+
+    private var refreshButton: some View {
+        Button {
+            guard !isRefreshing else { return }
+            isRefreshing = true
+            Task {
+                await meetingStore.calendarService.refreshEvents()
+                await meetingStore.refreshPermissionStates()
+                // Keep the spinner up briefly so the refresh registers visually even when it's instant.
+                try? await Task.sleep(nanoseconds: 450_000_000)
+                isRefreshing = false
+            }
+        } label: {
+            HStack(spacing: 4) {
+                if isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .scaleEffect(0.7)
+                        .frame(width: 12, height: 12)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                }
+                Text("Refresh")
+            }
+        }
+        .buttonStyle(.borderless)
+        .font(.system(size: 12))
+        .foregroundStyle(Color.accentOlive)
+        .disabled(isRefreshing)
     }
 
     // MARK: - Actions

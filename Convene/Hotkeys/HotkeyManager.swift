@@ -4,14 +4,12 @@ import KeyboardShortcuts
 
 extension KeyboardShortcuts.Name {
     static let toggleRecording = Self("toggleRecording", default: .init(.r, modifiers: [.option, .shift]))
-    static let openMeetingWindow = Self("openMeetingWindow", default: .init(.m, modifiers: [.option, .shift]))
     static let openSettings = Self("openSettings", default: .init(.comma, modifiers: [.option, .shift]))
 }
 
 @MainActor
 class HotkeyManager: ObservableObject {
     @Published var recordingShortcutDisplay: String = ""
-    @Published var meetingWindowShortcutDisplay: String = ""
     @Published var settingsShortcutDisplay: String = ""
 
     init() {
@@ -23,11 +21,6 @@ class HotkeyManager: ObservableObject {
             NotificationCenter.default.post(name: NSNotification.Name("ConveneToggleRecording"), object: nil)
         }
 
-        KeyboardShortcuts.onKeyUp(for: .openMeetingWindow) {
-            logDebug("HotkeyManager: openMeetingWindow")
-            NotificationCenter.default.post(name: NSNotification.Name("ConveneOpenMeetingWindow"), object: nil)
-        }
-
         KeyboardShortcuts.onKeyUp(for: .openSettings) {
             logDebug("HotkeyManager: openSettings")
             SettingsWindowController.shared.show()
@@ -36,7 +29,6 @@ class HotkeyManager: ObservableObject {
 
     func refreshDisplays() {
         recordingShortcutDisplay = HotkeyManager.display(for: .toggleRecording)
-        meetingWindowShortcutDisplay = HotkeyManager.display(for: .openMeetingWindow)
         settingsShortcutDisplay = HotkeyManager.display(for: .openSettings)
     }
 
