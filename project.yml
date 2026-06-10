@@ -26,9 +26,6 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     from: "2.8.1"
-  FluidAudio:
-    url: https://github.com/FluidInference/FluidAudio.git
-    from: "0.14.4"
 
 targets:
   Convene:
@@ -54,8 +51,6 @@ targets:
         product: KeyboardShortcuts
       - package: Sparkle
         product: Sparkle
-      - package: FluidAudio
-        product: FluidAudio
 
   ConveneMobile:
     type: application
@@ -74,9 +69,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: ConveneMobile/ConveneMobile.entitlements
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
-    dependencies:
-      - package: FluidAudio
-        product: FluidAudio
+    dependencies: []
 
 schemes:
   Convene:

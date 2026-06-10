@@ -6,7 +6,7 @@ struct RecordingView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if store.transcriber.isLoadingModels {
+                if store.transcriber.isConnecting {
                     loadingContent
                 } else if store.isRecording {
                     recordingContent
@@ -19,17 +19,17 @@ struct RecordingView: View {
         }
     }
 
-    // MARK: - Loading state (model download)
+    // MARK: - Loading state
 
     private var loadingContent: some View {
         VStack(spacing: 20) {
             Spacer()
             ProgressView()
                 .controlSize(.large)
-            Text("Downloading transcription models...")
+            Text("Connecting to OpenAI...")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Text("This only happens once")
+            Text("Cloud transcription starts when the connection is ready")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
             Spacer()
@@ -211,6 +211,22 @@ struct RecordingView: View {
                 .accessibilityElement(children: .combine)
             }
 
+            if !summary.decisions.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Decisions")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    ForEach(summary.decisions, id: \.self) { decision in
+                        HStack(alignment: .top, spacing: 6) {
+                            Text("•")
+                            Text(decision)
+                        }
+                        .font(.caption)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+
             if !summary.actionItems.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Action items")
@@ -221,6 +237,22 @@ struct RecordingView: View {
                             Image(systemName: "square")
                                 .font(.caption2)
                             Text(item)
+                        }
+                        .font(.caption)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+
+            if !summary.openQuestions.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Open questions")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    ForEach(summary.openQuestions, id: \.self) { question in
+                        HStack(alignment: .top, spacing: 6) {
+                            Text("•")
+                            Text(question)
                         }
                         .font(.caption)
                     }

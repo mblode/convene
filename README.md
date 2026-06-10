@@ -9,9 +9,9 @@ BYO OpenAI key. Local-first storage. Multi-calendar via EventKit. Auto-detects Z
 All seven phases of the [implementation plan](../../.claude/plans/i-want-to-make-compressed-kahan.md) are scaffolded:
 
 - **Phase 1** — Audio capture (mic via VoiceProcessingIO + AEC, system via ScreenCaptureKit), 24 kHz PCM mono
-- **Phase 2** — Two-stream live transcription with server-VAD continuous mode, merged segment list
+- **Phase 2** — Two-stream live transcription through OpenAI Realtime, merged segment list
 - **Phase 3** — Notes editor + Markdown / JSON persistence to a security-scoped output folder
-- **Phase 4** — AI summary via OpenAI Chat Completions (`response_format: json_schema`)
+- **Phase 4** — AI summary via OpenAI Responses API (`text.format: json_schema`, `store: false`)
 - **Phase 5** — EventKit-backed today's-events list (iCloud + Gmail + Fastmail + any other CalDAV/Exchange) with one-click "start recording from this event"
 - **Phase 6** — App-launch detection (Zoom / Teams / Webex / Meet / BlueJeans / Slack) with notification banners
 - **Phase 7** — Makefile, GitHub Actions release workflow, Homebrew cask template
@@ -23,11 +23,11 @@ The Xcode project (`Convene.xcodeproj`) is generated from `project.yml` and comm
 ```
 Convene/
 ├── Audio/                  Mic + system audio capture, WAV writer
-├── Transcription/          OpenAI Realtime API client (transcription mode)
+├── Transcription/          OpenAI Realtime transcription client
 ├── Calendar/               EventKit wrapper (multi-account)
 ├── Detection/              NSWorkspace meeting detector + UN delegate
 ├── Storage/                Markdown / JSON persistence with security-scoped bookmarks
-├── Summary/                Chat Completions structured-output summary service
+├── Summary/                Responses API structured-output summary service
 ├── Models/                 MeetingStore, Meeting, TranscriptSegment
 ├── UI/                     SwiftUI views: meeting window, menu, settings
 ├── Util/                   Logger
@@ -75,10 +75,9 @@ make clean          # Remove /tmp/convene-build
 
 Bits of code adapted from sibling projects:
 
-- `Transcription/RealtimeTranscriptionClient.swift` — verbatim from `~/Code/mblode/commandment/`. Used for one-shot commit/transcribe; not currently wired (kept available for future use).
-- `Transcription/LiveTranscriptionStream.swift` — new for Convene; continuous server-VAD transcription.
+- `Transcription/OpenAIRealtimeTranscriber.swift` — OpenAI Realtime transcription client adapted from `~/Code/mblode/commandment/`, updated for `gpt-realtime-whisper` and Convene's two-stream meeting capture.
 - `Keychain/KeychainManager.swift`, `Util/Logger.swift`, `Hotkeys/HotkeyManager.swift` — adapted from `~/Code/mblode/commandment/` (service id / log filename swapped).
-- `Audio/MicCapture.swift` — slimmed-down adaptation of `~/Code/mblode/rubber-duck/apps/macos/AudioManager.swift`. Kept the 24 kHz PCM mono pipeline + VoiceProcessingIO hardware AEC + noise gate. Dropped the playback-coupled software AEC and startup planner (not relevant for meeting transcription).
+- `Audio/MicCapture.swift` — slimmed-down adaptation of `~/Code/mblode/rubber-duck/apps/macos/AudioManager.swift`. Kept the 24 kHz PCM mono pipeline + noise gate. Dropped the playback-coupled software AEC and startup planner (not relevant for meeting transcription).
 - Everything in `Audio/SystemAudioCapture.swift`, `Audio/AudioCaptureCoordinator.swift`, `Audio/WAVFileWriter.swift`, `Calendar/`, `Detection/`, `Storage/`, `Summary/`, and most of `Models/` and `UI/` — new.
 
 ## Release flow

@@ -140,7 +140,15 @@ final class StatusItemController {
     }
 
     private static func countdownText(for event: MeetingEvent) -> String {
-        if event.isInProgress { return "now" }
+        if event.isInProgress {
+            let elapsedMinutes = max(0, Int(Date().timeIntervalSince(event.startDate) / 60))
+            if elapsedMinutes >= 60 {
+                let h = elapsedMinutes / 60
+                let m = elapsedMinutes % 60
+                return m == 0 ? "\(h)h ago" : "\(h)h \(m)m ago"
+            }
+            return "\(elapsedMinutes)m ago"
+        }
         let seconds = event.startDate.timeIntervalSinceNow
         let minutes = max(0, Int(ceil(seconds / 60)))
         if minutes >= 60 {

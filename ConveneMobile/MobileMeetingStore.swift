@@ -4,6 +4,9 @@ import SwiftUI
 
 @MainActor
 final class MobileMeetingStore: ObservableObject {
+    @Published var openAIAPIKey: String = "" {
+        didSet { saveOpenAIAPIKey() }
+    }
     @Published var claudeAPIKey: String = "" {
         didSet { saveClaudeAPIKey() }
     }
@@ -22,17 +25,22 @@ final class MobileMeetingStore: ObservableObject {
     @Published private(set) var isToggling = false
 
     let recorder = MicRecorder()
-    let transcriber = FluidTranscriber()
+    let transcriber = OpenAIRealtimeTranscriber()
     let persistence = MobilePersistenceService()
     let claudeSummaryService = ClaudeSummaryService()
 
+    var hasOpenAIAPIKey: Bool { !openAIAPIKey.isEmpty }
     var hasClaudeAPIKey: Bool { !claudeAPIKey.isEmpty }
     var isRecording: Bool { recorder.isRecording }
 
     private(set) var meetingStartedAt: Date?
+    private var pendingTranscriptionError: String?
     private var nestedCancellables = Set<AnyCancellable>()
 
     init() {
+        if let saved = KeychainManager.loadAPIKey() {
+            openAIAPIKey = saved
+        }
         if let saved = KeychainManager.loadClaudeAPIKey() {
             claudeAPIKey = saved
         }
@@ -49,6 +57,18 @@ final class MobileMeetingStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &nestedCancellables)
+        transcriber.$lastError
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] error in
+                guard let self, let error, !error.isEmpty else { return }
+                self.status = "Transcription error: \(error)"
+                if self.transcriber.isRunning {
+                    Task { @MainActor [weak self] in
+                        await self?.stopAfterTranscriptionFailure(error)
+                    }
+                }
+            }
+            .store(in: &nestedCancellables)
         persistence.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -57,6 +77,19 @@ final class MobileMeetingStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &nestedCancellables)
+    }
+
+    @discardableResult
+    func saveOpenAIAPIKey() -> Bool {
+        let trimmed = openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            KeychainManager.deleteAPIKey()
+            openAIAPIKey = ""
+            return true
+        }
+        guard KeychainManager.saveAPIKey(trimmed) else { return false }
+        openAIAPIKey = trimmed
+        return true
     }
 
     @discardableResult
@@ -102,7 +135,14 @@ final class MobileMeetingStore: ObservableObject {
         meetingNotes = ""
         lastSavedURL = nil
         currentSummary = nil
+        pendingTranscriptionError = nil
         meetingStartedAt = Date()
+
+        guard hasOpenAIAPIKey else {
+            status = "Add your OpenAI API key in Settings to record"
+            meetingStartedAt = nil
+            return
+        }
 
         guard await recorder.requestPermission() else {
             status = "Microphone permission required"
@@ -110,8 +150,8 @@ final class MobileMeetingStore: ObservableObject {
             return
         }
 
-        status = "Loading transcription models..."
-        await transcriber.start()
+        status = "Connecting to OpenAI..."
+        await transcriber.start(apiKey: openAIAPIKey, speakers: [.you])
         guard transcriber.isRunning else {
             status = transcriber.lastError ?? "Transcription engine failed to start"
             meetingStartedAt = nil
@@ -135,6 +175,14 @@ final class MobileMeetingStore: ObservableObject {
         await persistMeeting()
     }
 
+    private func stopAfterTranscriptionFailure(_ error: String) async {
+        recorder.stop()
+        await transcriber.stop()
+        pendingTranscriptionError = error
+        await persistMeeting()
+        status = "Transcription error: \(error)"
+    }
+
     private func persistMeeting() async {
         guard let started = meetingStartedAt else { return }
         let trimmedTitle = meetingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -144,7 +192,8 @@ final class MobileMeetingStore: ObservableObject {
             startedAt: started,
             endedAt: Date(),
             transcript: transcriber.segments,
-            notes: meetingNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+            notes: meetingNotes.trimmingCharacters(in: .whitespacesAndNewlines),
+            transcriptionError: pendingTranscriptionError
         )
 
         if let url = persistence.save(meeting) {
