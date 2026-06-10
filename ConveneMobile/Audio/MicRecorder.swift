@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 
 enum MicRecorderConstants {
-    static let sampleRate: Double = 16000
+    static let sampleRate: Double = 24000
     static let captureBufferSize: AVAudioFrameCount = 1024
     static let channels: AVAudioChannelCount = 1
 }
@@ -114,7 +114,7 @@ final class MicRecorder: ObservableObject {
         self.mixer = mixerNode
         isRecording = true
         lastError = nil
-        logInfo("MicRecorder: started (16kHz float32 mono)")
+        logInfo("MicRecorder: started (24kHz float32 mono)")
     }
 
     func stop() {

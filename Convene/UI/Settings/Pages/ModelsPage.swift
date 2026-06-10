@@ -14,10 +14,10 @@ struct ModelsPage: View {
                     SettingsRow(
                         icon: "waveform.badge.mic",
                         title: "Engine",
-                        description: "On-device, private, no API key needed",
+                        description: "Cloud transcription through your OpenAI API key",
                         showsDivider: false
                     ) {
-                        Text("FluidAudio (Parakeet)")
+                        Text("OpenAI Realtime")
                             .font(.system(size: 12))
                             .foregroundStyle(Color.textSecondary)
                     }
@@ -33,7 +33,7 @@ struct ModelsPage: View {
                         SettingsRow(
                             icon: "key.fill",
                             title: "OpenAI API key",
-                            description: meetingStore.hasAPIKey ? "Saved to Keychain" : "Optional — used for summaries"
+                            description: meetingStore.hasAPIKey ? "Saved to Keychain" : "Required for transcription and summaries"
                         ) {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 11))
@@ -64,6 +64,9 @@ struct ModelsPage: View {
                         isDisabled: !meetingStore.generateSummaryAfterMeeting
                     ) {
                         Picker("", selection: $meetingStore.summaryModel) {
+                            Text("gpt-5.5").tag("gpt-5.5")
+                            Text("gpt-5.4-mini").tag("gpt-5.4-mini")
+                            Text("gpt-5.4-nano").tag("gpt-5.4-nano")
                             Text("gpt-4o-mini").tag("gpt-4o-mini")
                             Text("gpt-4o").tag("gpt-4o")
                             Text("gpt-4.1-mini").tag("gpt-4.1-mini")

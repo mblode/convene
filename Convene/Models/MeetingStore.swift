@@ -11,7 +11,7 @@ final class MeetingStore: ObservableObject {
     @Published var saveDebugWAVs: Bool = UserDefaults.standard.object(forKey: "saveDebugWAVs") as? Bool ?? false {
         didSet { UserDefaults.standard.set(saveDebugWAVs, forKey: "saveDebugWAVs") }
     }
-    @Published var summaryModel: String = UserDefaults.standard.string(forKey: "summaryModel") ?? "gpt-4o-mini" {
+    @Published var summaryModel: String = UserDefaults.standard.string(forKey: "summaryModel") ?? "gpt-5.4-mini" {
         didSet { UserDefaults.standard.set(summaryModel, forKey: "summaryModel") }
     }
     @Published var generateSummaryAfterMeeting: Bool = UserDefaults.standard.object(forKey: "generateSummaryAfterMeeting") as? Bool ?? true {
@@ -26,7 +26,7 @@ final class MeetingStore: ObservableObject {
     @Published private(set) var currentSummary: MeetingSummary?
 
     let captureCoordinator = AudioCaptureCoordinator()
-    let transcriber = FluidTranscriber()
+    let transcriber = OpenAIRealtimeTranscriber()
     let persistence = PersistenceService()
     let summaryService = SummaryService()
     let calendarService = CalendarService()
@@ -62,8 +62,8 @@ final class MeetingStore: ObservableObject {
         // Wire audio chunks into the transcription coordinator. Note: this fires from the
         // audio capture queue but TranscriptionCoordinator routes through @MainActor so the
         // outbound WebSocket writes happen on the main run loop alongside its segment state.
-        captureCoordinator.onPCM16 = { [weak self] _, data in
-            self?.transcriber.ingestPCM16(data)
+        captureCoordinator.onPCM16 = { [weak self] stream, data in
+            self?.transcriber.ingestPCM16(data, speaker: stream.transcriptSpeaker)
         }
 
         captureCancellable = captureCoordinator.$isCapturing
@@ -277,12 +277,24 @@ final class MeetingStore: ObservableObject {
         activeMeetingId = nil
         meetingStartedAt = Date()
 
+        guard hasAPIKey else {
+            captureStatus = "Add your OpenAI API key in Settings to start recording"
+            meetingStartedAt = nil
+            return
+        }
+
         guard await captureCoordinator.requestPermissions() else {
             meetingStartedAt = nil
             return
         }
 
-        await transcriber.start()
+        captureStatus = "Connecting to OpenAI..."
+        await transcriber.start(apiKey: apiKey, speakers: [.you, .others])
+        guard transcriber.isRunning else {
+            captureStatus = transcriber.lastError ?? "OpenAI transcription failed to start"
+            meetingStartedAt = nil
+            return
+        }
 
         let walMeetingId = UUID()
         walService.beginSession(
@@ -466,5 +478,14 @@ final class MeetingStore: ObservableObject {
         let stamp = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
         return tmp.appendingPathComponent("convene-\(stamp)")
+    }
+}
+
+private extension AudioCaptureCoordinator.SpeakerStream {
+    var transcriptSpeaker: TranscriptSegment.Speaker {
+        switch self {
+        case .you: return .you
+        case .others: return .others
+        }
     }
 }

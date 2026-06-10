@@ -26,8 +26,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         meetingStore.recoverOrphanedMeetings()
         Task { await meetingStore.calendarService.refreshEvents() }
-        // Warm the transcription models in the background so the first recording starts instantly.
-        Task(priority: .utility) { await meetingStore.transcriber.warmUp() }
 
         runCaptureSmokeTestIfRequested()
     }
