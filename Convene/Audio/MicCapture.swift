@@ -3,7 +3,7 @@ import Foundation
 import AppKit
 
 enum MicAudioConstants {
-    static let sampleRate: Double = 24000
+    static let sampleRate: Double = 16000
     static let captureBufferSize: AVAudioFrameCount = 1024
     static let channels: AVAudioChannelCount = 1
     static let noiseGateThreshold: Float = 0.002
@@ -28,7 +28,7 @@ enum MicrophonePermissionState: String {
     }
 }
 
-/// Mic capture at 24 kHz PCM mono with hardware AEC (VoiceProcessingIO) when available.
+/// Mic capture at 16 kHz PCM mono with hardware AEC (VoiceProcessingIO) when available.
 /// AEC is critical for meetings: system audio playing through speakers bleeds into the mic
 /// and would otherwise be transcribed twice (once from system capture, once from mic).
 final class MicCapture: ObservableObject {

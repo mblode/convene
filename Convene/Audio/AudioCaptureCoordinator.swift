@@ -26,11 +26,20 @@ final class AudioCaptureCoordinator: ObservableObject {
     private var othersWAV: WAVFileWriter?
     private var nestedObjectCancellables = Set<AnyCancellable>()
 
+    /// Drops mic chunks that are just speaker bleed of the remote side (AEC is off in MicCapture).
+    private let crossStreamGate = CrossStreamGate()
+    static let reduceSpeakerBleedKey = "reduceSpeakerBleed"
+    private var reduceSpeakerBleed: Bool {
+        UserDefaults.standard.object(forKey: Self.reduceSpeakerBleedKey) as? Bool ?? true
+    }
+
     init() {
         // Audio callbacks fire on background queues; hop to MainActor before touching state.
         mic.onPCM16 = { [weak self] data in
             Task { @MainActor [weak self] in
-                self?.onPCM16?(.you, data)
+                guard let self else { return }
+                if self.reduceSpeakerBleed, self.crossStreamGate.shouldDropMicChunk(data) { return }
+                self.onPCM16?(.you, data)
             }
         }
         mic.onFloat32 = { [weak self] samples, count in
@@ -42,7 +51,9 @@ final class AudioCaptureCoordinator: ObservableObject {
         }
         system.onPCM16 = { [weak self] data in
             Task { @MainActor [weak self] in
-                self?.onPCM16?(.others, data)
+                guard let self else { return }
+                self.crossStreamGate.observeSystemChunk(data)
+                self.onPCM16?(.others, data)
             }
         }
         system.onFloat32 = { [weak self] samples, count in

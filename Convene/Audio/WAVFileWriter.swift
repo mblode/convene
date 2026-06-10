@@ -1,7 +1,7 @@
 import Foundation
 import AVFoundation
 
-/// Minimal Float32 mono 24 kHz WAV file writer.
+/// Minimal Float32 mono WAV file writer at the capture sample rate.
 /// Useful for debug dumps and the optional "save audio file" toggle.
 final class WAVFileWriter {
     private let file: AVAudioFile

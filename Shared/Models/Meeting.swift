@@ -11,6 +11,11 @@ struct Meeting: Identifiable, Codable, Equatable {
     var summary: MeetingSummary?
     var transcriptionError: String?
     var audioFilename: String?
+    /// Display name to use for `.you` transcript segments (e.g. the user's full name).
+    var selfName: String?
+    /// Display name to use for `.others` segments — only set for 1:1 meetings where the
+    /// other participant is unambiguous.
+    var othersName: String?
 
     init(
         id: UUID = UUID(),
@@ -22,7 +27,9 @@ struct Meeting: Identifiable, Codable, Equatable {
         notes: String = "",
         summary: MeetingSummary? = nil,
         transcriptionError: String? = nil,
-        audioFilename: String? = nil
+        audioFilename: String? = nil,
+        selfName: String? = nil,
+        othersName: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -34,6 +41,28 @@ struct Meeting: Identifiable, Codable, Equatable {
         self.summary = summary
         self.transcriptionError = transcriptionError
         self.audioFilename = audioFilename
+        self.selfName = selfName
+        self.othersName = othersName
+    }
+}
+
+/// One thematic/chronological section of the AI summary, with transcript citations.
+struct SummaryDetail: Codable, Equatable {
+    var title: String
+    var narrative: String
+    var timestamps: [String]
+
+    init(title: String, narrative: String, timestamps: [String] = []) {
+        self.title = title
+        self.narrative = narrative
+        self.timestamps = timestamps
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        title = try container.decode(String.self, forKey: .title)
+        narrative = try container.decode(String.self, forKey: .narrative)
+        timestamps = try container.decodeIfPresent([String].self, forKey: .timestamps) ?? []
     }
 }
 
@@ -41,6 +70,7 @@ struct MeetingSummary: Codable, Equatable {
     var overview: String
     var topics: [String]
     var keyPoints: [String]
+    var details: [SummaryDetail]
     var actionItems: [String]
     var decisions: [String]
     var openQuestions: [String]
@@ -54,6 +84,7 @@ struct MeetingSummary: Codable, Equatable {
         overview: String,
         topics: [String] = [],
         keyPoints: [String],
+        details: [SummaryDetail] = [],
         actionItems: [String],
         decisions: [String],
         openQuestions: [String] = [],
@@ -66,6 +97,7 @@ struct MeetingSummary: Codable, Equatable {
         self.overview = overview
         self.topics = topics
         self.keyPoints = keyPoints
+        self.details = details
         self.actionItems = actionItems
         self.decisions = decisions
         self.openQuestions = openQuestions
@@ -81,6 +113,7 @@ struct MeetingSummary: Codable, Equatable {
         overview = try container.decode(String.self, forKey: .overview)
         topics = try container.decodeIfPresent([String].self, forKey: .topics) ?? []
         keyPoints = try container.decodeIfPresent([String].self, forKey: .keyPoints) ?? []
+        details = try container.decodeIfPresent([SummaryDetail].self, forKey: .details) ?? []
         actionItems = try container.decodeIfPresent([String].self, forKey: .actionItems) ?? []
         decisions = try container.decodeIfPresent([String].self, forKey: .decisions) ?? []
         openQuestions = try container.decodeIfPresent([String].self, forKey: .openQuestions) ?? []

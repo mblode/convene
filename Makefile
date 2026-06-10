@@ -16,7 +16,7 @@ LOCAL_CODE_SIGN_IDENTITY ?= Developer ID Application
 LOCAL_KEYCHAIN ?= $(HOME)/Library/Keychains/login.keychain-db
 LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM=$(TEAM_ID) ENABLE_DEBUG_DYLIB=NO
 
-.PHONY: project local-signing-identity build debug install archive export dmg-background dmg notarize clean
+.PHONY: project local-signing-identity build debug install test archive export dmg-background dmg notarize clean
 
 # Regenerate Convene.xcodeproj from project.yml. Required after adding Swift files.
 project:
@@ -77,8 +77,11 @@ install: debug
 	rsync -a --delete $(DERIVED_DATA)/Build/Products/Debug/$(APP_NAME).app/ /Applications/$(APP_NAME).app/
 	open /Applications/$(APP_NAME).app
 
-test: debug
-	@echo "No unit test target configured; debug build passed."
+test: project
+	xcodebuild test -scheme $(SCHEME) \
+		-configuration Debug \
+		-destination 'platform=macOS' \
+		-derivedDataPath $(DERIVED_DATA)
 
 archive:
 	xcodebuild -scheme $(SCHEME) \

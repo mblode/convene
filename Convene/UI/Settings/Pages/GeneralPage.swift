@@ -8,6 +8,23 @@ struct GeneralPage: View {
             PageTitle("General")
 
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                SectionLabel("Identity")
+                SettingsCard {
+                    SettingsRow(
+                        icon: "person",
+                        title: "Your name",
+                        description: "Labels your side of the transcript.",
+                        showsDivider: false
+                    ) {
+                        TextField(NSFullUserName(), text: $meetingStore.userName)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 12))
+                            .frame(width: 180)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("Storage")
                 SettingsCard {
                     SettingsRow(

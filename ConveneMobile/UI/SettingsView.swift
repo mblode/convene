@@ -74,7 +74,7 @@ struct SettingsView: View {
 
                 Section("About") {
                     LabeledContent("Transcription", value: "OpenAI Realtime")
-                    LabeledContent("Summarization", value: "Claude Haiku")
+                    LabeledContent("Summarization", value: "Claude Fable 5")
                     LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")
                 }
             }

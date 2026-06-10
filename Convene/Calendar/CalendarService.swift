@@ -43,6 +43,10 @@ struct MeetingEvent: Identifiable, Hashable {
     let startDate: Date
     let endDate: Date
     let attendees: [String]
+    /// Display name (or email fallback) of the attendee EventKit marks as the current user, if any.
+    let selfAttendeeName: String?
+    /// Attendees excluding the current user, in calendar order.
+    let otherAttendees: [String]
     let calendarTitle: String
     let calendarColor: NSColor?
     let calendarIdentifier: String
@@ -241,11 +245,13 @@ private extension MeetingEvent {
         self.title = event.title ?? "(Untitled)"
         self.startDate = event.startDate
         self.endDate = event.endDate
-        self.attendees = (event.attendees ?? []).compactMap { participant -> String? in
-            if let name = participant.name, !name.isEmpty { return name }
-            // EKParticipant.url is usually mailto:; surface the raw email as a fallback.
-            return participant.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
-        }
+        let participants = event.attendees ?? []
+        self.attendees = participants.map(MeetingEvent.displayValue(for:))
+        self.selfAttendeeName = participants.first(where: { $0.isCurrentUser })
+            .map(MeetingEvent.displayValue(for:))
+        self.otherAttendees = participants
+            .filter { !$0.isCurrentUser }
+            .map(MeetingEvent.displayValue(for:))
         self.calendarTitle = event.calendar?.title ?? ""
         self.calendarColor = event.calendar?.color
         self.calendarIdentifier = event.calendar?.calendarIdentifier ?? ""
@@ -253,6 +259,13 @@ private extension MeetingEvent {
         let url = MeetingEvent.detectMeetingURL(in: event)
         self.meetingURL = url
         self.meetingService = MeetingService.from(url: url)
+    }
+
+    /// Participant's display name when set; otherwise the raw email from the `mailto:` URL.
+    static func displayValue(for participant: EKParticipant) -> String {
+        if let name = participant.name, !name.isEmpty { return name }
+        // EKParticipant.url is usually mailto:; surface the raw email as a fallback.
+        return participant.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
     }
 
     /// Email of the account that owns the event's calendar. Google CalDAV sources in macOS Calendar

@@ -26,7 +26,7 @@ struct RecordingView: View {
             Spacer()
             ProgressView()
                 .controlSize(.large)
-            Text("Connecting to OpenAI...")
+            Text("Connecting to AssemblyAI...")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Text("Cloud transcription starts when the connection is ready")
