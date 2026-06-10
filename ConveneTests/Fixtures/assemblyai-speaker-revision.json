@@ -1,0 +1,7 @@
+{
+  "type": "SpeakerRevision",
+  "turns": [
+    {"turn_order": 2, "speaker_label": "A"},
+    {"turn_order": 7, "speaker_label": "B"}
+  ]
+}

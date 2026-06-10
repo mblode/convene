@@ -8,14 +8,31 @@ final class MeetingStore: ObservableObject {
     @Published var apiKey: String = ""
     @Published var hasAPIKey: Bool = false
     @Published private(set) var apiKeyError: String?
+    @Published var claudeAPIKey: String = ""
+    @Published var hasClaudeAPIKey: Bool = false
+    @Published private(set) var claudeAPIKeyError: String?
+    @Published var assemblyAIKey: String = ""
+    @Published var hasAssemblyAIKey: Bool = false
+    @Published private(set) var assemblyAIKeyError: String?
     @Published var saveDebugWAVs: Bool = UserDefaults.standard.object(forKey: "saveDebugWAVs") as? Bool ?? false {
         didSet { UserDefaults.standard.set(saveDebugWAVs, forKey: "saveDebugWAVs") }
+    }
+    /// Which provider generates summaries: "anthropic" (default, best model) or "openai".
+    @Published var summaryProvider: String = UserDefaults.standard.string(forKey: "summaryProvider") ?? "anthropic" {
+        didSet { UserDefaults.standard.set(summaryProvider, forKey: "summaryProvider") }
     }
     @Published var summaryModel: String = UserDefaults.standard.string(forKey: "summaryModel") ?? "gpt-5.4-mini" {
         didSet { UserDefaults.standard.set(summaryModel, forKey: "summaryModel") }
     }
+    @Published var claudeSummaryModel: String = UserDefaults.standard.string(forKey: "claudeSummaryModel") ?? "claude-fable-5" {
+        didSet { UserDefaults.standard.set(claudeSummaryModel, forKey: "claudeSummaryModel") }
+    }
     @Published var generateSummaryAfterMeeting: Bool = UserDefaults.standard.object(forKey: "generateSummaryAfterMeeting") as? Bool ?? true {
         didSet { UserDefaults.standard.set(generateSummaryAfterMeeting, forKey: "generateSummaryAfterMeeting") }
+    }
+    /// The name used to label your side of the transcript ("Your name" in Settings).
+    @Published var userName: String = UserDefaults.standard.string(forKey: "userName") ?? "" {
+        didSet { UserDefaults.standard.set(userName, forKey: "userName") }
     }
 
     // Live state
@@ -26,9 +43,10 @@ final class MeetingStore: ObservableObject {
     @Published private(set) var currentSummary: MeetingSummary?
 
     let captureCoordinator = AudioCaptureCoordinator()
-    let transcriber = OpenAIRealtimeTranscriber()
+    let transcriber = AssemblyAIRealtimeTranscriber()
     let persistence = PersistenceService()
     let summaryService = SummaryService()
+    let claudeSummaryService = ClaudeSummaryService()
     let calendarService = CalendarService()
     let meetingDetector = MeetingDetector()
     private let walService = TranscriptWALService()
@@ -57,6 +75,14 @@ final class MeetingStore: ObservableObject {
         if let saved = KeychainManager.loadAPIKey() {
             apiKey = saved
             hasAPIKey = !saved.isEmpty
+        }
+        if let saved = KeychainManager.loadClaudeAPIKey() {
+            claudeAPIKey = saved
+            hasClaudeAPIKey = !saved.isEmpty
+        }
+        if let saved = KeychainManager.loadAssemblyAIAPIKey() {
+            assemblyAIKey = saved
+            hasAssemblyAIKey = !saved.isEmpty
         }
 
         // Wire audio chunks into the transcription coordinator. Note: this fires from the
@@ -111,6 +137,10 @@ final class MeetingStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &nestedObjectCancellables)
+        claudeSummaryService.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &nestedObjectCancellables)
         calendarService.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -161,6 +191,56 @@ final class MeetingStore: ObservableObject {
             apiKey = trimmed
             hasAPIKey = true
             apiKeyError = nil
+            return true
+        }
+    }
+
+    @discardableResult
+    func saveClaudeAPIKey() -> Bool {
+        let trimmed = claudeAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            guard KeychainManager.deleteClaudeAPIKey() else {
+                claudeAPIKeyError = "Could not delete the key from Keychain."
+                return false
+            }
+            claudeAPIKey = ""
+            hasClaudeAPIKey = false
+            claudeAPIKeyError = nil
+            return true
+        } else {
+            guard KeychainManager.saveClaudeAPIKey(trimmed) else {
+                claudeAPIKeyError = "Could not save the key to Keychain."
+                hasClaudeAPIKey = false
+                return false
+            }
+            claudeAPIKey = trimmed
+            hasClaudeAPIKey = true
+            claudeAPIKeyError = nil
+            return true
+        }
+    }
+
+    @discardableResult
+    func saveAssemblyAIKey() -> Bool {
+        let trimmed = assemblyAIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            guard KeychainManager.deleteAssemblyAIAPIKey() else {
+                assemblyAIKeyError = "Could not delete the key from Keychain."
+                return false
+            }
+            assemblyAIKey = ""
+            hasAssemblyAIKey = false
+            assemblyAIKeyError = nil
+            return true
+        } else {
+            guard KeychainManager.saveAssemblyAIAPIKey(trimmed) else {
+                assemblyAIKeyError = "Could not save the key to Keychain."
+                hasAssemblyAIKey = false
+                return false
+            }
+            assemblyAIKey = trimmed
+            hasAssemblyAIKey = true
+            assemblyAIKeyError = nil
             return true
         }
     }
@@ -277,8 +357,8 @@ final class MeetingStore: ObservableObject {
         activeMeetingId = nil
         meetingStartedAt = Date()
 
-        guard hasAPIKey else {
-            captureStatus = "Add your OpenAI API key in Settings to start recording"
+        guard hasAssemblyAIKey else {
+            captureStatus = "Add your AssemblyAI API key in Settings to start recording"
             meetingStartedAt = nil
             return
         }
@@ -288,10 +368,16 @@ final class MeetingStore: ObservableObject {
             return
         }
 
-        captureStatus = "Connecting to OpenAI..."
-        await transcriber.start(apiKey: apiKey, speakers: [.you, .others])
+        captureStatus = "Connecting to AssemblyAI…"
+        await transcriber.start(
+            apiKey: assemblyAIKey,
+            speakers: [.you, .others],
+            attendeeNames: currentEvent?.attendees ?? [],
+            meetingTitle: meetingTitle,
+            expectedSpeakerCount: currentEvent?.attendees.count
+        )
         guard transcriber.isRunning else {
-            captureStatus = transcriber.lastError ?? "OpenAI transcription failed to start"
+            captureStatus = transcriber.lastError ?? "AssemblyAI transcription failed to start"
             meetingStartedAt = nil
             return
         }
@@ -343,7 +429,9 @@ final class MeetingStore: ObservableObject {
             notes: trimmedNotes,
             summary: nil,
             transcriptionError: transcriptionError,
-            audioFilename: nil
+            audioFilename: nil,
+            selfName: resolvedSelfName(),
+            othersName: resolvedOthersName()
         )
         activeMeetingId = meeting.id
 
@@ -357,12 +445,10 @@ final class MeetingStore: ObservableObject {
         // update UI state — but only if the user hasn't started a new meeting in the meantime.
         if generateSummaryAfterMeeting && (!transcript.isEmpty || !trimmedNotes.isEmpty) {
             captureStatus = "Generating summary…"
-            let apiKey = self.apiKey
-            let model = self.summaryModel
             let meetingId = meeting.id
             Task { [weak self] in
                 guard let self else { return }
-                let summary = await self.summaryService.generate(meeting: meeting, apiKey: apiKey, model: model)
+                let summary = await self.generateSummary(for: meeting)
                 await MainActor.run {
                     // Drop the result if a newer meeting has started since we kicked this off.
                     guard self.activeMeetingId == meetingId else {
@@ -390,12 +476,33 @@ final class MeetingStore: ObservableObject {
                         self.saveMeeting(enriched) { [weak self] url in
                             self?.saveStatus(for: url, action: "Summary saved") ?? "Summary saved to \(url.lastPathComponent)"
                         }
-                    } else if let err = self.summaryService.lastError {
+                    } else if let err = self.summaryGenerationError() {
                         self.captureStatus = err
                     }
                 }
             }
         }
+    }
+
+    /// Routes summary generation by the configured provider. Anthropic (Claude Fable 5)
+    /// is the default; OpenAI remains available as a fallback choice in Settings.
+    private func generateSummary(for meeting: Meeting) async -> MeetingSummary? {
+        if summaryProvider == "anthropic" {
+            return await claudeSummaryService.generate(
+                meeting: meeting,
+                apiKey: claudeAPIKey,
+                model: claudeSummaryModel
+            )
+        }
+        return await summaryService.generate(
+            meeting: meeting,
+            apiKey: apiKey,
+            model: summaryModel
+        )
+    }
+
+    private func summaryGenerationError() -> String? {
+        summaryProvider == "anthropic" ? claudeSummaryService.lastError : summaryService.lastError
     }
 
     @discardableResult
@@ -465,6 +572,26 @@ final class MeetingStore: ObservableObject {
                 logError("MeetingStore: WAL recovery failed: \(error)")
             }
         }
+    }
+
+    /// Name for `.you` transcript segments: the Settings "Your name" value, falling back to
+    /// the calendar event's current-user attendee, then the macOS account's full name.
+    private func resolvedSelfName() -> String? {
+        let configured = userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !configured.isEmpty { return configured }
+        if let calendarSelf = currentEvent?.selfAttendeeName {
+            return TranscriptFormatter.attendeeDisplayName(calendarSelf)
+        }
+        let accountName = NSFullUserName().trimmingCharacters(in: .whitespacesAndNewlines)
+        return accountName.isEmpty ? nil : accountName
+    }
+
+    /// Name for `.others` segments — only when the calendar event has exactly one other
+    /// attendee (a 1:1), so the attribution is unambiguous.
+    private func resolvedOthersName() -> String? {
+        guard let others = currentEvent?.otherAttendees, others.count == 1 else { return nil }
+        let name = TranscriptFormatter.attendeeDisplayName(others[0])
+        return name.isEmpty ? nil : name
     }
 
     private func defaultTitle() -> String {

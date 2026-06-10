@@ -1,0 +1,15 @@
+{
+  "type": "Turn",
+  "turn_order": 7,
+  "end_of_turn": true,
+  "transcript": "Yeah, that works for me.",
+  "end_of_turn_confidence": 0.88,
+  "speaker_label": "UNKNOWN",
+  "words": [
+    {"text": "Yeah,", "start": 9000, "end": 9200, "confidence": 0.96, "word_is_final": true, "speaker": "UNKNOWN"},
+    {"text": "that", "start": 9220, "end": 9380, "confidence": 0.98, "word_is_final": true, "speaker": "UNKNOWN"},
+    {"text": "works", "start": 9400, "end": 9640, "confidence": 0.97, "word_is_final": true, "speaker": "UNKNOWN"},
+    {"text": "for", "start": 9660, "end": 9760, "confidence": 0.99, "word_is_final": true, "speaker": "UNKNOWN"},
+    {"text": "me.", "start": 9780, "end": 9980, "confidence": 0.97, "word_is_final": true, "speaker": "UNKNOWN"}
+  ]
+}

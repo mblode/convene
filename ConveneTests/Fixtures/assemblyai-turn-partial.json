@@ -1,0 +1,16 @@
+{
+  "type": "Turn",
+  "turn_order": 2,
+  "turn_is_formatted": false,
+  "end_of_turn": false,
+  "transcript": "so the plan for this quarter",
+  "end_of_turn_confidence": 0.12,
+  "words": [
+    {"text": "so", "start": 1200, "end": 1320, "confidence": 0.98, "word_is_final": true},
+    {"text": "the", "start": 1340, "end": 1420, "confidence": 0.99, "word_is_final": true},
+    {"text": "plan", "start": 1440, "end": 1680, "confidence": 0.97, "word_is_final": true},
+    {"text": "for", "start": 1700, "end": 1820, "confidence": 0.99, "word_is_final": true},
+    {"text": "this", "start": 1840, "end": 1980, "confidence": 0.98, "word_is_final": true},
+    {"text": "quarter", "start": 2000, "end": 2400, "confidence": 0.95, "word_is_final": false}
+  ]
+}

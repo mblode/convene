@@ -1,0 +1,22 @@
+{
+  "type": "Turn",
+  "turn_order": 2,
+  "turn_is_formatted": true,
+  "end_of_turn": true,
+  "transcript": "So the plan for this quarter is to ship the redesign.",
+  "end_of_turn_confidence": 0.94,
+  "speaker_label": "B",
+  "words": [
+    {"text": "So", "start": 1200, "end": 1320, "confidence": 0.98, "word_is_final": true, "speaker": "B"},
+    {"text": "the", "start": 1340, "end": 1420, "confidence": 0.99, "word_is_final": true, "speaker": "B"},
+    {"text": "plan", "start": 1440, "end": 1680, "confidence": 0.97, "word_is_final": true, "speaker": "B"},
+    {"text": "for", "start": 1700, "end": 1820, "confidence": 0.99, "word_is_final": true, "speaker": "B"},
+    {"text": "this", "start": 1840, "end": 1980, "confidence": 0.98, "word_is_final": true, "speaker": "B"},
+    {"text": "quarter", "start": 2000, "end": 2400, "confidence": 0.96, "word_is_final": true, "speaker": "B"},
+    {"text": "is", "start": 2420, "end": 2520, "confidence": 0.99, "word_is_final": true, "speaker": "B"},
+    {"text": "to", "start": 2540, "end": 2620, "confidence": 0.99, "word_is_final": true, "speaker": "B"},
+    {"text": "ship", "start": 2640, "end": 2860, "confidence": 0.97, "word_is_final": true, "speaker": "B"},
+    {"text": "the", "start": 2880, "end": 2960, "confidence": 0.99, "word_is_final": true, "speaker": "B"},
+    {"text": "redesign.", "start": 2980, "end": 3500, "confidence": 0.94, "word_is_final": true, "speaker": "B"}
+  ]
+}

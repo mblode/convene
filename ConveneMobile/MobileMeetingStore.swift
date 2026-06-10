@@ -10,7 +10,10 @@ final class MobileMeetingStore: ObservableObject {
     @Published var claudeAPIKey: String = "" {
         didSet { saveClaudeAPIKey() }
     }
-    @Published var summaryModel: String = UserDefaults.standard.string(forKey: "summaryModel") ?? "claude-haiku-4-5-20251001" {
+    @Published var assemblyAIKey: String = "" {
+        didSet { saveAssemblyAIKey() }
+    }
+    @Published var summaryModel: String = UserDefaults.standard.string(forKey: "summaryModel") ?? "claude-fable-5" {
         didSet { UserDefaults.standard.set(summaryModel, forKey: "summaryModel") }
     }
     @Published var generateSummaryAfterMeeting: Bool = UserDefaults.standard.object(forKey: "generateSummaryAfterMeeting") as? Bool ?? true {
@@ -25,12 +28,13 @@ final class MobileMeetingStore: ObservableObject {
     @Published private(set) var isToggling = false
 
     let recorder = MicRecorder()
-    let transcriber = OpenAIRealtimeTranscriber()
+    let transcriber = AssemblyAIRealtimeTranscriber()
     let persistence = MobilePersistenceService()
     let claudeSummaryService = ClaudeSummaryService()
 
     var hasOpenAIAPIKey: Bool { !openAIAPIKey.isEmpty }
     var hasClaudeAPIKey: Bool { !claudeAPIKey.isEmpty }
+    var hasAssemblyAIKey: Bool { !assemblyAIKey.isEmpty }
     var isRecording: Bool { recorder.isRecording }
 
     private(set) var meetingStartedAt: Date?
@@ -43,6 +47,9 @@ final class MobileMeetingStore: ObservableObject {
         }
         if let saved = KeychainManager.loadClaudeAPIKey() {
             claudeAPIKey = saved
+        }
+        if let saved = KeychainManager.loadAssemblyAIAPIKey() {
+            assemblyAIKey = saved
         }
 
         recorder.onAudioBuffer = { [weak self] buffer in
@@ -105,6 +112,19 @@ final class MobileMeetingStore: ObservableObject {
         return true
     }
 
+    @discardableResult
+    func saveAssemblyAIKey() -> Bool {
+        let trimmed = assemblyAIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            KeychainManager.deleteAssemblyAIAPIKey()
+            assemblyAIKey = ""
+            return true
+        }
+        guard KeychainManager.saveAssemblyAIAPIKey(trimmed) else { return false }
+        assemblyAIKey = trimmed
+        return true
+    }
+
     func toggleRecording() {
         guard !isToggling else { return }
         isToggling = true
@@ -138,8 +158,8 @@ final class MobileMeetingStore: ObservableObject {
         pendingTranscriptionError = nil
         meetingStartedAt = Date()
 
-        guard hasOpenAIAPIKey else {
-            status = "Add your OpenAI API key in Settings to record"
+        guard hasAssemblyAIKey else {
+            status = "Add your AssemblyAI API key in Settings to record"
             meetingStartedAt = nil
             return
         }
@@ -150,8 +170,13 @@ final class MobileMeetingStore: ObservableObject {
             return
         }
 
-        status = "Connecting to OpenAI..."
-        await transcriber.start(apiKey: openAIAPIKey, speakers: [.you])
+        status = "Connecting to AssemblyAI…"
+        await transcriber.start(
+            apiKey: assemblyAIKey,
+            speakers: [.you],
+            attendeeNames: [],
+            meetingTitle: meetingTitle
+        )
         guard transcriber.isRunning else {
             status = transcriber.lastError ?? "Transcription engine failed to start"
             meetingStartedAt = nil

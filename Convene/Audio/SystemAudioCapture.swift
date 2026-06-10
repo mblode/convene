@@ -15,8 +15,8 @@ enum SystemAudioPermissionState: String {
 }
 
 /// Captures system audio via ScreenCaptureKit (macOS 13+) — the audio coming out of the
-/// laptop speakers / headphones, excluding our own process. Converts to 24 kHz PCM mono
-/// to match what the OpenAI Realtime API expects.
+/// laptop speakers / headphones, excluding our own process. Converts to 16 kHz PCM mono
+/// to match what the AssemblyAI streaming transcriber expects.
 ///
 /// This is the "Others" half of the meeting capture: anyone speaking on the remote end
 /// of a Zoom/Meet/Teams call gets captured here.
@@ -260,7 +260,7 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
     }
 }
 
-/// Audio-queue-confined conversion + emission. Holds the Float32 24 kHz target format and an
+/// Audio-queue-confined conversion + emission. Holds the Float32 16 kHz target format and an
 /// AVAudioConverter that's recreated whenever the input format changes.
 private final class ProcessorBox: @unchecked Sendable {
     private let targetFormat: AVAudioFormat = AVAudioFormat(

@@ -7,6 +7,7 @@ enum KeychainManager {
     private enum Account: String {
         case openAI = "OpenAIAPIKey"
         case claude = "ClaudeAPIKey"
+        case assemblyAI = "AssemblyAIAPIKey"
     }
 
     // MARK: - OpenAI
@@ -39,6 +40,22 @@ enum KeychainManager {
     @discardableResult
     static func deleteClaudeAPIKey() -> Bool {
         delete(account: .claude)
+    }
+
+    // MARK: - AssemblyAI
+
+    @discardableResult
+    static func saveAssemblyAIAPIKey(_ key: String) -> Bool {
+        save(key, account: .assemblyAI)
+    }
+
+    static func loadAssemblyAIAPIKey() -> String? {
+        load(account: .assemblyAI)
+    }
+
+    @discardableResult
+    static func deleteAssemblyAIAPIKey() -> Bool {
+        delete(account: .assemblyAI)
     }
 
     // MARK: - Generic operations

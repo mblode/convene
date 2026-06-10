@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CapturePage: View {
     @EnvironmentObject var meetingStore: MeetingStore
+    @AppStorage(AudioCaptureCoordinator.reduceSpeakerBleedKey) private var reduceSpeakerBleed = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xxl) {
@@ -36,6 +37,22 @@ struct CapturePage: View {
                     .font(.captionWarm)
                     .foregroundStyle(Color.textSecondary)
                     .padding(.horizontal, 4)
+            }
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                SectionLabel("Audio")
+                SettingsCard {
+                    SettingsRow(
+                        icon: "speaker.wave.2.fill",
+                        title: "Reduce speaker bleed",
+                        description: "Drops mic audio that's just the remote speaker playing through your speakers",
+                        showsDivider: false
+                    ) {
+                        Toggle("", isOn: $reduceSpeakerBleed)
+                            .toggleStyle(OliveToggleStyle())
+                            .labelsHidden()
+                    }
+                }
             }
 
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {

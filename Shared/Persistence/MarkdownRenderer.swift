@@ -24,6 +24,11 @@ enum MarkdownRenderer {
         let transcriptSegments = meeting.transcript
             .removingLikelyEchoDuplicates()
             .filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        // Compute the transcript sections once so summary citations always link to
+        // the exact `### MM:SS` headers this renderer emits below.
+        let transcriptBlocks = TranscriptFormatter.mergedBlocks(transcriptSegments)
+        let transcriptSections = TranscriptFormatter.sections(transcriptBlocks)
+        let transcriptEnd = transcriptBlocks.map(\.endedAt).max() ?? 0
 
         var out = ""
         out += "---\n"
@@ -44,9 +49,16 @@ enum MarkdownRenderer {
         out += "  - meeting\n"
         out += "  - convene\n"
         if !meeting.attendees.isEmpty {
+            let displayNames = meeting.attendees.map(TranscriptFormatter.attendeeDisplayName)
             out += "attendees:\n"
-            for attendee in meeting.attendees {
-                out += "  - \(yamlEscape(attendee))\n"
+            for name in displayNames {
+                out += "  - \(yamlEscape(name))\n"
+            }
+            if displayNames != meeting.attendees {
+                out += "attendee_emails:\n"
+                for attendee in meeting.attendees {
+                    out += "  - \(yamlEscape(attendee))\n"
+                }
             }
         }
         if let summary = meeting.summary {
@@ -73,6 +85,12 @@ enum MarkdownRenderer {
             out += cleanParagraphs(summary.overview)
             out += "\n\n"
 
+            appendDetails(
+                summary.details,
+                sections: transcriptSections,
+                transcriptEnd: transcriptEnd,
+                to: &out
+            )
             appendBullets(title: "Topics", items: summary.topics, to: &out)
             if !summary.keyPoints.isEmpty {
                 appendBullets(title: "Key Points", items: summary.keyPoints, to: &out)
@@ -98,12 +116,18 @@ enum MarkdownRenderer {
 
         if !transcriptSegments.isEmpty {
             out += "## Transcript\n\n"
-            for segment in transcriptSegments {
-                let mm = Int(segment.startedAt) / 60
-                let ss = Int(segment.startedAt) % 60
-                let stamp = String(format: "%02d:%02d", mm, ss)
-                let finalMarker = segment.isFinal ? "" : " _(partial)_"
-                out += "**\(segment.speaker.displayName) [\(stamp)]:**\(finalMarker) \(cleanInline(segment.text))\n\n"
+            for section in transcriptSections {
+                out += "### \(TranscriptFormatter.timestampString(section.startedAt))\n\n"
+                for block in section.blocks {
+                    let name = TranscriptFormatter.displayName(
+                        for: block.speaker,
+                        selfName: meeting.selfName,
+                        othersName: meeting.othersName,
+                        diarizedSpeaker: block.diarizedSpeaker
+                    )
+                    let partialMarker = block.isPartial ? " _(partial)_" : ""
+                    out += "**\(name):**\(partialMarker) \(cleanInline(block.text))\n\n"
+                }
             }
         }
 
@@ -133,6 +157,69 @@ enum MarkdownRenderer {
             .replacingOccurrences(of: "\"", with: "\\\"")
             .replacingOccurrences(of: "\n", with: "\\n")
         return "\"\(escaped)\""
+    }
+
+    /// Renders the `## Details` section: one `### {title}` per detail with its narrative
+    /// and trailing transcript citations. Omitted entirely when there are no details.
+    private static func appendDetails(
+        _ details: [SummaryDetail],
+        sections: [TranscriptFormatter.Section],
+        transcriptEnd: TimeInterval,
+        to out: inout String
+    ) {
+        let cleaned = details.filter {
+            !cleanInline($0.title).isEmpty && !cleanInline($0.narrative).isEmpty
+        }
+        guard !cleaned.isEmpty else { return }
+
+        out += "## Details\n\n"
+        for detail in cleaned {
+            out += "### \(cleanInline(detail.title))\n\n"
+            var paragraph = cleanParagraphs(detail.narrative)
+            let citations = detail.timestamps
+                .map { citation(for: $0, sections: sections, transcriptEnd: transcriptEnd) }
+                .filter { !$0.isEmpty }
+            if !citations.isEmpty {
+                paragraph += " " + citations.joined(separator: " ")
+            }
+            out += paragraph
+            out += "\n\n"
+        }
+    }
+
+    /// Maps a cited `MM:SS` timestamp to an Obsidian wikilink targeting the transcript
+    /// section header it falls under (`[[#05:00|07:23]]`). Falls back to plain text when
+    /// the timestamp can't be parsed or maps outside the transcript — no dead links.
+    private static func citation(
+        for rawTimestamp: String,
+        sections: [TranscriptFormatter.Section],
+        transcriptEnd: TimeInterval
+    ) -> String {
+        let trimmed = rawTimestamp.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        guard let time = parseTimestamp(trimmed),
+              time <= transcriptEnd,
+              let anchor = TranscriptFormatter.sectionTimestamp(for: time, in: sections) else {
+            return trimmed
+        }
+        return "[[#\(anchor)|\(trimmed)]]"
+    }
+
+    /// Parses `MM:SS` or `H:MM:SS` back to a transcript offset. Returns nil for garbage.
+    private static func parseTimestamp(_ raw: String) -> TimeInterval? {
+        let parts = raw.split(separator: ":").map(String.init)
+        guard (2...3).contains(parts.count),
+              parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) else {
+            return nil
+        }
+        let numbers = parts.compactMap(Int.init)
+        guard numbers.count == parts.count else { return nil }
+        if numbers.count == 2 {
+            guard numbers[1] < 60 else { return nil }
+            return TimeInterval(numbers[0] * 60 + numbers[1])
+        }
+        guard numbers[1] < 60, numbers[2] < 60 else { return nil }
+        return TimeInterval(numbers[0] * 3600 + numbers[1] * 60 + numbers[2])
     }
 
     private static func appendBullets(

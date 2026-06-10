@@ -1,0 +1,3365 @@
+{
+  "attendees" : [
+    "matthew@linktr.ee",
+    "michael@linktr.ee"
+  ],
+  "endedAt" : "2026-06-10T03:49:21Z",
+  "id" : "4EC85721-92F4-4F2E-9395-A28CB6024793",
+  "notes" : "",
+  "startedAt" : "2026-06-10T03:15:35Z",
+  "summary" : {
+    "actionItems" : [
+      "matthew@linktr.ee: Start the notifications-platform thread and loop in Manny and Lawrence",
+      "michael@linktr.ee: Share context on whether push can be supported in the new notification platform and how",
+      "matthew@linktr.ee: Clarify the notification\/attribution requirements with Weiyang and Lawrence on the data side"
+    ],
+    "decisions" : [
+      "Use the notification platform for recommendation-triggered messages instead of leaning on Braze for this flow",
+      "Start with email and in-app notifications; push may stay on Braze for now if needed",
+      "Keep the recommendation email simple and templated for now, with no images\/fancy creative",
+      "Use SES for email sending through the existing SES repo\/service rather than Braze"
+    ],
+    "followUps" : [
+      "Notification platform rollout for email, in-app bell\/hub, and push support",
+      "Brand\/design process for recommendation emails and whether new templates are needed",
+      "Attribution\/click ID approach with Weiyang and Lawrence"
+    ],
+    "generatedAt" : "2026-06-10T03:49:30Z",
+    "keyPoints" : [
+      "Pulse was described as a simplified recommendations system that reviews link\/profile content and generates guidance such as fixing dead links or shortening copy.",
+      "The goal is for recommendations to fan out into the notification system and open the chat panel on the right side via deep links.",
+      "The ideal comms model is channel-agnostic for sending systems: request a notification once, let the platform decide the best channel(s) and fallbacks.",
+      "The platform was described as handling opt-outs, frequency caps, bounce suppression, and channel failures safely.",
+      "Attribution is important: they discussed generating a notification ID\/click ID and attaching it to downstream links\/events so actions can be tied back to a specific notification.",
+      "They discussed analyzing which channels lead to the most actions and potentially deprioritizing weaker channels later.",
+      "Braze was framed as likely staying for some existing uses, but not ideal for this notification flow because it is harder for engineers\/agents to work with programmatically.",
+      "The new email path is via SES, using templates in the SES repo\/service; the repo still has an old SendGrid name.",
+      "The current Braze email process was described as very manual, involving PMM, brand creative, consultants, and Stripo before syncing into Braze.",
+      "The initial recommendation emails are expected to be simple and templated, with different copy\/CTA rather than image-heavy creative."
+    ],
+    "model" : "gpt-5.4-mini-2026-03-17",
+    "openQuestions" : [
+      "How push notifications will be supported, if at all, in the new platform",
+      "Whether one stable notification\/click ID will span all channels or be channel-specific",
+      "What the final email template\/design process should be if branding becomes more involved"
+    ],
+    "overview" : "Matthew and Michael aligned on using the notifications platform as the lightweight path for Pulse recommendations: send recommendation-triggered messages via email and in-app hub\/bell, deep link back into chat, and track attribution with notification\/click IDs. They agreed to keep the first version simple and self-serve, likely using SES for email rather than Braze, while push support and the exact brand\/design workflow remain open follow-ups.",
+    "promptVersion" : "meeting-summary-v2",
+    "provider" : "openai",
+    "topics" : [
+      "Pulse and recommendation flow",
+      "Notification channels and platform consolidation",
+      "Attribution and click tracking",
+      "Braze vs SES",
+      "Email templates and brand process",
+      "Timeline and MVP scope"
+    ]
+  },
+  "title" : "Michael \/ Matthew",
+  "transcript" : [
+    {
+      "endedAt" : 87.20705199241638,
+      "id" : "63F7C5C3-5E55-4612-949E-54F1998EE333",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 85.3261890411377,
+      "text" : "Hey how are you going?"
+    },
+    {
+      "endedAt" : 93.11552798748016,
+      "id" : "6440294A-E13B-4FDE-B9F7-14376330CDC0",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 88.14432394504547,
+      "text" : "I'm good how are you doing? Good. How's Sydney?"
+    },
+    {
+      "endedAt" : 92.9916820526123,
+      "id" : "8E2E69BE-EC02-4E63-B65B-6DE9FD2F0D94",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 88.15624403953552,
+      "text" : "I'm good how are you doing?"
+    },
+    {
+      "endedAt" : 99.32988893985748,
+      "id" : "A269ECE4-022C-4192-BD52-CBBEBF353184",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 94.043506026268,
+      "text" : "I love it, yeah settled in yeah pretty much. I have a couch"
+    },
+    {
+      "endedAt" : 105.37478494644165,
+      "id" : "C0674B90-B342-4F76-B850-2090EBC27FE6",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 99.5937670469284,
+      "text" : "I really want to catch otherwise like"
+    },
+    {
+      "endedAt" : 111.40451896190643,
+      "id" : "E081C136-555D-488F-9A05-3B464804085D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 105.64616096019745,
+      "text" : "Wish you consider whether right now it's like crazy, it's like 21, 22 degrees. Yeah"
+    },
+    {
+      "endedAt" : 117.41884195804596,
+      "id" : "D9CC6960-091D-445C-ABC9-0AE95EFE357F",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 112.97894096374512,
+      "text" : "It feels like a summer's day. So jealous"
+    },
+    {
+      "endedAt" : 123.77843701839447,
+      "id" : "F8E534A1-227D-4FE1-9F2E-DCD0F4CAC20B",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 118.14394903182983,
+      "text" : "Crazy"
+    },
+    {
+      "endedAt" : 123.90829503536224,
+      "id" : "E02E462E-3F51-48D5-AF91-60CC87843122",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 118.4747029542923,
+      "text" : "Honestly I think I have Stockholm syndrome. I was walking this morning and it was like fucking freezing, but it"
+    },
+    {
+      "endedAt" : 129.88758504390717,
+      "id" : "2EA51A99-AC09-4472-BF17-D1B3AB1EB107",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 123.55665504932404,
+      "text" : "But it was like the sun was out. So I'm like, oh, what a nice morning"
+    },
+    {
+      "endedAt" : 136.18124294281006,
+      "id" : "8AF30D67-0DB6-4BE0-8DDF-DDCA7EE61D43",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 130.10055100917816,
+      "text" : "I love Melbourne. Yeah"
+    },
+    {
+      "endedAt" : 136.3772350549698,
+      "id" : "36E9E5EF-FAC0-4A2C-BC05-F34C5AE419E3",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 130.19848895072937,
+      "text" : "I love London. Yeah literally just coping yeah nice"
+    },
+    {
+      "endedAt" : 142.4417849779129,
+      "id" : "17F88798-49A6-4BEA-95FC-0E1E005D0C2C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 136.6452339887619,
+      "text" : "Did were you chatting with um James? Were you doing the work"
+    },
+    {
+      "endedAt" : 148.3535590171814,
+      "id" : "DE013072-99FF-4AB2-BFBE-81DC204DD678",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 142.78260803222656,
+      "text" : "space inside stuff. Is that your team? Uh, yeah"
+    },
+    {
+      "endedAt" : 148.35368502140045,
+      "id" : "5B574B33-0C5F-451B-AAE5-8C882747DE3E",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 147.64095103740692,
+      "text" : "Yeah"
+    },
+    {
+      "endedAt" : 154.6449979543686,
+      "id" : "A47BF389-18A1-4BEC-8844-C23572050924",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 148.54912996292114,
+      "text" : "Yeah I am doing that but I'm also doing notifications. Okay cool cool cool"
+    },
+    {
+      "endedAt" : 160.4494869709015,
+      "id" : "7CDB8188-A4F6-4575-BC48-8C86AD97F0D3",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 154.84113204479218,
+      "text" : "Yeah"
+    },
+    {
+      "endedAt" : 160.43202102184296,
+      "id" : "AD628AC8-F011-4E99-8B86-B98CEC31209D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 154.96312999725342,
+      "text" : "Yeah okay so you're you that number one person across notifications"
+    },
+    {
+      "endedAt" : 166.46091604232788,
+      "id" : "70A88182-941C-47C4-9FF7-2D7805C65038",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 161.98438203334808,
+      "text" : "Yeah yeah notifications platform is my project now. So I'm"
+    },
+    {
+      "endedAt" : 172.72619104385376,
+      "id" : "4C4D97CC-41E4-4FB5-AE6A-26304A02A28C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 167.65033400058746,
+      "text" : "I'm leading there. It's a bit ambiguous. I think it's like it got handed to me"
+    },
+    {
+      "endedAt" : 178.76153898239136,
+      "id" : "079B1D7F-63DD-4882-A377-90731B0C6612",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 173.02288496494293,
+      "text" : "My Robin and Rob has been like offline for like the last month and like very hard to reach and I haven't been in with him in a while"
+    },
+    {
+      "endedAt" : 178.76167798042297,
+      "id" : "E5681A71-3458-4E05-AD92-0EE24ED0AD37",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 173.1985399723053,
+      "text" : "By Robin and Robin's been like offline for like the last month and like very hard to reach and haven't had a meeting with him in a while"
+    },
+    {
+      "endedAt" : 184.88752794265747,
+      "id" : "F2C766B2-37E3-4B9A-8DC9-CD216C2D4EDB",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 178.9568259716034,
+      "text" : "Yeah it's like my project but it's also maybe Rob's project, but it's also maybe like Lawrence's project"
+    },
+    {
+      "endedAt" : 191.01657700538635,
+      "id" : "4616CC73-A4BF-4205-AE4D-8CBBA4CE0784",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 187.34711694717407,
+      "text" : "Talk to me about integrating, I guess"
+    },
+    {
+      "endedAt" : 191.16870999336243,
+      "id" : "A6E421B4-57F5-4672-A51A-CECCCCED07A6",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 187.3597710132599,
+      "text" : "Talk to me about integrating I guess. Yeah, yeah, yeah. So"
+    },
+    {
+      "endedAt" : 197.11359095573425,
+      "id" : "53A2C5CA-7C53-49CE-9F4B-4655E5B44663",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 191.35367095470428,
+      "text" : "Pretty much. There's the concept of pulse. And so pulse has"
+    },
+    {
+      "endedAt" : 203.2194880247116,
+      "id" : "3B3AD4DC-32D4-4A5C-B39C-34C4577D6CDD",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 197.30871999263763,
+      "text" : "been simplified down hopefully. Um to being like recommendations"
+    },
+    {
+      "endedAt" : 209.5018459558487,
+      "id" : "7652688C-AD2D-4FA1-BF06-56ABE71B331D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 203.43216001987457,
+      "text" : "Look at your content of your links and and whatever, like your profile. And then it"
+    },
+    {
+      "endedAt" : 215.55537903308868,
+      "id" : "DD661B54-9737-4816-80CF-5DA6111D1940",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 209.75589203834534,
+      "text" : "kind of um it goes ahead and like AI does"
+    },
+    {
+      "endedAt" : 221.5285359621048,
+      "id" : "E9F81286-9CE3-43F8-9C8E-F87DDEE541AE",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 215.5493370294571,
+      "text" : "shared and then it kind of comes at the end and it has a recommendation based on the contents"
+    },
+    {
+      "endedAt" : 227.93435502052307,
+      "id" : "B5443674-CD91-40BD-BF87-A0F6278A7F50",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 221.7636560201645,
+      "text" : "So your profile. So that could be like, oh, this link is dead. You should shorten the copy here. Etcetera"
+    },
+    {
+      "endedAt" : 234.0894739627838,
+      "id" : "160CF983-0CA6-4960-8B49-AAB021BFA5E5",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 228.2397459745407,
+      "text" : "etcetera etc And so where that connects to notifications is often"
+    },
+    {
+      "endedAt" : 240.3757539987564,
+      "id" : "F6E51AAE-0265-4E53-A98D-04550875D065",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 234.33339703083038,
+      "text" : "the back of a recommendation there should be almost like a recommendation suggestion"
+    },
+    {
+      "endedAt" : 246.5885729789734,
+      "id" : "E910AE79-D758-4A91-9919-E103EEF58262",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 241.15111601352692,
+      "text" : "That fans out to the notification system"
+    },
+    {
+      "endedAt" : 252.68572294712067,
+      "id" : "A9B389D5-37FE-4B0C-992C-A6941208ED99",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 246.91677403450012,
+      "text" : "And then ultimately that shows up as a link"
+    },
+    {
+      "endedAt" : 259.0708839893341,
+      "id" : "44D0A387-5A59-48C7-8EAD-164DC69071D3",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 253.24449598789215,
+      "text" : "whatever date link that will open the chat panel on the on the right side"
+    },
+    {
+      "endedAt" : 265.1168450117111,
+      "id" : "779C0255-0433-4F36-A915-3ABBB81ADE9C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 260.0668569803238,
+      "text" : "And that's where your ultimately receive like the recommendation and it'll pull in all the data"
+    },
+    {
+      "endedAt" : 271.8316960334778,
+      "id" : "4DA07D9F-B948-47E1-BE2C-D2EE1B315892",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 265.98790097236633,
+      "text" : "And the AI agent will kind of take some recommendations"
+    },
+    {
+      "endedAt" : 277.6050590276718,
+      "id" : "2B8F279E-FF23-4B3C-8A47-DEF11180A0F4",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 271.6577160358429,
+      "text" : "night day and then pull it from the back end and"
+    },
+    {
+      "endedAt" : 283.8157789707184,
+      "id" : "7411402D-992E-44D5-AA97-423C8ABA6E2D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 278.07790303230286,
+      "text" : "either just serve you like you should fix this dead link, or ultimately it should fix the dead link"
+    },
+    {
+      "endedAt" : 289.59133195877075,
+      "id" : "6423A8E6-09E7-48C9-8A51-512A3E617D15",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 283.6180690526962,
+      "text" : "link For example but yeah recommendation needs to"
+    },
+    {
+      "endedAt" : 289.5840480327606,
+      "id" : "213EFA6D-7E2F-4F61-9145-3DF34D0E97FF",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 284.6704150438309,
+      "text" : "Yeah"
+    },
+    {
+      "endedAt" : 295.8717999458313,
+      "id" : "148AB258-167A-4BA9-AE58-9F4A270C5CF0",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 289.774031996727,
+      "text" : "The recommendations engine needs to fan out. and send something to the notification center."
+    },
+    {
+      "endedAt" : 301.9690819978714,
+      "id" : "0E378436-538E-4AEA-BF42-33E830D0950A",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 297.4448939561844,
+      "text" : "Yeah yeah okay so what"
+    },
+    {
+      "endedAt" : 302.1666009426117,
+      "id" : "21858F71-1590-4E7E-8763-B470AEAA5BB0",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 297.46080899238586,
+      "text" : "Yep okay so what"
+    },
+    {
+      "endedAt" : 308.05463898181915,
+      "id" : "F6FF25CA-6A4F-4EAA-BE5F-A745084E8ACE",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 303.73795199394226,
+      "text" : "Ignoring what we currently have, right, in terms of communications channels"
+    },
+    {
+      "endedAt" : 308.2625889778137,
+      "id" : "19DB692C-48E6-4BA3-AB61-3C9A60F6D797",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 303.7380050420761,
+      "text" : "Ignoring what we currently have in terms of communication strategy"
+    },
+    {
+      "endedAt" : 314.22465205192566,
+      "id" : "E2CCFA10-5095-458F-817C-8C547CE3C126",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 308.45687103271484,
+      "text" : "channels or not necessarily ignoring what we currently have, but like in an ideal world"
+    },
+    {
+      "endedAt" : 314.0484319925308,
+      "id" : "16187F2F-8577-43F9-BBD2-DC646363CB1F",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 309.39257299900055,
+      "text" : "Well not necessarily ignoring what we currently have, but I think in an ideal world"
+    },
+    {
+      "endedAt" : 320.39724695682526,
+      "id" : "A88385A0-E8D8-43C4-822F-318950725932",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 314.24476194381714,
+      "text" : "How would you want to send those communication to you?"
+    },
+    {
+      "endedAt" : 326.44568705558777,
+      "id" : "D79BBA5E-CB5B-4473-961E-34E5C7E45913",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 322.14663994312286,
+      "text" : "I think notifications through"
+    },
+    {
+      "endedAt" : 332.4597990512848,
+      "id" : "637D9DF2-45B6-4E8C-9953-079EE42B38E6",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 326.9734389781952,
+      "text" : "in app but also like through the app and also through"
+    },
+    {
+      "endedAt" : 338.66929399967194,
+      "id" : "0E0B4018-5312-49F2-86E2-652D6D021A32",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 332.7530150413513,
+      "text" : "Email potentially depending maybe on the priority. Um because"
+    },
+    {
+      "endedAt" : 338.66911697387695,
+      "id" : "6143E133-A386-4711-A23B-192BD5AC9C81",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 335.0418759584427,
+      "text" : "Yeah"
+    },
+    {
+      "endedAt" : 344.4340909719467,
+      "id" : "AF437428-2820-4132-9127-83B8512382F5",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 338.9666179418564,
+      "text" : "We want to send a recommendations and get them re-engaged in their profile."
+    },
+    {
+      "endedAt" : 350.5490859746933,
+      "id" : "30E4BE85-65CE-4301-BA16-772651D2C9A6",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 345.27920794487,
+      "text" : "and kind of coming back after seven days, like"
+    },
+    {
+      "endedAt" : 356.6893470287323,
+      "id" : "F83DF634-9AB7-4D63-8DB6-0FE3383C1609",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 350.9397690296173,
+      "text" : "At least there's yeah there's kind of like a flywheel or some sort of loop there. to me"
+    },
+    {
+      "endedAt" : 356.4925299882889,
+      "id" : "F210AA85-41E0-469C-AB6D-3989D920CC2D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 351.08578395843506,
+      "text" : "Yeah"
+    },
+    {
+      "endedAt" : 362.6836140155792,
+      "id" : "DA920FCB-5BFF-4AA4-BAF0-84EFB7FAACCB",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 356.80873703956604,
+      "text" : "Maintain like their LinkedIn profile yeah I think that's the main thinking is like"
+    },
+    {
+      "endedAt" : 368.8483649492264,
+      "id" : "27EB2B80-AEF9-41C3-B952-70464DA97B95",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 363.7297970056534,
+      "text" : "Recommendations should be used to drive users back into the editor. or the"
+    },
+    {
+      "endedAt" : 375.03979897499084,
+      "id" : "4D4A5803-6333-4CB7-A059-7CEA1E15BD18",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 370.6483299732208,
+      "text" : "Okay so what if I told you that you could do"
+    },
+    {
+      "endedAt" : 381.32942605018616,
+      "id" : "D9675BFF-37D7-43DA-8A1D-A122183C9ADF",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 376.9451240301132,
+      "text" : "sorry you could do email and in-app today"
+    },
+    {
+      "endedAt" : 387.4259259700775,
+      "id" : "F2B30AC8-8A37-478C-B41A-7E365B78265F",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 383.231124997139,
+      "text" : "That's like because that's I mean I think it's basically ready. I just need to like deploy a email domain"
+    },
+    {
+      "endedAt" : 393.39614593982697,
+      "id" : "EF763056-EDF1-43CE-B28F-F09D95FF560F",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 387.6264410018921,
+      "text" : "An introduction but that would be ready. But I guess what we're thinking about the notifications platform is like we've got all"
+    },
+    {
+      "endedAt" : 399.4924980401993,
+      "id" : "6FAF5416-42A0-44A3-B100-D76A8712D6D4",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 393.76731503009796,
+      "text" : "these channels that exist now, right? Like you can send push through Braze, you can send marketing emails through Braze, you can"
+    },
+    {
+      "endedAt" : 405.2612849473953,
+      "id" : "58A2BD47-DD01-4BEA-95A2-D4AD21E7B05F",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 399.6900440454483,
+      "text" : "they might transactional industrial SAS we've got SMS we might have WhatsApp somewhere, but maybe not"
+    },
+    {
+      "endedAt" : 411.43770694732666,
+      "id" : "AFFCEB1E-49DF-40D0-9DF1-C63CFAEEC8C8",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 405.7849609851837,
+      "text" : "Anyway what I'm like what basically been trying to solve with an"
+    },
+    {
+      "endedAt" : 411.5600210428238,
+      "id" : "58BC23B2-A81E-4972-8FFA-3E7AA450DEB8",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 405.78501403331757,
+      "text" : "Anyway What I'm basically been trying to solve with no effect"
+    },
+    {
+      "endedAt" : 417.5217020511627,
+      "id" : "D42C434F-10C3-4FFB-9597-4B5673EA12F4",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 411.98434495925903,
+      "text" : "project is like well how do we like basically consolidate all of that into a"
+    },
+    {
+      "endedAt" : 423.4298059940338,
+      "id" : "3F676253-F12F-473A-ACF2-B1FD6C645054",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 417.84784495830536,
+      "text" : "single service so that there's like a kind of nice clean consistent interface for"
+    },
+    {
+      "endedAt" : 429.57412695884705,
+      "id" : "1F99F5DA-A0BA-40EF-A1F0-1C13D171A00F",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 423.8931349515915,
+      "text" : "All of our other systems to send notifications and then also"
+    },
+    {
+      "endedAt" : 429.7453119754791,
+      "id" : "3CD4A3A6-FD5A-4609-AF3A-21F4E5EFE02A",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 424.140056014061,
+      "text" : "all of our other systems to send notifications because you're saying like I shouldn't care about the channel"
+    },
+    {
+      "endedAt" : 435.56228399276733,
+      "id" : "0A2C2219-953D-4C83-8EF4-95E7612DDBA7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 429.93357598781586,
+      "text" : "necessarily oh like I shouldn't care about the interface underlying. I should just care about the channels. Yeah"
+    },
+    {
+      "endedAt" : 435.66973400115967,
+      "id" : "4AF8DF71-101E-41CD-8971-99F3E90D2418",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 430.9793709516525,
+      "text" : "Yeah and exactly"
+    },
+    {
+      "endedAt" : 441.67888498306274,
+      "id" : "14234265-2DA9-4435-B6CC-78B0F733A7EA",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 435.9532790184021,
+      "text" : "And you also don't, you're as a sending service, you don't want to have to, you don't need to know what"
+    },
+    {
+      "endedAt" : 448.02091693878174,
+      "id" : "4E9FC418-4F97-4F21-9FC1-CBA370108C90",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 442.2450679540634,
+      "text" : "Can also use a support. You don't need to know what channels the user has opted out of. You don't need to know how many emails"
+    },
+    {
+      "endedAt" : 454.21637094020844,
+      "id" : "24C94D0D-9F27-4391-8C9D-CD60E39BA50B",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 448.27108895778656,
+      "text" : "have been said, etc. You just want to be like, I want to say this notification and then hope that it's sent and maybe get some results"
+    },
+    {
+      "endedAt" : 454.2175370454788,
+      "id" : "F947143F-8CA5-457B-B157-FB76A47B6FB7",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 448.2879339456558,
+      "text" : "I've been saying etc. You just want to be like, I want to send this notification and then hope that it sends. And maybe get some result"
+    },
+    {
+      "endedAt" : 460.3506109714508,
+      "id" : "BBA4E6A0-5A28-4CA6-879C-042503556CF9",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 454.2173409461975,
+      "text" : "Bye So like that's kind of how I've been designing it. So there's like these notification requested event, which is"
+    },
+    {
+      "endedAt" : 466.45091903209686,
+      "id" : "59EAC78C-7E31-465E-83FB-502B0C24E81E",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 460.5478240251541,
+      "text" : "It's like the kind of the entry point where you say like, here's the user that I'm trying to target. And"
+    },
+    {
+      "endedAt" : 472.3675240278244,
+      "id" : "2B3CC825-0631-403B-B458-B331D13101F9",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 466.8002680540085,
+      "text" : "is the channels that I want to target. But now you can"
+    },
+    {
+      "endedAt" : 478.37318193912506,
+      "id" : "8C933A63-E01B-4FCA-82A1-BE1C7E84990C",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 472.6984510421753,
+      "text" : "One or many channels and the logic is really simple. It's just like try and"
+    },
+    {
+      "endedAt" : 484.510390996933,
+      "id" : "F60CF37B-1301-4C5F-9401-AD28AE938616",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 478.85736203193665,
+      "text" : "all channels I think eventually at some point we want to build in more logic"
+    },
+    {
+      "endedAt" : 490.43638503551483,
+      "id" : "C31C6075-1525-4519-A583-0ED14D61A0DF",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 484.7496420145035,
+      "text" : "Their salt's like and then after seven days of if that hasn't been"
+    },
+    {
+      "endedAt" : 496.3614430427551,
+      "id" : "BEC8BEF4-9F06-4188-A597-15685EC7B715",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 490.7657790184021,
+      "text" : "or clicked on this channel etc. but how that will look is still to be seen"
+    },
+    {
+      "endedAt" : 502.77829802036285,
+      "id" : "DAFB23B7-D0F9-4472-A164-1FB4050F5341",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 496.8796910047531,
+      "text" : "But um yeah like this this service itself at the moment, like I think in the next day or two we'll have respect"
+    },
+    {
+      "endedAt" : 508.5449060201645,
+      "id" : "8B42FAF8-1005-4D1A-B08B-D455AA52CD96",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 502.9743330478668,
+      "text" : "for marketing opt-out frequency caps bounce suppression, everything like that"
+    },
+    {
+      "endedAt" : 514.5510400533676,
+      "id" : "01AEDCC3-2CDB-40A3-9F34-20AB9F2CCF9B",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 508.7430770397186,
+      "text" : "So like the idea is that it should just be really safe for you to be like, cool, let's send a notification with this"
+    },
+    {
+      "endedAt" : 520.4590660333633,
+      "id" : "A024F30C-455E-4154-A1ED-FF13F5DD2D1C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 514.65986597538,
+      "text" : "recommendation to Cesar and if they're offered out of marketing emails they won't get the email"
+    },
+    {
+      "endedAt" : 527.1119250059128,
+      "id" : "1B4C8A3C-3E2F-4A73-84C8-2A277781DF73",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 520.7999589443207,
+      "text" : "advanced raised amendment a channel fails for whatever reason. It might be that it's like disabled for the user or there's an outage"
+    },
+    {
+      "endedAt" : 533.238203048706,
+      "id" : "08016746-5BF3-4CCD-8173-8C12CF60A746",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 526.9660600423813,
+      "text" : "Whatever it is, but you that's an event that you can listen to if you want to. It might be fine that like for this"
+    },
+    {
+      "endedAt" : 539.2763979434967,
+      "id" : "5E795A7B-8ADE-4A5B-8350-C64ABA5F5175",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 533.4649109840393,
+      "text" : "version that you don't do anything when a notification doesn't get sent. You just sent them send them and like in-app"
+    },
+    {
+      "endedAt" : 545.3335870504379,
+      "id" : "0B7239EA-1C86-4D06-8C3B-88C4CA84A33D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 539.4799009561539,
+      "text" : "and maybe email doesn't, but like it's up to you guys. The other thing"
+    },
+    {
+      "endedAt" : 551.3025939464569,
+      "id" : "830C00DD-41DC-4F2B-9A64-82E37C46036E",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 545.6403509378433,
+      "text" : "that I am really keen to solve as well is the like attributions piece"
+    },
+    {
+      "endedAt" : 557.5006510019302,
+      "id" : "308A7003-AF9B-4113-9B2A-750BB0147CF7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 551.5688240528107,
+      "text" : "because one of the one like we the problem that I was describing before is that we don't have this like"
+    },
+    {
+      "endedAt" : 563.6099909543991,
+      "id" : "81BA28AD-0FBC-4104-B695-26681EF4A034",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 557.6148190498352,
+      "text" : "Nice be aware so safely send notifications to users in sort of governed way"
+    },
+    {
+      "endedAt" : 563.7909820079803,
+      "id" : "FB20B59D-9F53-49CF-AADD-589D727E442D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 558.2598929405212,
+      "text" : "clear way to safely send notifications to users in a sort of governed way"
+    },
+    {
+      "endedAt" : 570.0827980041504,
+      "id" : "1B9E3D4C-1A36-4F6B-A14F-D5A598D017C5",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 564.4291059970856,
+      "text" : "The other problem is that we don't know what happens when we do send notifications to users."
+    },
+    {
+      "endedAt" : 576.2018450498581,
+      "id" : "532F4BEC-D51C-4843-95E7-8DA9CEE9A604",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 570.4140850305557,
+      "text" : "So what I want to do and I need to sort of nut it out exactly"
+    },
+    {
+      "endedAt" : 582.1673270463943,
+      "id" : "20BE00B6-C359-473E-921D-4DC47EB46F9D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 576.7299690246582,
+      "text" : "with Weiyang and Lawrence around the data side. But like essentially"
+    },
+    {
+      "endedAt" : 588.2428129911423,
+      "id" : "21D99277-0C67-46D5-ADDE-3569AE1FD630",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 582.4724860191345,
+      "text" : "We want to generate like a notification ID or notification click ID and pass that down in"
+    },
+    {
+      "endedAt" : 594.296501994133,
+      "id" : "012E2F9A-80F3-4B74-BAF3-7EFF001899C5",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 588.9591239690781,
+      "text" : "Push pass that down in SMS. Any link that goes back into the product"
+    },
+    {
+      "endedAt" : 594.3290519714355,
+      "id" : "6593F9F6-73C2-436E-8010-67D550890CB5",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 589.3515510559082,
+      "text" : "I'll sit down in in SMS any any link that goes back into"
+    },
+    {
+      "endedAt" : 600.2950839996338,
+      "id" : "0E3FD083-8763-4C4D-82FD-9D6C3A4F2DBC",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 594.7231390476227,
+      "text" : "And then send like exactly the same as what we do with a Google Click IDs, send that up with the"
+    },
+    {
+      "endedAt" : 606.1416139602661,
+      "id" : "3A8BD3BA-32FF-4FE6-832F-D87CE85FEF47",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 601.0890630483627,
+      "text" : "events sorry the idea being that from a given notification you can look"
+    },
+    {
+      "endedAt" : 612.109866976738,
+      "id" : "2F4F81C6-A6E1-4485-B90E-A48FD9D09049",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 606.5880819559097,
+      "text" : "all of the downstream events that were said from that session."
+    },
+    {
+      "endedAt" : 618.316419005394,
+      "id" : "79336C88-0BE6-47A0-B011-067AFE409ED9",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 612.6594400405884,
+      "text" : "Yeah so if we if you were to send that recommendation email to a user or or you know"
+    },
+    {
+      "endedAt" : 624.258101940155,
+      "id" : "2706BD37-2451-4CA7-B180-F4B29CF3D109",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 618.3989230394363,
+      "text" : "message and they would click on it and then do like three link created or three link removed"
+    },
+    {
+      "endedAt" : 624.4144550561905,
+      "id" : "D79CA996-A7EC-4707-A8FA-5CC4DA9179A5",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 618.6753360033035,
+      "text" : "message and I would click on it then and then do like three creative or three linked removes"
+    },
+    {
+      "endedAt" : 630.1810940504074,
+      "id" : "48EC6D89-9F1B-4C60-9789-BFF383CC04C0",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 624.9586210250854,
+      "text" : "events in that session it would all be attributed to that. notification"
+    },
+    {
+      "endedAt" : 636.3345659971237,
+      "id" : "50FDD91F-468E-47EE-AA09-19C8DD3169C7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 630.4564019441605,
+      "text" : "Yeah, cool. So I guess you're saying there's like um, so we send recommendation"
+    },
+    {
+      "endedAt" : 642.49742603302,
+      "id" : "BC276F5E-3AE5-4880-B704-7F0BD76DAEFE",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 637.1924389600754,
+      "text" : "I don't know this link is dead and then we send it to the notification center"
+    },
+    {
+      "endedAt" : 648.58061003685,
+      "id" : "3E7EDEF5-21F0-477F-974C-4ECDA36E18A1",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 642.962257027626,
+      "text" : "whatever hub and then you decide, okay, so based on their um"
+    },
+    {
+      "endedAt" : 648.3268020153046,
+      "id" : "6C94D95E-DC25-4184-9ADA-A8D3822B1E7A",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 643.6463340520859,
+      "text" : "Yeah"
+    },
+    {
+      "endedAt" : 654.6910170316696,
+      "id" : "BE2C28F6-BAE8-4F54-8E7D-3FA150316CF6",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 649.0562570095062,
+      "text" : "What, they have enabled if they have the app. You try and like distribute it based on some priority"
+    },
+    {
+      "endedAt" : 660.6369789838791,
+      "id" : "69620F04-4455-4715-892E-8EE089A9504E",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 654.8879699707031,
+      "text" : "I guess based on some sequence and then there's like a stable ID across"
+    },
+    {
+      "endedAt" : 666.621701002121,
+      "id" : "F8E09FBC-BA07-4F5A-9326-BC21C28D68D7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 660.8549389839172,
+      "text" : "the different channels right? And then so then you have like the open"
+    },
+    {
+      "endedAt" : 672.8417749404907,
+      "id" : "B7790BCE-DC7C-4FB1-9E82-649DAE1B9574",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 666.8845599889755,
+      "text" : "and click tracking. and then so on that event, you track the channel probably, I guess"
+    },
+    {
+      "endedAt" : 679.1578389406204,
+      "id" : "1EDC5933-988D-43F2-B809-F3597FDC2B57",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 673.0192680358887,
+      "text" : "And also that stable ID right? Yeah it might be that there's"
+    },
+    {
+      "endedAt" : 679.135125041008,
+      "id" : "3E21E159-28D6-4D6F-9B5E-A1CAD79C0EB7",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 677.0336199998856,
+      "text" : "Yeah yeah yeah it might be the taste"
+    },
+    {
+      "endedAt" : 685.0593049526215,
+      "id" : "F0501BDE-58DA-4008-93CB-E482F87178AE",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 679.4593479633331,
+      "text" : "One ID one click ID per channel, or it might be that there's"
+    },
+    {
+      "endedAt" : 691.2690780162811,
+      "id" : "CBE585F5-BDCB-4EB3-9E7A-B2CEE64E621B",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 685.428612947464,
+      "text" : "That'll be it, right? That'll be important for attribution to basically like this notification channel led to this"
+    },
+    {
+      "endedAt" : 697.155483007431,
+      "id" : "9BC86994-8EC7-4A9D-8FB2-0BA595535A0D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 691.5386650562286,
+      "text" : "The idea then being that you can build"
+    },
+    {
+      "endedAt" : 703.2804770469666,
+      "id" : "E7F78E5A-B07C-4938-8D10-6CB0F77D582D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 697.5787370204926,
+      "text" : "Is it perhaps some design analysis in hex, which is like which channels are"
+    },
+    {
+      "endedAt" : 703.4433879852295,
+      "id" : "22090FCE-2EFB-4FB5-B18F-567870F6C96D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 697.6535650491714,
+      "text" : "it have some analysis in hex, which is like which kernels are"
+    },
+    {
+      "endedAt" : 709.538468003273,
+      "id" : "F4B42D8B-2EE3-45B1-AEA5-724B8EE753CE",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 703.5888489484787,
+      "text" : "leading to the most actions from recommendations, for example, which channels should we"
+    },
+    {
+      "endedAt" : 715.304121017456,
+      "id" : "3B7CBA4A-5A97-4A99-A753-B1ADB89E4983",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 709.6821969747543,
+      "text" : "focus on which channels should we signal, like which channels should we consider deprioritizing"
+    },
+    {
+      "endedAt" : 715.3660620450974,
+      "id" : "1F035208-A34B-46B6-89AD-A1BA964BA463",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 709.8662580251694,
+      "text" : "focus on which channels should be similar, which channels should be considered, they prioritizing"
+    },
+    {
+      "endedAt" : 721.4406759738922,
+      "id" : "34C59A99-3D6B-49A6-BC91-B944D4CD75F5",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 715.4567090272903,
+      "text" : "That's the aim. And I think it's really, really doable. I think it's not rocket science"
+    },
+    {
+      "endedAt" : 727.6908630132675,
+      "id" : "545E4271-F55E-4F20-A4DC-9C3CAC1A8904",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 721.7733470201492,
+      "text" : "Thankfully"
+    },
+    {
+      "endedAt" : 727.772125005722,
+      "id" : "C976E316-C16E-4763-AF52-23F4F905543C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 722.3560190200806,
+      "text" : "trying to think like yeah there's like omni channel platforms like Zendesk or something"
+    },
+    {
+      "endedAt" : 733.6552740335464,
+      "id" : "417E2708-036E-4732-81B6-639DAFD3B9FE",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 727.9750109910965,
+      "text" : "Something where it's like you you send a notification, you start on the"
+    },
+    {
+      "endedAt" : 739.5326050519943,
+      "id" : "734B031E-98F3-4F1A-B94A-C490A8B51613",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 733.8376970291138,
+      "text" : "form and then you get an email and then like they follow up on a text. And it kind of all kind of"
+    },
+    {
+      "endedAt" : 746.0431460142136,
+      "id" : "7AFFBA6A-6536-4057-9498-A73D59558557",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 739.9620560407639,
+      "text" : "find the scenes that's like the extreme I think here it's it's almost like um"
+    },
+    {
+      "endedAt" : 752.18730199337,
+      "id" : "E09C0888-6082-4676-AC4A-E151986D0BE9",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 746.4629609584808,
+      "text" : "Like Slack where you send it and then if they don't have mobile enabled"
+    },
+    {
+      "endedAt" : 758.2965550422668,
+      "id" : "448B72D3-0C8C-4619-B004-2414D6716923",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 752.177199959755,
+      "text" : "Like you just send them an email or something. Like you just fall back. Okay. That's cool"
+    },
+    {
+      "endedAt" : 764.6347119808197,
+      "id" : "DC0C38AB-9A0C-4F1D-B3E3-B30767654BBC",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 758.1328150033951,
+      "text" : "I think then like the dayplinking part because off the back of a recommendation, um, we'll"
+    },
+    {
+      "endedAt" : 770.7257540225983,
+      "id" : "25B658D4-1CD2-4912-BBD7-78F6C07D140F",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 764.9289959669113,
+      "text" : "to probably generate I guess like a like a subject or like a"
+    },
+    {
+      "endedAt" : 776.6710200309753,
+      "id" : "231A04EE-CDA3-4EE5-9F08-47C9B4F27477",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 770.9447779655457,
+      "text" : "description of like the message content. Um and then probably like a URL that"
+    },
+    {
+      "endedAt" : 782.5457359552383,
+      "id" : "1E6268CB-FE08-44A4-84DD-D18B7FFB4B97",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 776.9779540300369,
+      "text" : "Date lengths into opening up the chat session"
+    },
+    {
+      "endedAt" : 789.0839480161667,
+      "id" : "434A29AA-5607-4478-84B7-0664675D62F6",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 783.0480910539627,
+      "text" : "Probably with some like recommendation ID. Um, to like, yeah, just be able to open up"
+    },
+    {
+      "endedAt" : 795.1126719713211,
+      "id" : "1DB268F2-EC58-4729-8B20-FF2196422CCB",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 789.9369130134583,
+      "text" : "Um and fetched the whole payload"
+    },
+    {
+      "endedAt" : 801.2918549776077,
+      "id" : "6782A2DB-89BE-4087-B715-94303F24988F",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 795.8814630508423,
+      "text" : "But yeah so I was a bit confused with braise. Do I"
+    },
+    {
+      "endedAt" : 807.0712759494781,
+      "id" : "5CB39D98-23E4-4D01-A3CA-49DBAA57039A",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 803.4550139904022,
+      "text" : "Yes that was the other thing that I forgot to mention was the"
+    },
+    {
+      "endedAt" : 813.1489230394363,
+      "id" : "79319CAD-B3B0-4424-8000-F4BA4D4E78B2",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 807.5796350240707,
+      "text" : "Raise piece of this is well the thing that we're still trying to figure out"
+    },
+    {
+      "endedAt" : 819.1162719726562,
+      "id" : "F537AA31-C2AA-425E-A381-C246793BC6B1",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 813.3448649644852,
+      "text" : "Essentially what I'm trying to propose and trying to steer us towards is moving away from braids"
+    },
+    {
+      "endedAt" : 825.7368439435959,
+      "id" : "7B8DFA11-0127-4B09-AE63-93B70C670908",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 820.0225039720535,
+      "text" : "some all of our marketing emails the reason being that it's cheap for non-engineers"
+    },
+    {
+      "endedAt" : 825.588721036911,
+      "id" : "F8386985-B1A2-4177-9E51-3879397FF59B",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 820.042690038681,
+      "text" : "some or all about marketing emails. The reason being that it's shit for non-engineers"
+    },
+    {
+      "endedAt" : 831.500766992569,
+      "id" : "AB74EEEE-FF3C-4A68-AB1C-646500636275",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 825.7805550098419,
+      "text" : "Sorry computer engineers. It's like really good for non-engineers. They love it. They've used it like marketing folks have used it. Neighbor"
+    },
+    {
+      "endedAt" : 837.6342990398407,
+      "id" : "2220C9D6-3A9F-4ABF-8E0C-A5F4ACAB83CB",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 831.6965819597244,
+      "text" : "Love it because it gives them native got like we as engineers aren't very easy"
+    },
+    {
+      "endedAt" : 837.6426080465317,
+      "id" : "6C93907C-4DBC-4D29-B9EE-3080A5FAFD4D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 831.8281639814377,
+      "text" : "about it because it gives them but like we as engineers aren't very"
+    },
+    {
+      "endedAt" : 843.5586190223694,
+      "id" : "71D83851-62B3-4490-91F8-D2801B20330A",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 837.5732820034027,
+      "text" : "easily programmatically or like agentically interact with it templates really"
+    },
+    {
+      "endedAt" : 849.5218850374222,
+      "id" : "E48FCF55-E153-41C4-8CB5-13CDE56A1B5B",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 843.753888964653,
+      "text" : "Annoying like the channel support is really limited"
+    },
+    {
+      "endedAt" : 855.613921046257,
+      "id" : "275CEBA4-435A-4B6B-B259-5EE4481A172B",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 851.2686619758606,
+      "text" : "I think for this case I guess there's like"
+    },
+    {
+      "endedAt" : 862.2243160009384,
+      "id" : "4DB59D1A-A721-49DD-B173-ABF3B60CFC90",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 856.1487690210342,
+      "text" : "kind of open question on the project or how are we going to"
+    },
+    {
+      "endedAt" : 867.9857790470123,
+      "id" : "3A3E5F79-74BB-4062-BAB8-1FE81F64774F",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 862.4430350065231,
+      "text" : "migrate over this new system as as what stays on braze. But I think for your case this is like a really"
+    },
+    {
+      "endedAt" : 874.0004290342331,
+      "id" : "B1E010BA-732D-4D6B-B3D4-0781A8BB455E",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 868.2854789495468,
+      "text" : "really really really good fit for our platform because it's like"
+    },
+    {
+      "endedAt" : 880.0498449802399,
+      "id" : "CA7B1FFF-AF0B-4A7C-BEE1-64601EB81BCC",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 874.4925999641418,
+      "text" : "You've got these very clear back-end triggers which we can then send an event"
+    },
+    {
+      "endedAt" : 886.0509799718857,
+      "id" : "526808C1-D425-4A17-B8A2-1B85479BEF73",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 880.5572979450226,
+      "text" : "And so what that would mean is the email channels that"
+    },
+    {
+      "endedAt" : 892.0642780065536,
+      "id" : "83E9934E-59AB-4A8F-9F30-3C30904D6B61",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 886.2457469701767,
+      "text" : "Is supported in the notification platform now that I've just built out in the last week is sending via SES."
+    },
+    {
+      "endedAt" : 898.0860040187836,
+      "id" : "F6237727-8EF2-41FA-AE54-1ED2D8F560CD",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 892.5978879928589,
+      "text" : "The benefit of that is that it can just all send through our existing SES infrastructure"
+    },
+    {
+      "endedAt" : 904.0885759592056,
+      "id" : "67A27CEF-59EB-48D1-8DEF-6F1E7F32F7AA",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 898.5026819705963,
+      "text" : "And that whole repo and service is set up where you can basically like go into the SES repo"
+    },
+    {
+      "endedAt" : 910.1455290317535,
+      "id" : "7BCFFF18-285E-4FB1-B272-FC555C6E596D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 904.9014279842377,
+      "text" : "of create a template with an ID is handlebars file and then your email payload is just like"
+    },
+    {
+      "endedAt" : 916.1073479652405,
+      "id" : "301EBEC9-D24E-497B-BE24-B1D3430EF895",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 910.4266300201416,
+      "text" : "Here's the template ID, here's the template variables. Yes, wait. And the benefit of that is that you can"
+    },
+    {
+      "endedAt" : 922.0400589704514,
+      "id" : "0144212D-3284-4E63-A1B1-323A27651CB4",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 916.4648720026016,
+      "text" : "One shot that whole flow with denim crop or something like, right?"
+    },
+    {
+      "endedAt" : 922.1992650032043,
+      "id" : "F2F7458E-2E41-49F1-9E40-59FA4CCFE4DD",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 916.6299389600754,
+      "text" : "One shot that whole flow with dead improv or something if you wanted, right?"
+    },
+    {
+      "endedAt" : 928.2211680412292,
+      "id" : "D90664B4-9468-4CD9-8FF8-4BA6AB6B9796",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 922.3970659971237,
+      "text" : "Okay that's good to know yeah so like the the cell to you guys is that it's like"
+    },
+    {
+      "endedAt" : 928.1665929555893,
+      "id" : "1C134C9F-6752-4B90-B67D-F48CE6BB9CE9",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 922.9220579862595,
+      "text" : "I've had really yeah so like the sell to you guys is that it's like"
+    },
+    {
+      "endedAt" : 934.1249530315399,
+      "id" : "2F11BF1C-7D3E-4156-AB2D-221ECA3956C1",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 928.3326560258865,
+      "text" : "Basically self-serve marketing emails."
+    },
+    {
+      "endedAt" : 934.346076965332,
+      "id" : "3CB86E0E-DDC6-4ADA-8707-763BF3E47954",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 928.4928560256958,
+      "text" : "Basically serve marketing I remember you were consolidating, was it with"
+    },
+    {
+      "endedAt" : 940.3319319486618,
+      "id" : "CFFB5A6C-182D-48FD-BB87-C026C91AE013",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 935.0432749986649,
+      "text" : "or we migrating off SendGrid so you're migrating"
+    },
+    {
+      "endedAt" : 940.5516910552979,
+      "id" : "A8F3BEEC-65D1-4844-A7E2-82BE0BA2B8F7",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 937.7101140022278,
+      "text" : "Yes Engrid is migrated so we're no longer using"
+    },
+    {
+      "endedAt" : 946.5147819519043,
+      "id" : "2AD3C9B7-D2D5-48DF-836A-BFA3CB4B2982",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 940.5628490447998,
+      "text" : "to SAS okay cool. And so then you had to do handlebars like from SendGrid templates to"
+    },
+    {
+      "endedAt" : 946.3684120178223,
+      "id" : "829A0149-08CD-4528-BDD9-8FBBF38D76F4",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 940.7464289665222,
+      "text" : "Great, we're using SAS. Yeah"
+    },
+    {
+      "endedAt" : 952.6063079833984,
+      "id" : "2FEA58F1-3F27-43DD-83D3-3309F0312808",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 947.0411880016327,
+      "text" : "SAS yeah kind of went from 10th grade with dynamic templ"
+    },
+    {
+      "endedAt" : 952.6070729494095,
+      "id" : "40AF663D-9A31-4CC3-9610-0B813B79B914",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 948.99489402771,
+      "text" : "Yeah kind of went from SendGrid with dynamic templates"
+    },
+    {
+      "endedAt" : 958.3762630224228,
+      "id" : "3D1F65B3-3742-4D39-A947-AD02242CE924",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 952.8108030557632,
+      "text" : "it's manage via the console then same grid with handlebar templates and code"
+    },
+    {
+      "endedAt" : 958.5860819816589,
+      "id" : "8C4399A7-B0E6-44DA-97AF-C493823DAFF2",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 954.0064859390259,
+      "text" : "manufactured by the consult then send grid with handwashed plates in code"
+    },
+    {
+      "endedAt" : 964.5446289777756,
+      "id" : "ACE309DE-8034-44B3-9F53-45A29B855916",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 958.7440979480743,
+      "text" : "to then SES and was employing those kind of migration path. But those"
+    },
+    {
+      "endedAt" : 964.6680890321732,
+      "id" : "D5DFA7BE-284D-4FAF-9B11-5871A441CCE7",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 958.9605449438095,
+      "text" : "Do their SES with hand washing plays increase those kind of migration path. But those"
+    },
+    {
+      "endedAt" : 970.4578169584274,
+      "id" : "267FF82E-BF7E-40F1-8A3B-FBBEC6350D2C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 964.6800169944763,
+      "text" : "Handlebar templates are like, yeah agents are very good at figuring them out. Is that better than"
+    },
+    {
+      "endedAt" : 970.5141379833221,
+      "id" : "663007BC-6BBC-4D5B-AC68-D100C213D7FC",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 964.8767490386963,
+      "text" : "Handlebars templates are like, yeah, agents are very good at figuring them out because they're just HTML basically"
+    },
+    {
+      "endedAt" : 976.4916880130768,
+      "id" : "25811DD8-B84C-4AF3-A63A-C4D1D1AC2376",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 970.6552410125732,
+      "text" : "Like um react email or anything? Like does the job? Um, yeah, I mean my adventures"
+    },
+    {
+      "endedAt" : 976.7358449697495,
+      "id" : "BBDDFAD2-FEC5-4DA9-8144-31878D243F16",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 975.2301700115204,
+      "text" : "Yeah I mean my adventure"
+    },
+    {
+      "endedAt" : 982.5026390552521,
+      "id" : "A186F16A-F8D3-47C0-B151-38DF8715D876",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 976.7830560207367,
+      "text" : "plan is to migrate everything to React Email just because like our email templates are very, very heavy"
+    },
+    {
+      "endedAt" : 988.5897369384766,
+      "id" : "44D2CFFC-C592-40B2-901F-3FBA30031CDA",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 983.019168972969,
+      "text" : "templateed and so yeah, it's a really good fit for that"
+    },
+    {
+      "endedAt" : 994.7487609386444,
+      "id" : "B44154C5-78E3-46A9-8581-A62607BB145D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 989.0410380363464,
+      "text" : "Yeah I've had a I've really had good success with React email, but some of the other ones where like you're just"
+    },
+    {
+      "endedAt" : 994.5530029535294,
+      "id" : "A6AF91F0-943C-4FE3-A782-B25F5C64254D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 989.1428960561752,
+      "text" : "I just haven't really done it yet."
+    },
+    {
+      "endedAt" : 1000.7200469970703,
+      "id" : "8B89ACE8-5C26-448C-92C3-0417A39DE5EE",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 995.3410869836807,
+      "text" : "Talk in fighting outlook and every email client. So yeah, nice."
+    },
+    {
+      "endedAt" : 1006.926715016365,
+      "id" : "D8871AD7-E9BF-4545-B18E-6BD4F71EF1F7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1001.0392780303955,
+      "text" : "Okay that's pretty good. So what's that repo called? That's just the SES repo"
+    },
+    {
+      "endedAt" : 1006.9997869729996,
+      "id" : "5D988492-FDAD-4133-B51C-7017CC35C3F3",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1006.6124370098114,
+      "text" : "It's"
+    },
+    {
+      "endedAt" : 1012.9740279912949,
+      "id" : "2A8B16A3-9912-4CD7-B364-C6B59949C41A",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1007.1855939626694,
+      "text" : "Still cold second grade because we haven't renamed it. I think it always trips up the"
+    },
+    {
+      "endedAt" : 1013.1008379459381,
+      "id" : "E4E745CF-CEDC-47CC-A97D-5C2AC78FD843",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1007.332710981369,
+      "text" : "Do cold SendGrid okay cool boys always trips off the um"
+    },
+    {
+      "endedAt" : 1019.0455969572067,
+      "id" : "5CAE7F5A-BEBF-4864-A0CB-233694B6F394",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1014.7525390386581,
+      "text" : "The agents they're like cool, need to support Syngood and like no no it's just called Syngrid"
+    },
+    {
+      "endedAt" : 1025.158951997757,
+      "id" : "88AA28BC-009C-43DA-95CC-B41B53735221",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1019.7454270124435,
+      "text" : "So I'm gonna drop braise. I'm gonna um use"
+    },
+    {
+      "endedAt" : 1031.0189620256424,
+      "id" : "A5EDA8A2-C4B8-4E9C-90A7-D0EE3AA7CBCC",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1025.2558510303497,
+      "text" : "I SES yeah well I I think the idea is that you don't have to know"
+    },
+    {
+      "endedAt" : 1037.1242940425873,
+      "id" : "B23373C8-4D19-48FF-B1AC-C3D7CAC4EFBE",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1031.4500249624252,
+      "text" : "about what the underlying set provide email provider is. You're just sending an email notification. Yeah"
+    },
+    {
+      "endedAt" : 1043.4146929979324,
+      "id" : "4ED18E6C-C36E-461C-97AA-2E412ED3222E",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1037.749932050705,
+      "text" : "Yeah I'm trying to think what else there was with that ticket, because I was also saying"
+    },
+    {
+      "endedAt" : 1043.311038017273,
+      "id" : "E0E0ADB2-BC84-4EF4-9D1D-0A8A9B69FD9C",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1039.315104007721,
+      "text" : "Yeah that's the interface I guess."
+    },
+    {
+      "endedAt" : 1049.2743079662323,
+      "id" : "39B92CE8-2338-4836-913D-8DDC52985742",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1045.1715849637985,
+      "text" : "one sec"
+    },
+    {
+      "endedAt" : 1049.2806799411774,
+      "id" : "F206D9BD-FE1E-4822-8347-BBB3A9CDC8BA",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1048.8827730417252,
+      "text" : "Um"
+    },
+    {
+      "endedAt" : 1055.375617980957,
+      "id" : "BE0835E5-E6E2-431F-B831-C0AE3ED0828D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1049.6301259994507,
+      "text" : "I've got a couple follow-up questions for you as well"
+    },
+    {
+      "endedAt" : 1061.4099589586258,
+      "id" : "8EFE3F93-F5DF-49EF-B821-D46B2C0DB6F8",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1055.571998000145,
+      "text" : "I lost it yeah whatever lost it"
+    },
+    {
+      "endedAt" : 1067.4338949918747,
+      "id" : "9347837E-3CFE-4844-B881-0CF6C35B5FA6",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1064.5570789575577,
+      "text" : "Okay so my follow-up question, one question I had"
+    },
+    {
+      "endedAt" : 1073.5516159534454,
+      "id" : "74848AEF-878E-41D3-9606-F3136C7A8BF7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1067.6247780323029,
+      "text" : "was have you worked with any designers or like brand designers"
+    },
+    {
+      "endedAt" : 1079.4868919849396,
+      "id" : "93CCF146-7F5E-4E3F-9C9E-4336E48FD8CC",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1073.745206952095,
+      "text" : "Yeah on what they emails what this content might look like. Not yet"
+    },
+    {
+      "endedAt" : 1079.4862580299377,
+      "id" : "AA604559-D5B7-42A9-8F58-D7399A072BDA",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1073.771654009819,
+      "text" : "Yeah on what these emails and what this content might look like"
+    },
+    {
+      "endedAt" : 1085.6239629983902,
+      "id" : "C57BD0F8-D19A-46F7-829E-63D3B21A3D4F",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1079.6844819784164,
+      "text" : "I'm trying to think if there might be some designs. I'll need to find it. I think we were kind of"
+    },
+    {
+      "endedAt" : 1091.6073759794235,
+      "id" : "236CC820-924B-4681-9027-BA2D453ADEA6",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1086.0569360256195,
+      "text" : "Initially trying to do it all in the UI. And I think now we're just going to lean more heavily on the node"
+    },
+    {
+      "endedAt" : 1097.7035429477692,
+      "id" : "C0EF8E92-DC2F-4C89-A3CD-D658C2B36E01",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1091.9704719781876,
+      "text" : "notifications system um but yeah, definitely don't want to reinvent the wheel"
+    },
+    {
+      "endedAt" : 1103.9471830129623,
+      "id" : "3E583138-5C10-468A-9125-624399B52742",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1097.9306880235672,
+      "text" : "On templates um because I think that's one of the"
+    },
+    {
+      "endedAt" : 1103.9574309587479,
+      "id" : "4AC64E30-A793-4049-B644-4F98FA8C2D2A",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1101.1985720396042,
+      "text" : "Okay because I think that's one of it"
+    },
+    {
+      "endedAt" : 1109.894366979599,
+      "id" : "F24C130F-8555-445F-9F5A-6B32EC10F24B",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1104.145910024643,
+      "text" : "One of the things that we're trying to figure out as well is if we are starting to send these marketing"
+    },
+    {
+      "endedAt" : 1116.1891520023346,
+      "id" : "403733EB-B63F-4809-BF42-362AFD34D7DA",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1110.1363580226898,
+      "text" : "emails braise they're like I think"
+    },
+    {
+      "endedAt" : 1116.1904740333557,
+      "id" : "71AF40A2-0E05-4783-A6A4-3DC9C05DCB65",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1110.2467019557953,
+      "text" : "emails outside with braids like I think"
+    },
+    {
+      "endedAt" : 1122.3264549970627,
+      "id" : "7607C5C1-22DE-4019-AE89-BA6C0E990933",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1116.3885049819946,
+      "text" : "What are the processes at the moment? It's like very, very, very manual process. There's like lots of different hops, lots of stakeholders"
+    },
+    {
+      "endedAt" : 1128.474315047264,
+      "id" : "E013DCFB-CD1D-492C-8A29-1E9606A3C30C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1123.2032829523087,
+      "text" : "And part of that is about ensuring a certain level of branding consistency"
+    },
+    {
+      "endedAt" : 1134.5365179777145,
+      "id" : "234041AA-95CF-41D1-95D7-59A36F5C27E8",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1130.3675019741058,
+      "text" : "So I think depending on the content of those recommendations"
+    },
+    {
+      "endedAt" : 1140.6230000257492,
+      "id" : "417A6C8B-AF3B-45A7-A2B4-D88F6A8F4CAD",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1135.0792620182037,
+      "text" : "I it might be that it just is the same like email template that we use for like all of"
+    },
+    {
+      "endedAt" : 1146.443794965744,
+      "id" : "799D21ED-83AE-4823-B9A7-BAF2E279D2DC",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1140.8280769586563,
+      "text" : "rather emails but would just like different copy in it and a different CTA. If that's the case, then like"
+    },
+    {
+      "endedAt" : 1152.5595010519028,
+      "id" : "D0BFC402-F5AA-49F9-85D4-FCC73373EEAE",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1147.1206970214844,
+      "text" : "That's good news because that means we don't have to go through like brand creative processes. But if at any point"
+    },
+    {
+      "endedAt" : 1158.4571870565414,
+      "id" : "FED3C7F7-4994-41A0-A6E6-5D89B5C73F73",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1152.6443209648132,
+      "text" : "You do speak to designers and there's like conversations around what those emails should look like"
+    },
+    {
+      "endedAt" : 1164.621109008789,
+      "id" : "768DA963-17A5-4322-BA24-8794316F13DF",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1159.0109460353851,
+      "text" : "Definitely raise that with me because yeah, we don't essentially like I'm"
+    },
+    {
+      "endedAt" : 1170.602007985115,
+      "id" : "431965D1-2110-4F88-A0AB-F8F170423507",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1164.9515960216522,
+      "text" : "Trying to push ahead with a kind of pilot of this notifications platform. But I"
+    },
+    {
+      "endedAt" : 1177.02088201046,
+      "id" : "05F858AF-C834-46ED-B683-54E9DE2194BF",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1170.9068089723587,
+      "text" : "I don't want to head too quickly and leave like marketing and design"
+    },
+    {
+      "endedAt" : 1176.8651609420776,
+      "id" : "D19BBB21-D90D-4C26-8BDB-E1E73A721FAB",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1170.9930820465088,
+      "text" : "0.12 head too quickly and leave marketing and brand design"
+    },
+    {
+      "endedAt" : 1183.1209579706192,
+      "id" : "B0E5E68F-2467-40DB-A44C-510BF7E055EC",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1177.8730100393295,
+      "text" : "Yeah interesting so all the email all the emails are the most"
+    },
+    {
+      "endedAt" : 1188.9679679870605,
+      "id" : "02A220B2-8623-4811-9662-433FB19A2B38",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1184.872720003128,
+      "text" : "In braes are they"
+    },
+    {
+      "endedAt" : 1195.1745179891586,
+      "id" : "C7BA7901-A3B5-4418-AD81-329810DF6FF0",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1190.449972987175,
+      "text" : "Are they kind of done manually? Like each time? The process at the moment is like"
+    },
+    {
+      "endedAt" : 1195.2647960186005,
+      "id" : "1595110C-13B9-4417-B74D-F070D9E3BA0C",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1192.7841089963913,
+      "text" : "Yeah yeah the process at the moment is like"
+    },
+    {
+      "endedAt" : 1201.4890789985657,
+      "id" : "D2ADC784-ACDB-403D-9366-70EB03C0AEDD",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1195.3907079696655,
+      "text" : "You as a productivity team has something that I want to market with an email. Beggar product PMM"
+    },
+    {
+      "endedAt" : 1207.467043042183,
+      "id" : "2ACCD7D8-15DF-4165-B429-BE8C241C480D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1201.845903992653,
+      "text" : "find someone from PMM who will then help them with the strategy. Then there's like all this"
+    },
+    {
+      "endedAt" : 1213.7022030353546,
+      "id" : "A7D45F7B-3F25-48C8-8355-671C00CA8C36",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1207.821969985962,
+      "text" : "back and forth, like trying to figure out what the content is, etc. Then they'll go to like brand creative"
+    },
+    {
+      "endedAt" : 1213.5894119739532,
+      "id" : "30850043-C827-4D91-A2DF-6157D9D443AA",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1207.8300149440765,
+      "text" : "back and forth by trying to figure out what the content is, etc. There are no go-to like brand creative"
+    },
+    {
+      "endedAt" : 1219.4712209701538,
+      "id" : "5B58F177-EEAE-46C6-A877-159651672AB5",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1213.9003579616547,
+      "text" : "What brand designer sorry who will then come up with assets for the email and which is like, yeah, the"
+    },
+    {
+      "endedAt" : 1225.6313120126724,
+      "id" : "56A2C3DF-F296-4655-B099-C2425ED87367",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1219.8506870269775,
+      "text" : "The images and copy and then overall template. And then they will go to, then they pass that back to"
+    },
+    {
+      "endedAt" : 1231.7463899850845,
+      "id" : "98B70B0B-512F-4E5F-AAEC-4D53CF31712A",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1225.8573579788208,
+      "text" : "Like Corey, I think from CRM who then classes it to BRCG, which is this like third party"
+    },
+    {
+      "endedAt" : 1238.2066910266876,
+      "id" : "43078E74-DFC6-477B-85C0-B5BDD98285D7",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1232.9462549686432,
+      "text" : "consultant that we use who then configures the HTML for the browser"
+    },
+    {
+      "endedAt" : 1244.115327000618,
+      "id" : "4103B144-69F4-407B-98E2-38B618BDFFF0",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1238.4077939987183,
+      "text" : "template a another tool called Stripo which then syncs the template back"
+    },
+    {
+      "endedAt" : 1250.2207709550858,
+      "id" : "E2972A4C-07E9-4D35-8FE1-2D60FBEB1744",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1244.311753988266,
+      "text" : "into braids. So you've got, yeah, it's fucked. It's like it's so much effort for like"
+    },
+    {
+      "endedAt" : 1250.2799199819565,
+      "id" : "35E462A6-A3E7-435B-8165-D24C029C1C85",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1244.455463051796,
+      "text" : "into braids so you've got yeah it's fucked so much and I'm just getting"
+    },
+    {
+      "endedAt" : 1256.0185110569,
+      "id" : "DC476000-0B1E-43A2-8F74-CEB50AE41961",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1250.5999009609222,
+      "text" : "Nice"
+    },
+    {
+      "endedAt" : 1255.949602007866,
+      "id" : "8EA5F078-522C-43BC-BF43-6502B0AA4077",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1250.9645169973373,
+      "text" : "yeah I'm just gonna one-shot some bullshit. Um, okay, cool"
+    },
+    {
+      "endedAt" : 1262.3409049510956,
+      "id" : "56EBFF1B-92B9-4BF0-ACE8-F88FEC2AB307",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1256.2412459850311,
+      "text" : "Yeah the the reason it might not be as like it might have to be a bit more formal"
+    },
+    {
+      "endedAt" : 1268.0853110551834,
+      "id" : "66C7C5D2-A773-4803-8FF0-A9FB4FF7C812",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1262.5306890010834,
+      "text" : "milk or like a bit templated because it's kind of um"
+    },
+    {
+      "endedAt" : 1274.2539349794388,
+      "id" : "617EAE65-9F6B-40EA-9567-AF8D028BDD2C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1268.5081230401993,
+      "text" : "generated-ish of the back of the recommendation. So we'll see what we like generate"
+    },
+    {
+      "endedAt" : 1280.083165049553,
+      "id" : "E9E190AA-7E6F-4EFC-B4EB-B4A38BFAD278",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1274.5221469402313,
+      "text" : "Right as copy but I don't think there'll be like, um"
+    },
+    {
+      "endedAt" : 1286.256430029869,
+      "id" : "4A76D676-7548-4D32-B912-49CFA54CBD3C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1280.4898129701614,
+      "text" : "images or anything so fancy just yet. But we might have like types"
+    },
+    {
+      "endedAt" : 1286.2558189630508,
+      "id" : "1D6287A1-2E15-4D05-A889-7AFAD01A4090",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1281.8639600276947,
+      "text" : "Yeah"
+    },
+    {
+      "endedAt" : 1292.5429919958115,
+      "id" : "C1156394-94C0-45C7-ACC7-01C02DED52C0",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1286.4363490343094,
+      "text" : "So maybe we can like map it to like the right template. But yeah, we're just gonna keep it"
+    },
+    {
+      "endedAt" : 1298.6485639810562,
+      "id" : "751088DA-CCC1-413D-9249-6159353DF7BE",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1292.7373490333557,
+      "text" : "Really simple for now. I mean, that's good. That's good for me. Cool"
+    },
+    {
+      "endedAt" : 1304.7186830043793,
+      "id" : "B1412BD2-04EF-4810-84D4-109A0196F40C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1299.504487991333,
+      "text" : "Uh okay so what I will"
+    },
+    {
+      "endedAt" : 1304.7083020210266,
+      "id" : "24AAB2E5-704E-4301-8E4F-646A03E59CC0",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1299.5258040428162,
+      "text" : "Okay so what I will do"
+    },
+    {
+      "endedAt" : 1310.8941459655762,
+      "id" : "3BEE9A29-B774-4339-8D07-D1C98875D9B0",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1305.1383210420609,
+      "text" : "is I might start in notifications platform and just say, hey, we"
+    },
+    {
+      "endedAt" : 1316.9906150102615,
+      "id" : "3AE499F9-250C-4305-A369-75FF2311BDAF",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1312.464812040329,
+      "text" : "One actually one thing before I start that thread, because I want to loop in"
+    },
+    {
+      "endedAt" : 1323.0126210451126,
+      "id" : "FA16C756-DC9F-4F4B-9D54-49B893EE6FAB",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1317.2698630094528,
+      "text" : "Mike, do you have a payann that you're working with? Uh yeah Manny. Oh Manny okay cool"
+    },
+    {
+      "endedAt" : 1323.1194620132446,
+      "id" : "69EEBF0F-512F-4136-AAA8-0AB901A28362",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1317.407152056694,
+      "text" : "Mike, do you have a PA in the working with? Tyler okay cool"
+    },
+    {
+      "endedAt" : 1329.0961270332336,
+      "id" : "EDC69C55-98E6-4287-A91E-9BB2EB89E60E",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1323.3460079431534,
+      "text" : "I want interview night she's also so yeah so I'll start the thread I'll"
+    },
+    {
+      "endedAt" : 1329.1442240476608,
+      "id" : "A4619E4E-46E3-4A6E-AF0B-DFD7BFA01BFA",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1323.4769220352173,
+      "text" : "Ivar interviewed now, she's awesome. So I'll yeah, so I'll start the thread. I'll"
+    },
+    {
+      "endedAt" : 1335.1638009548187,
+      "id" : "BE624D65-FF0C-4EB1-A9A6-3BB09AA6E569",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1329.357880949974,
+      "text" : "Bring money in. I'll bring Lawrence in. He's a PM on notifications and we can try and like document some of this"
+    },
+    {
+      "endedAt" : 1341.3086589574814,
+      "id" : "F5662B45-380D-4C00-879A-EBB78BD67E40",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1335.540647983551,
+      "text" : "I just want to do it out in the open because I want to make sure that like CRM and brand design etc are like aware of what we're doing"
+    },
+    {
+      "endedAt" : 1347.2399319410324,
+      "id" : "1A52E389-6DA2-4441-9642-E801E22E4FAD",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1341.309191942215,
+      "text" : "doing because essentially sending out we're going like try and proceed sending a marketing email outside"
+    },
+    {
+      "endedAt" : 1353.4552509784698,
+      "id" : "161F001F-CA69-42BF-984E-32EB26553D98",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1347.1674939393997,
+      "text" : "side of their process yeah I guess it's funny because it's almost like a transactional email"
+    },
+    {
+      "endedAt" : 1353.2327209711075,
+      "id" : "1A7423B9-915F-45AF-BE21-484761B03626",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1347.5971150398254,
+      "text" : "of their process"
+    },
+    {
+      "endedAt" : 1359.2998700141907,
+      "id" : "551F7877-8C11-4DD2-A1A1-55D08118D4A3",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1353.3586230278015,
+      "text" : "rather than like a marketing email but it I I think I think that's the gray area of this"
+    },
+    {
+      "endedAt" : 1359.336485028267,
+      "id" : "A75F6064-A212-40EB-B8B7-74868CCD3EF0",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1355.9839680194855,
+      "text" : "Yeah yeah I think that's the gray area of this problem"
+    },
+    {
+      "endedAt" : 1365.2238459587097,
+      "id" : "98A586AF-87B4-4569-9A67-490F9CA22821",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1359.2418290376663,
+      "text" : "I just write. It's that there's these like kind of flashy creative branded emails that"
+    },
+    {
+      "endedAt" : 1365.247948050499,
+      "id" : "505C0EF6-DA4A-42C6-BDD5-7EBB4B3780BF",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1359.5472019910812,
+      "text" : "ride is the bestest like flashy creative branded emails"
+    },
+    {
+      "endedAt" : 1371.1841000318527,
+      "id" : "E256AF4E-0AB1-4FC3-AFE2-4AF7DFE24548",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1365.7543280124664,
+      "text" : "Yeah marketing team sends now. And then we've got transactional emails, which are like very functional"
+    },
+    {
+      "endedAt" : 1377.3518339395523,
+      "id" : "14BB6981-A264-4077-9AE6-0ACF7607B386",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1371.7133159637451,
+      "text" : "You know to do this task or you need this information. And then there's this like middle ground, gray area"
+    },
+    {
+      "endedAt" : 1377.4786380529404,
+      "id" : "8ADF9C0F-9E95-4B63-81F0-E42CA3AEBB73",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1372.59394800663,
+      "text" : "needed to be soft or you need this information and then it's like middle ground grey area"
+    },
+    {
+      "endedAt" : 1383.2880120277405,
+      "id" : "D4379AF5-98AF-41EC-AB7A-ADA53FE1A2D1",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1377.5402209758759,
+      "text" : "There's like their marketing emails in a sense that they're trying to encourage the user to do something"
+    },
+    {
+      "endedAt" : 1389.5446280241013,
+      "id" : "D0056164-85D6-4B3E-9D7F-E4169EB5F1AE",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1383.657142996788,
+      "text" : "It's not necessary for the functionality application. It's just like a recommendation. But it doesn't"
+    },
+    {
+      "endedAt" : 1395.4835720062256,
+      "id" : "021E6B83-2B09-4B75-BB0F-B7C1F0153AAB",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1389.638324022293,
+      "text" : "really need the same level of like branding and consideration as these like really flashy"
+    },
+    {
+      "endedAt" : 1401.8176050186157,
+      "id" : "1164C527-2F73-48C6-B575-794BBACE923C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1395.8286579847336,
+      "text" : "you know marketing content led as well if it is like too much of a"
+    },
+    {
+      "endedAt" : 1401.5979919433594,
+      "id" : "551A5DAB-0CC0-448F-A693-1886FA4A6B9B",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1395.8287349939346,
+      "text" : "you know marketing content. And it's product led as well. Mark's closer"
+    },
+    {
+      "endedAt" : 1408.119120001793,
+      "id" : "51B41DBC-9B3C-4960-B2F7-A11D8345DD6C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1404.4233440160751,
+      "text" : "if it goes down that path, if it's just like"
+    },
+    {
+      "endedAt" : 1414.1786210536957,
+      "id" : "47A2347C-27AD-49D9-B479-86DD077C71E7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1409.135339975357,
+      "text" : "you're saying we can send SMS which might not be the right fit, but we could send like in-app"
+    },
+    {
+      "endedAt" : 1420.3471620082855,
+      "id" : "1B4350E8-E1E3-41AB-972F-F55EEB3EA58E",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1414.3069779872894,
+      "text" : "notifications, I guess the push what other"
+    },
+    {
+      "endedAt" : 1426.3613879680634,
+      "id" : "1C2B15C5-45A1-40C5-967A-D47FE55F495D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1420.3477540016174,
+      "text" : "channels are there. There's um just showing like a little bell but that's not set"
+    },
+    {
+      "endedAt" : 1432.4103050231934,
+      "id" : "D98D962F-6B2D-4567-8747-E97F22048676",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1426.4172250032425,
+      "text" : "The bell, yeah there's the bell and there's email for now. Push isn't supported, but I'm trying to get that supported"
+    },
+    {
+      "endedAt" : 1438.3610490560532,
+      "id" : "D72C5145-5898-41F9-B78F-64589A5B3AEC",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1432.5432679653168,
+      "text" : "next week yeah SMS isn't supported but"
+    },
+    {
+      "endedAt" : 1444.4526360034943,
+      "id" : "4F5AD8DE-0245-49AA-8A99-D613A5E6451D",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1438.6650940179825,
+      "text" : "Okay I think I think email bell and push would probably"
+    },
+    {
+      "endedAt" : 1444.4105529785156,
+      "id" : "BEE5108D-CD46-4492-A957-FABB3CBAAE7E",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1440.0619369745255,
+      "text" : "I'm in the next couple of weeks"
+    },
+    {
+      "endedAt" : 1450.2051219940186,
+      "id" : "C87D7EDC-237D-4F53-AB14-ECE6CE0FC29F",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1444.3896180391312,
+      "text" : "be the main ones that make sense, I guess. Yeah does boys do that?"
+    },
+    {
+      "endedAt" : 1450.3573340177536,
+      "id" : "4C305D1E-3194-404F-9A57-BFEBCAF7F8A7",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1447.2726930379868,
+      "text" : "Yeah okay And"
+    },
+    {
+      "endedAt" : 1456.3164930343628,
+      "id" : "BC767A7C-FA52-4D53-A1C8-38C4A03A73BD",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1450.682934999466,
+      "text" : "Does Braze do like push? Like how's push notifications set up right now? Yeah, Braze"
+    },
+    {
+      "endedAt" : 1456.2505589723587,
+      "id" : "41B1D11A-082E-4F8F-8CB2-BF4D942CB31A",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1455.5958839654922,
+      "text" : "Yeah brace"
+    },
+    {
+      "endedAt" : 1462.4099229574203,
+      "id" : "5E2CF06F-9068-49AD-8507-6FE0BC983BDA",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1456.455577969551,
+      "text" : "Does push we could probably send push notifications via Braze for now"
+    },
+    {
+      "endedAt" : 1468.331491947174,
+      "id" : "5FDC4B72-CCFC-47F4-B136-F426874E4A4A",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1464.3149119615555,
+      "text" : "Be yeah, we could probably do that"
+    },
+    {
+      "endedAt" : 1468.5090420246124,
+      "id" : "BEC2BEF1-6438-4730-B4D4-346832A62799",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1464.3571939468384,
+      "text" : "The yeah we could probably do that"
+    },
+    {
+      "endedAt" : 1474.671620965004,
+      "id" : "0EFA32B4-CEC4-4A12-A268-986ABD7B0A60",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1468.3568979501724,
+      "text" : "I'd rather just target your future state. um and not need to like touch base"
+    },
+    {
+      "endedAt" : 1480.6051030158997,
+      "id" : "EB59204A-88BE-492C-99E2-E40EB21BBA9C",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1474.628594994545,
+      "text" : "is if if you think that's like sort of going away for this kind of work."
+    },
+    {
+      "endedAt" : 1480.3685970306396,
+      "id" : "E41BA564-9DD4-4046-87C4-2C1828D4829B",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1477.6169040203094,
+      "text" : "Yeah"
+    },
+    {
+      "endedAt" : 1486.5278079509735,
+      "id" : "9DBF965F-C9DC-4E1A-AEE1-90DB1E006B14",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1481.0948790311813,
+      "text" : "Yeah it's a question mark. I mean, I think for push races probably fine for"
+    },
+    {
+      "endedAt" : 1492.5267080068588,
+      "id" : "C4155661-260C-4E52-8E3B-91A8846624AC",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1486.876196026802,
+      "text" : "Now okay but"
+    },
+    {
+      "endedAt" : 1492.6371409893036,
+      "id" : "548BB66B-5744-4806-B695-B7DB799EECCB",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1487.0560220479965,
+      "text" : "Now but"
+    },
+    {
+      "endedAt" : 1498.437693953514,
+      "id" : "E2BF287F-A658-4BF0-8A9D-FB1F3995D847",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1492.9646159410477,
+      "text" : "Yeah um I'll get back to you. Like I'll I'll get back to you with some some context"
+    },
+    {
+      "endedAt" : 1498.4711999893188,
+      "id" : "F883E00E-DFAE-452C-B28D-45595BEBAEF1",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1493.9836399555206,
+      "text" : "um I'll get back to you with some context on"
+    },
+    {
+      "endedAt" : 1504.6841720342636,
+      "id" : "D2FA0B73-30E3-4074-B331-2C953CB78D1D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1500.7824540138245,
+      "text" : "on whether we can support that and how we can support it."
+    },
+    {
+      "endedAt" : 1505.042776942253,
+      "id" : "7E2F0D24-BA9D-41B7-B0CB-A7CBC0007FF2",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1501.0483620166779,
+      "text" : "where do we support that and how we can support it. Okay cool"
+    },
+    {
+      "endedAt" : 1510.5124199390411,
+      "id" : "86789471-CBB6-4537-B57A-E1656F387429",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1505.4036140441895,
+      "text" : "uh let's I guess I guess"
+    },
+    {
+      "endedAt" : 1516.5118060112,
+      "id" : "9279D4AD-D335-4D3D-BA6A-24F13FE0D9F5",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1510.7031699419022,
+      "text" : "Is the ultimate thing is like if we can have a bell in um"
+    },
+    {
+      "endedAt" : 1522.8933440446854,
+      "id" : "438D8A53-693E-4A91-B9FB-E240CFAEF4BA",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1517.146810054779,
+      "text" : "In the admin let's say and we can deep link to chat. We can do the same"
+    },
+    {
+      "endedAt" : 1529.1011610031128,
+      "id" : "7F5A5CA6-B1AE-42FF-89CB-BD3E603B149E",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1522.8446910381317,
+      "text" : "came with a link in an email or a link in a push notification. Right. So I think"
+    },
+    {
+      "endedAt" : 1535.1172649860382,
+      "id" : "AD06D852-78E4-4AC6-97B7-471D03EB6412",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1529.327868938446,
+      "text" : "If if it all gets too hard or like um notifications aren't supported yet, like"
+    },
+    {
+      "endedAt" : 1541.1482520103455,
+      "id" : "1818C0FF-4756-4D72-8595-B4EF91BB2E28",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1535.1252609491348,
+      "text" : "We just prove out that it we can kind of string the end-to-end flow. I think that might just be good enough."
+    },
+    {
+      "endedAt" : 1547.3462159633636,
+      "id" : "3F46EFCA-23B6-4550-8753-4B4942E9D5F3",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1542.4364269971848,
+      "text" : "Yeah yeah I mean we can start with a single"
+    },
+    {
+      "endedAt" : 1553.3177260160446,
+      "id" : "5E3E6695-DB58-4795-B6E9-5AB075BA53C4",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1547.6765630245209,
+      "text" : "modifications either hub or email. I mean, I know that I know that the"
+    },
+    {
+      "endedAt" : 1559.5678050518036,
+      "id" : "FA8303E1-A00E-46AB-835C-9120BEDF41FF",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1554.5206500291824,
+      "text" : "You can send a dual channel notification now. If we wanted to just start with that as the first pass"
+    },
+    {
+      "endedAt" : 1565.365471959114,
+      "id" : "D745A262-5D49-482A-8DC8-5FB0B4F99A4E",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1559.774011015892,
+      "text" : "I know that it's working."
+    },
+    {
+      "endedAt" : 1565.5042239427567,
+      "id" : "25167C43-302E-4E00-A85D-860579B70CD8",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1560.0902849435806,
+      "text" : "I know that it's working I'll skip push completely."
+    },
+    {
+      "endedAt" : 1571.4662380218506,
+      "id" : "A1FE7654-8A15-4BFD-801D-57FA287B5D9E",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1566.223727941513,
+      "text" : "Um the other thing as well that's kind of cool that I've built is that"
+    },
+    {
+      "endedAt" : 1577.5995819568634,
+      "id" : "2457BC6A-E092-49D8-A129-F207B80A6D41",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1571.8364390134811,
+      "text" : "With the multi-channel if you send in-app like hub notification, a little bell"
+    },
+    {
+      "endedAt" : 1583.891648054123,
+      "id" : "5AE3D1FB-EE64-4464-9D99-93E81473B9F2",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1577.5602300167084,
+      "text" : "And then you also send an email if they open the email before they read the whole notification. The notification"
+    },
+    {
+      "endedAt" : 1590.1461700201035,
+      "id" : "E7F99172-389E-4263-8CEC-A84329A35086",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1584.0830399990082,
+      "text" : "It's not to spread get two notifications"
+    },
+    {
+      "endedAt" : 1590.04658305645,
+      "id" : "3E10E253-F71E-4C5C-8EC3-2468F3264040",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1584.1319179534912,
+      "text" : "It's not just red. Did I get two notifications in"
+    },
+    {
+      "endedAt" : 1596.2520829439163,
+      "id" : "2F88808E-14C8-4F05-8B92-C487DB27A947",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1590.339800953865,
+      "text" : "reduces like a tiny bit of noise"
+    },
+    {
+      "endedAt" : 1596.1088169813156,
+      "id" : "CA960979-0E8F-4B11-BC30-37F7585CAF71",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1590.3398859500885,
+      "text" : "which is just like a timed noise cool okay that all makes sense"
+    },
+    {
+      "endedAt" : 1602.202162027359,
+      "id" : "80D4DA84-AE72-4875-867C-DB292F775BBA",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1596.2744059562683,
+      "text" : "to start yeah I was what I did is I kind of got the new fable model to like"
+    },
+    {
+      "endedAt" : 1608.3738280534744,
+      "id" : "38179AFA-DAE4-48CB-9C2E-F71C4D0A98F8",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1604.3451490402222,
+      "text" : "James mine and James's conversation and I just like spun up like all of these"
+    },
+    {
+      "endedAt" : 1614.3158890008926,
+      "id" : "C37EA0B5-0456-4A2B-84EA-85249B512AEE",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1608.58929002285,
+      "text" : "pairs and I just um that's kind of where that notification one came from. But I'll like"
+    },
+    {
+      "endedAt" : 1620.1306999921799,
+      "id" : "97F93E7A-9D8E-4E75-9624-E3E5B34FB998",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1615.861711025238,
+      "text" : "I'll keep working on it. I put it all in draft, so it should be easy to look at"
+    },
+    {
+      "endedAt" : 1620.2731540203094,
+      "id" : "34200E29-3B68-49FB-AF51-ED439680E700",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1618.977077960968,
+      "text" : "Okay cool cool cool"
+    },
+    {
+      "endedAt" : 1626.3186750411987,
+      "id" : "42CE2316-4933-429D-AECC-76788C5E52BC",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1621.3447550535202,
+      "text" : "One other question is"
+    },
+    {
+      "endedAt" : 1632.350991010666,
+      "id" : "63496A14-22AC-4D0F-906B-E89674DEEA23",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1626.319514989853,
+      "text" : "Like what's your this at now? Like what's your timeline? Is this something that you would want to start shipping this week?"
+    },
+    {
+      "endedAt" : 1638.5724519491196,
+      "id" : "4F3EA6C0-18F7-4375-A203-7ABE652B1B22",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1632.6569390296936,
+      "text" : "Next week this has been it's been like Pulse has been like"
+    },
+    {
+      "endedAt" : 1638.3925399780273,
+      "id" : "5B30A876-29B0-4D6C-B32C-C1A907055FAB",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1632.668547987938,
+      "text" : "next week"
+    },
+    {
+      "endedAt" : 1644.553997039795,
+      "id" : "90E871EA-C29C-42E6-BA52-E4C596A8FD19",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1638.5723359584808,
+      "text" : "The word about for months. And I think only today we're like, okay, it's just gonna be"
+    },
+    {
+      "endedAt" : 1650.4343860149384,
+      "id" : "0428FD4A-9FBC-4286-9726-689F6BA113B8",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1644.763141989708,
+      "text" : "notifications and we'll strip it down there's no"
+    },
+    {
+      "endedAt" : 1656.4662640094757,
+      "id" : "1EBB4FC6-EB0B-4BCB-8FB9-FDF37FF446C9",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1650.6329890489578,
+      "text" : "urgency in terms of like rolling it out. I think we just want to string together recommendations and notifications"
+    },
+    {
+      "endedAt" : 1662.498607993126,
+      "id" : "582710DE-9673-47A7-BA69-183A88AD9ECD",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1659.0401389598846,
+      "text" : "and that should be like the MVP scope."
+    },
+    {
+      "endedAt" : 1668.6146429777145,
+      "id" : "F93C5BA5-2E29-447A-BC06-D1822FBEFB02",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1663.3539340496063,
+      "text" : "Um the timeline nothing I don't think there's any specific urge"
+    },
+    {
+      "endedAt" : 1674.5972009897232,
+      "id" : "003B6EC1-9E2F-42C7-8F0F-E62228698027",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1669.0237740278244,
+      "text" : "see more just like we're gonna get the ball rolling and see what we can do."
+    },
+    {
+      "endedAt" : 1674.7497709989548,
+      "id" : "81075B15-B68F-4E9E-BED5-52AB9458F3AF",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1674.2259999513626,
+      "text" : "Okay"
+    },
+    {
+      "endedAt" : 1680.515990972519,
+      "id" : "A277363D-8DAC-4E04-B3C3-80E7BC90A4F6",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1676.7004319429398,
+      "text" : "Um yeah I think"
+    },
+    {
+      "endedAt" : 1687.021271944046,
+      "id" : "A9F4557D-8157-45E4-9625-DB9377AA91F9",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1686.0881960391998,
+      "text" : "Yeah, I'm just trying to think"
+    },
+    {
+      "endedAt" : 1693.2310650348663,
+      "id" : "B90BB964-D2A5-4C06-B5EC-B44D12ED4124",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1687.3725489377975,
+      "text" : "Like yeah cool. I think that sounds good. Maybe I'll just start that thread and like we can basically just like"
+    },
+    {
+      "endedAt" : 1699.3943539857864,
+      "id" : "18D75375-AD78-433A-86A7-3806AA50D932",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1693.4273990392685,
+      "text" : "you to read what you and I have chatted about and like what we can offer you and we can agree on some of that"
+    },
+    {
+      "endedAt" : 1705.4902470111847,
+      "id" : "D26F7863-A47B-4D15-821F-C0A4BAF677CA",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1699.7241200208664,
+      "text" : "pending stuff around other channels. And like I think what I'm also trying to encourage"
+    },
+    {
+      "endedAt" : 1711.2657380104065,
+      "id" : "280C23F7-3F37-4958-8E3B-54E30ECAC3BD",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1705.8660000562668,
+      "text" : "on on the notifications project side is like we're in this"
+    },
+    {
+      "endedAt" : 1717.6024700403214,
+      "id" : "637EAC29-B6A0-431B-AEF7-4D935C31DE7D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1711.7801580429077,
+      "text" : "state where like I think some people in the team are like, we need to make decisions on like this decision is this"
+    },
+    {
+      "endedAt" : 1723.6979830265045,
+      "id" : "E5289D1A-5576-4911-A062-2107BD235F7D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1717.8578840494156,
+      "text" : "Let's just like find an internal customer notifications and then get them to tell us what they need. And we'll build for that"
+    },
+    {
+      "endedAt" : 1729.6916559934616,
+      "id" : "C23D8A9A-C431-4342-BDDD-095F44164CF4",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1723.924772977829,
+      "text" : "And then we'll find subcost and build for that, which is iterate, right? So I'm kind of hoping to get like, if I start to"
+    },
+    {
+      "endedAt" : 1736.1563019752502,
+      "id" : "8F92EC02-110C-416D-80BA-D68D96732CA0",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1729.9234730005264,
+      "text" : "basically to get the ball rolling to feed a comment and be like so I think out of that is like if you can come in and be like"
+    },
+    {
+      "endedAt" : 1742.0037250518799,
+      "id" : "ED65843D-8F64-4AF4-9062-8BBCD4D78E55",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1736.4640159606934,
+      "text" : "We want to start sending these notifications in a week's time or like a week and a half's time"
+    },
+    {
+      "endedAt" : 1747.977283000946,
+      "id" : "F4EEFB37-18D2-462C-BCF9-D239C09AEDB0",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1742.3881380558014,
+      "text" : "What would that take? Like a kind of, if you can do that for me, that'd be really grateful. Because then"
+    },
+    {
+      "endedAt" : 1748.21353495121,
+      "id" : "FE2897A8-1D5E-425F-A90F-1D653A0F8073",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1742.445070028305,
+      "text" : "What would that take? I kind of, if you can do that for me, I'd be really grateful. I'll say we have a way"
+    },
+    {
+      "endedAt" : 1754.4466500282288,
+      "id" : "439B400B-7356-43A5-B1C9-AA91E5E17628",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1749.7261929512024,
+      "text" : "Yeah yeah so like I want you to put the pressure on us so that I can put the pressure"
+    },
+    {
+      "endedAt" : 1754.3175339698792,
+      "id" : "6FF27FC7-BA31-4666-B4F5-17C0BCD15264",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1749.7262810468674,
+      "text" : "And if next week yeah yeah I"
+    },
+    {
+      "endedAt" : 1760.4288569688797,
+      "id" : "EF7027A2-0622-4A96-BA5D-AEFC8C6576C1",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1754.5148910284042,
+      "text" : "for the rest of my team I think like um in terms of"
+    },
+    {
+      "endedAt" : 1760.3788590431213,
+      "id" : "0EF2D732-0824-432E-8399-034BDA14DAF6",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1754.6320940256119,
+      "text" : "the rest of my"
+    },
+    {
+      "endedAt" : 1766.5047709941864,
+      "id" : "C01543BA-FB33-4DA7-8764-2C4E96C4EE69",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1760.6446549892426,
+      "text" : "Just all we want is two channels and"
+    },
+    {
+      "endedAt" : 1772.6559139490128,
+      "id" : "50088659-C2CA-4876-B1D4-6FA3998379CF",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1767.3551379442215,
+      "text" : "we don't want to use braze and we can just"
+    },
+    {
+      "endedAt" : 1779.1631870269775,
+      "id" : "16B087A7-685D-47D4-AD87-3EFEEEDB2908",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1773.321359038353,
+      "text" : "Use the templates um that are already in handlebars in the SendGrid repo. Like I'm just happy to"
+    },
+    {
+      "endedAt" : 1785.0522619485855,
+      "id" : "FC4A5132-1B17-4D26-8D90-14E349F22CA5",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1779.0858299732208,
+      "text" : "Just kind of go with whatever you thinks the the new standard. Um and I'll just"
+    },
+    {
+      "endedAt" : 1785.1818679571152,
+      "id" : "0F20AF68-593C-47A2-B5B8-3283551B925F",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1782.9717079401016,
+      "text" : "Okay"
+    },
+    {
+      "endedAt" : 1791.1458150148392,
+      "id" : "9D9C059E-6C70-4E17-A898-39C9F7D5F1B8",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1785.2676130533218,
+      "text" : "shit out these fucking rogue PRs that I didn't look at"
+    },
+    {
+      "endedAt" : 1797.003159046173,
+      "id" : "312E951F-8B7C-4AB7-AF36-6D88F5E68731",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1791.4740619659424,
+      "text" : "No I'll um Fable did it"
+    },
+    {
+      "endedAt" : 1796.9975049495697,
+      "id" : "0612F0D1-106F-42BE-93D4-90E93184E9C9",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1792.7968859672546,
+      "text" : "But hey Sable did it. We trust Fable. Yeah"
+    },
+    {
+      "endedAt" : 1803.0498809814453,
+      "id" : "817C1D49-F852-42FC-BFA8-CBDAEA3C5045",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1797.2408030033112,
+      "text" : "Yeah, I think I just want to be able to, yeah, string together recommendations to notifications, deep link"
+    },
+    {
+      "endedAt" : 1809.1649960279465,
+      "id" : "C99735C3-9D7E-4294-BDA6-C6A61E736A31",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1803.3545989990234,
+      "text" : "Open up um the front end and that should open up chat. So that is"
+    },
+    {
+      "endedAt" : 1815.157086968422,
+      "id" : "403B7DB0-ACC5-40C5-A271-B41E18DF6968",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1809.3830659389496,
+      "text" : "Kind of like the antenna flow. um so"
+    },
+    {
+      "endedAt" : 1815.3234239816666,
+      "id" : "C6091270-E6CB-4EA7-BF17-2152A0A7DC37",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1812.0255290269852,
+      "text" : "Yeah that's awesome"
+    },
+    {
+      "endedAt" : 1821.3574739694595,
+      "id" : "7E39184A-596D-4734-943C-12D0F559ABB3",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1815.4330179691315,
+      "text" : "Why reckon just as a like kind of"
+    },
+    {
+      "endedAt" : 1821.138599038124,
+      "id" : "496EFFAC-1BD0-44D8-9D92-EDE6399BE3AE",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1815.5920150279999,
+      "text" : "I reckon just as a kind of"
+    },
+    {
+      "endedAt" : 1827.4398239850998,
+      "id" : "8240CAF4-A9C5-4BC2-852D-CBC20DABFAA8",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1822.0836030244827,
+      "text" : "Yeah the kind of I think the commitment that I can make to you now is that like that"
+    },
+    {
+      "endedAt" : 1833.2674590349197,
+      "id" : "1C6ECBE2-2E91-479A-AD22-505E505E3648",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1827.3940620422363,
+      "text" : "That should be supported with that click ID attribution stuff within"
+    },
+    {
+      "endedAt" : 1839.4887119531631,
+      "id" : "9FF2C7AB-3877-42F7-B2CC-3DF6F0E55363",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1834.0378999710083,
+      "text" : "awake yeah okay that's that's good. I think um"
+    },
+    {
+      "endedAt" : 1839.4375330209732,
+      "id" : "3D65B6CE-91CB-4AD5-803B-E98A54574F3A",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1834.1372590065002,
+      "text" : "awake yeah I think"
+    },
+    {
+      "endedAt" : 1845.356784939766,
+      "id" : "D299562C-05BD-446B-9E9C-7A0E6C871918",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1840.5071580410004,
+      "text" : "The notifications just one piece and I can start on that"
+    },
+    {
+      "endedAt" : 1851.5913579463959,
+      "id" : "384E289B-9C9B-4624-A8AB-B4C45533D6C9",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1845.5572420358658,
+      "text" : "But then like let me know when you're ready with like email and the hub and like"
+    },
+    {
+      "endedAt" : 1857.5321140289307,
+      "id" : "8ADF3CB6-AA88-40A3-85A3-B7602140744A",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1851.8195739984512,
+      "text" : "click tracking and I can like come back to it and and try and like yeah hook it"
+    },
+    {
+      "endedAt" : 1863.5798709392548,
+      "id" : "08066DA2-CDD8-4B8D-B24B-9149AA777758",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1857.8056700229645,
+      "text" : "Hopefully that is awesome"
+    },
+    {
+      "endedAt" : 1863.7193050384521,
+      "id" : "91480B9D-A4B0-41D4-A96C-D9B517CBFEA8",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1859.539234995842,
+      "text" : "Okay All right, that is awesome"
+    },
+    {
+      "endedAt" : 1870.158810019493,
+      "id" : "879CF77B-F1BB-4AE3-8A2D-9311BC10578F",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1863.829185962677,
+      "text" : "Thank you so much. I this is really good. This makes me happy. Okay, awesome. Yeah, I'm excited. I think"
+    },
+    {
+      "endedAt" : 1870.1151449680328,
+      "id" : "5EED1D37-266A-4AE2-9BB0-15FAC10B57A7",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1863.9071600437164,
+      "text" : "Thank you so much. This is really good. This makes me happy."
+    },
+    {
+      "endedAt" : 1876.2713420391083,
+      "id" : "8BAB8201-973B-41CD-BB12-10B759D95D02",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1870.132681965828,
+      "text" : "It's like a good idea because um the amount of like uh low hanging"
+    },
+    {
+      "endedAt" : 1882.1743249893188,
+      "id" : "A2948D65-661B-4D8A-98AD-AC16B04BCAA4",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1876.15492105484,
+      "text" : "fruit for recommendations. It's just like this link's dead. It's just"
+    },
+    {
+      "endedAt" : 1888.250149011612,
+      "id" : "72E88509-CBF1-4442-83FF-B7CC89A00632",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1883.2230520248413,
+      "text" : "So we'll see how it goes. Yeah, that that's the thing I like. I'm hoping"
+    },
+    {
+      "endedAt" : 1888.1385329961777,
+      "id" : "5134D586-18D8-4276-B317-65F2BC06E005",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1885.6390010118484,
+      "text" : "Yeah that's the thing I like. I'm hoping"
+    },
+    {
+      "endedAt" : 1894.2338420152664,
+      "id" : "1073FE55-83D4-438E-984D-181953704408",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1888.4690469503403,
+      "text" : "that what I'm hoping for with this notifications platform project is that I want it to be like"
+    },
+    {
+      "endedAt" : 1900.2845150232315,
+      "id" : "E4FBA0C8-0955-4F1B-BC62-CB7BCB2FB419",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1894.5322959423065,
+      "text" : "Really simple and also really lightweight so that any of these like smaller use cases where people are like, I need to send"
+    },
+    {
+      "endedAt" : 1906.291424036026,
+      "id" : "A522454A-5619-4613-8439-D227EEA3281A",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1900.5230519771576,
+      "text" : "something that's like not quite a marketing email and not quite a transactional email. And I want to do it quickly. And I want to do it self-serve"
+    },
+    {
+      "endedAt" : 1912.599419951439,
+      "id" : "00E7AA13-1BD6-4ACC-B0C6-B3A5E41D1807",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1906.489058971405,
+      "text" : "I don't want to go through like a week or two or three back and forth planning"
+    },
+    {
+      "endedAt" : 1918.5489840507507,
+      "id" : "5C353887-D8B6-47AC-A6DC-46CB459A0251",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1913.3754860162735,
+      "text" : "reviewing improving designs etc with product marketing that's essentially yeah"
+    },
+    {
+      "endedAt" : 1924.6847109794617,
+      "id" : "63A2A892-8A46-434B-9843-994625C971EE",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1918.9534180164337,
+      "text" : "So what I ask of you is to if you can just every few days be like, wow, the"
+    },
+    {
+      "endedAt" : 1930.607342004776,
+      "id" : "945914F9-A8FD-48C5-9994-A0EAA79A65E7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1924.9106990098953,
+      "text" : "This is so easy okay sounds good"
+    },
+    {
+      "endedAt" : 1930.7113499641418,
+      "id" : "9A9F2BDC-2FB8-4EE7-B39D-C55A9C467129",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1924.9107819795609,
+      "text" : "So easy"
+    },
+    {
+      "endedAt" : 1936.982836008072,
+      "id" : "6F9F8694-CB84-436D-9A19-DB3E0631C3F5",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1932.5035920143127,
+      "text" : "All right, bye. Thanks. Oh, actually, wait, wait, wait. I got one more thing for you. Sorry, this is like"
+    },
+    {
+      "endedAt" : 1943.0289059877396,
+      "id" : "3344A039-F47E-436A-8CFA-0A4E89F894F6",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1937.2229729890823,
+      "text" : "A completely random tangent, but so one of my friends is a like a"
+    },
+    {
+      "endedAt" : 1949.0484210252762,
+      "id" : "61FEB227-AEB8-49A4-9F71-9AB665690E98",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1944.3895109891891,
+      "text" : "researcher at Monash and she is"
+    },
+    {
+      "endedAt" : 1955.0465730428696,
+      "id" : "FC724D3E-2D5E-4D15-88A0-F4032A479DC0",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1950.3295209407806,
+      "text" : "She is like"
+    },
+    {
+      "endedAt" : 1955.0977940559387,
+      "id" : "ABCADDD4-A005-4DCA-9C91-DD53C83D7564",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1950.3676229715347,
+      "text" : "He is like she does like um"
+    },
+    {
+      "endedAt" : 1961.1701220273972,
+      "id" : "6A4F0CDE-02D8-4E72-9A83-928E3C33A1ED",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1955.3352400064468,
+      "text" : "Just making social anthropologist basically. But anyway her like there's like some guy that she had started like works alongside"
+    },
+    {
+      "endedAt" : 1967.1545770168304,
+      "id" : "8BC38D54-F846-441D-870B-2638BAC17A11",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1961.3578970432281,
+      "text" : "So I don't know exactly know what his area of research is, but or like his title, but he's doing research on software engineering"
+    },
+    {
+      "endedAt" : 1973.1132899522781,
+      "id" : "ECAC08AD-9CD6-4399-AED3-7E30289C1915",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1967.1633540391922,
+      "text" : "Is it Australia and they usage of agents AI? I really"
+    },
+    {
+      "endedAt" : 1973.3988389968872,
+      "id" : "0E1762F8-F2BF-4CCB-A972-1072EEEF71CE",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1967.4075080156326,
+      "text" : "in Australia and their usage of agents AI. He I'm reading up"
+    },
+    {
+      "endedAt" : 1978.9730999469757,
+      "id" : "D843864C-BE44-40AD-BE7E-12167451FAE9",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1973.8031859397888,
+      "text" : "like 10 minutes to be interviewed by him basically share my experience"
+    },
+    {
+      "endedAt" : 1985.1714730262756,
+      "id" : "CA0F2B18-C697-4842-BE6B-19AEEB8197EB",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1979.711730003357,
+      "text" : "Depending on how it goes, I was gonna like put forward some names of other like"
+    },
+    {
+      "endedAt" : 1985.1811879873276,
+      "id" : "E3203B85-AA4A-4D38-840C-BA8DC36EAB99",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1979.718080997467,
+      "text" : "Did anyone how it goes? I'm just gonna like put forward some names of other like"
+    },
+    {
+      "endedAt" : 1991.2246520519257,
+      "id" : "18BEC0D4-E18E-4C46-A567-F87FDFAA680F",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 1985.4575259685516,
+      "text" : "Australian entity is and I figured you'd actually be a really good fit for it. So if you want"
+    },
+    {
+      "endedAt" : 1991.2910339832306,
+      "id" : "3CCDEEC4-2FE9-44C7-BEBB-A7A7A0B6BA61",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1985.5497059822083,
+      "text" : "Let's try energy years and I figured you'd actually be a really good fit for it. Yeah, awesome. If you want"
+    },
+    {
+      "endedAt" : 1997.3259979486465,
+      "id" : "C375BAF5-E09D-4EAB-A8F1-87FC550F5098",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1991.2671610116959,
+      "text" : "I can basically like after the call with him, I'll just tell you about it and you can make a decision on whether you want me to pass the details on or something"
+    },
+    {
+      "endedAt" : 2003.3030569553375,
+      "id" : "01ACAFF9-DF4D-4E17-95B5-7826232E85E7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 1997.5537359714508,
+      "text" : "Yeah, sounds cool. Sounds interesting. We'll be in research papers. So is that"
+    },
+    {
+      "endedAt" : 2003.2898880243301,
+      "id" : "2F3A4583-F677-4AE5-92D3-B319A732C4E8",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 2000.6615250110626,
+      "text" : "Yeah yeah exactly"
+    },
+    {
+      "endedAt" : 2009.2496089935303,
+      "id" : "9EFE7E21-2578-450B-B69E-DEB3AA59A9F7",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 2004.001902937889,
+      "text" : "There was like a there was a line in the consent form. It's like do you consent to your like name being published"
+    },
+    {
+      "endedAt" : 2015.3426209688187,
+      "id" : "8F6E2D44-6AF8-4AAA-A4A4-B1A8AD7EDC52",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 2009.5891749858856,
+      "text" : "So I was like, yeah, that's cool."
+    },
+    {
+      "endedAt" : 2015.3583250045776,
+      "id" : "E15B8293-BA90-4F44-98FE-3927223E4975",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 2009.8017859458923,
+      "text" : "I was like, yeah, that's cool. We'll be et al. We'll just be like the edition"
+    },
+    {
+      "endedAt" : 2021.3960950374603,
+      "id" : "18782D3E-F65F-44D3-8143-12F41B652915",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 2015.6968619823456,
+      "text" : "Yeah what would you use as something? Okay see you later"
+    },
+    {
+      "endedAt" : 2021.307857990265,
+      "id" : "C4190703-241F-489F-85D3-4A0016E78056",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 2016.3894469738007,
+      "text" : "Lower users or something awesome that sounds sick. Good luck"
+    },
+    {
+      "endedAt" : 2025.299968957901,
+      "id" : "9B106035-9E2B-48F3-80A7-464FAE83189F",
+      "isFinal" : true,
+      "speaker" : "you",
+      "startedAt" : 2021.5278429985046,
+      "text" : "See ya."
+    },
+    {
+      "endedAt" : 2025.8247460126877,
+      "id" : "A39F6B18-69BE-4D52-A16E-3E697E951F2D",
+      "isFinal" : true,
+      "speaker" : "others",
+      "startedAt" : 2021.8269239664078,
+      "text" : "Right"
+    }
+  ]
+}

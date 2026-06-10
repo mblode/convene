@@ -52,6 +52,23 @@ targets:
       - package: Sparkle
         product: Sparkle
 
+  ConveneTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: ConveneTests
+        excludes:
+          - "Fixtures/**"
+      - path: ConveneTests/Fixtures
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene.tests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Convene
+
   ConveneMobile:
     type: application
     platform: iOS
@@ -78,6 +95,10 @@ schemes:
         Convene: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - ConveneTests
     archive:
       config: Release
 
