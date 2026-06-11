@@ -147,7 +147,7 @@ final class StatusItemController {
                 let m = elapsedMinutes % 60
                 return m == 0 ? "\(h)h ago" : "\(h)h \(m)m ago"
             }
-            return "\(elapsedMinutes)m ago"
+            return elapsedMinutes == 0 ? "Now" : "\(elapsedMinutes)m ago"
         }
         let seconds = event.startDate.timeIntervalSinceNow
         let minutes = max(0, Int(ceil(seconds / 60)))
