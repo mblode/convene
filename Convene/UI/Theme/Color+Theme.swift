@@ -13,8 +13,8 @@ extension Color {
     static let textSecondary         = dynamic(light: 0x606060, dark: 0xB5B5B5)
     static let textTertiary          = dynamic(light: 0x919191, dark: 0x919191)
     static let dividerWarm           = dynamic(light: 0xE5E5E5, dark: 0x3B3B3B)
-    static let accentOlive           = dynamic(light: 0x007EED, dark: 0x007EED)
-    static let accentOliveSoft       = dynamic(light: 0xE6F2FE, dark: 0x00253F)
+    static let accent           = dynamic(light: 0x007EED, dark: 0x007EED)
+    static let accentSoft       = dynamic(light: 0xE6F2FE, dark: 0x00253F)
     static let toggleOffBackground   = dynamic(light: 0xD0D0D0, dark: 0x606060)
     static let recordingRed          = dynamic(light: 0xC9342B, dark: 0xE8554A)
 

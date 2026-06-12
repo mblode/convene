@@ -15,7 +15,7 @@ struct CapturePage: View {
                         icon: "app.badge",
                         title: "Auto-detect meeting apps",
                         description: "Notifies when Zoom, Teams, Webex, Slack, Meet, BlueJeans launch",
-                        showsDivider: shouldShowLastDetected
+                        showsDivider: true
                     ) {
                         Toggle("", isOn: Binding(
                             get: { meetingStore.meetingDetector.enabled },
@@ -23,6 +23,20 @@ struct CapturePage: View {
                         ))
                         .toggleStyle(OliveToggleStyle())
                         .labelsHidden()
+                    }
+                    SettingsRow(
+                        icon: "stop.circle",
+                        title: "Auto-stop when meeting ends",
+                        description: "Stops recording once you quit the last open meeting app",
+                        showsDivider: shouldShowLastDetected
+                    ) {
+                        Toggle("", isOn: Binding(
+                            get: { meetingStore.meetingDetector.autoStopOnMeetingEnd },
+                            set: { meetingStore.meetingDetector.autoStopOnMeetingEnd = $0 }
+                        ))
+                        .toggleStyle(OliveToggleStyle())
+                        .labelsHidden()
+                        .disabled(!meetingStore.meetingDetector.enabled)
                     }
                     if shouldShowLastDetected {
                         SettingsRow(

@@ -46,7 +46,7 @@ struct GeneralPage: View {
                             }
                             .buttonStyle(.borderless)
                             .font(.system(size: 12))
-                            .foregroundStyle(Color.accentOlive)
+                            .foregroundStyle(Color.accent)
                         }
                     }
                     SettingsRow(

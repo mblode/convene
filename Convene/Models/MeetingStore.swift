@@ -54,8 +54,27 @@ final class MeetingStore: ObservableObject {
     /// Currently associated calendar event, if the user started recording from one.
     @Published private(set) var currentEvent: MeetingEvent?
 
-    /// Wall-clock start of the in-flight meeting; nil when idle.
-    private var meetingStartedAt: Date?
+    /// Wall-clock start of the in-flight meeting; nil when idle. Published so the menu-bar
+    /// elapsed timer can anchor to the true start instead of when the panel last opened.
+    @Published private(set) var meetingStartedAt: Date?
+
+    /// A short status line for the menu-bar header: capture/transcription failures plus the
+    /// few transient states worth showing. Nil when there's nothing the user needs to see —
+    /// the header's pulse + elapsed timer already cover the steady recording state.
+    var headerBanner: (text: String, isError: Bool)? {
+        if let err = captureCoordinator.startError, !err.isEmpty { return (err, true) }
+        let status = captureStatus
+        if status.hasPrefix("Error") || status.hasPrefix("Transcription error")
+            || status.contains("API key") || status.contains("permission")
+            || status.contains("required") {
+            return (status, true)
+        }
+        if status.hasPrefix("Transcription warning") { return (status, false) }
+        if status == "Connecting to AssemblyAI…" || status == "Generating summary…" {
+            return (status, false)
+        }
+        return nil
+    }
     /// Identifier of the meeting that's currently the "active" one in the UI. Used to
     /// invalidate stale summary tasks when the user starts a new meeting before the previous
     /// meeting's summary lands.
@@ -67,9 +86,13 @@ final class MeetingStore: ObservableObject {
     private var transcriptionErrorCancellable: AnyCancellable?
     private var nestedObjectCancellables = Set<AnyCancellable>()
     private var hotkeyObservers: [NSObjectProtocol] = []
-    /// True while a start/stop transition is mid-flight. Guards against double-toggle while
-    /// `transcriptionCoordinator.stop()` is sleeping through its flush grace period.
-    @Published private(set) var isToggling: Bool = false
+    /// Direction of an in-flight start/stop transition. Guards against double-toggle while
+    /// `transcriber.stop()` sleeps through its flush grace period — and, because capture
+    /// stops well before that drain finishes, lets the UI keep showing "Stopping…" instead
+    /// of falling back to "Starting…" once `captureCoordinator.isCapturing` flips to false.
+    enum TogglePhase { case idle, starting, stopping }
+    @Published private(set) var togglePhase: TogglePhase = .idle
+    var isToggling: Bool { togglePhase != .idle }
 
     init() {
         if let saved = KeychainManager.loadAPIKey() {
@@ -161,6 +184,11 @@ final class MeetingStore: ObservableObject {
                 Task { @MainActor in self?.startRecordingIfIdle() }
             }
         )
+        hotkeyObservers.append(
+            center.addObserver(forName: NSNotification.Name("ConveneMeetingAppsEnded"), object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.stopRecordingIfActive() }
+            }
+        )
     }
 
     deinit {
@@ -246,18 +274,33 @@ final class MeetingStore: ObservableObject {
     }
 
     func toggleRecording() {
-        guard !isToggling else {
+        guard togglePhase == .idle else {
             captureStatus = "Busy - wait for previous action to finish"
             return
         }
-        isToggling = true
-        Task {
-            defer { isToggling = false }
-            if captureCoordinator.isCapturing {
+        if captureCoordinator.isCapturing {
+            togglePhase = .stopping
+            Task {
+                defer { togglePhase = .idle }
                 await stopRecording()
-            } else {
+            }
+        } else {
+            togglePhase = .starting
+            Task {
+                defer { togglePhase = .idle }
                 await startRecording()
             }
+        }
+    }
+
+    /// Stop an in-progress recording in response to an external signal (e.g. the meeting app
+    /// quit). No-op when idle or already mid-transition.
+    func stopRecordingIfActive() {
+        guard captureCoordinator.isCapturing, togglePhase == .idle else { return }
+        togglePhase = .stopping
+        Task {
+            defer { togglePhase = .idle }
+            await stopRecording()
         }
     }
 
@@ -267,14 +310,14 @@ final class MeetingStore: ObservableObject {
             captureStatus = "Already recording"
             return
         }
-        guard !isToggling else {
+        guard togglePhase == .idle else {
             captureStatus = "Busy - wait for previous action to finish"
             return
         }
-        isToggling = true
+        togglePhase = .starting
         currentEvent = event
         Task {
-            defer { isToggling = false }
+            defer { togglePhase = .idle }
             await startRecording(eventOverride: event)
         }
     }
@@ -285,16 +328,17 @@ final class MeetingStore: ObservableObject {
     }
 
     func quit() {
-        guard !isToggling else {
+        guard togglePhase == .idle else {
             captureStatus = "Busy - wait for previous action to finish"
             return
         }
-        isToggling = true
+        let wasCapturing = captureCoordinator.isCapturing
+        togglePhase = wasCapturing ? .stopping : .starting
         Task {
-            if captureCoordinator.isCapturing {
+            if wasCapturing {
                 await stopRecording()
             }
-            isToggling = false
+            togglePhase = .idle
             NSApp.terminate(nil)
         }
     }
