@@ -213,13 +213,16 @@ struct MenuBarView: View {
     }
 
     private func rowTapped(_ event: MeetingEvent) {
+        // Clicking an event records it — joining first when it has a meeting link. This is the
+        // primary record affordance; no detection or notification is involved.
+        let alreadyRecording = meetingStore.captureCoordinator.isCapturing
         if event.meetingURL != nil {
-            MeetingLauncher.shared.join(event)
-        } else if status(for: event) != .past, !meetingStore.captureCoordinator.isCapturing {
+            MeetingLauncher.shared.join(event, record: !alreadyRecording)
+        } else if status(for: event) != .past, !alreadyRecording {
             meetingStore.startRecording(from: event)
         } else {
-            // No actionable target (finished event, or already recording with no link to open).
-            // Leave the panel open rather than closing on a tap that did nothing.
+            // Already recording, or a finished event with no link — leave the panel open
+            // rather than closing on a tap that did nothing.
             return
         }
         StatusItemController.shared.hidePanel()
@@ -432,7 +435,7 @@ private struct EventRow: View {
         .opacity(status == .past ? 0.65 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityHint(canJoin ? "Joins the meeting in the right account" : "Starts recording this meeting")
+        .accessibilityHint(canJoin ? "Joins and records the meeting" : "Starts recording this meeting")
         .accessibilityAddTraits(.isButton)
     }
 
