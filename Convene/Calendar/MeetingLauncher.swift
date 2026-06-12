@@ -17,14 +17,17 @@ final class MeetingLauncher {
     }
 
     /// Open the event's meeting link in the configured browser and (optionally) start recording.
-    func join(_ event: MeetingEvent) {
+    /// Pass `record` to override the "Auto-record on join" setting for this one join — e.g. `false`
+    /// to join without starting a transcript regardless of the default.
+    func join(_ event: MeetingEvent, record: Bool? = nil) {
         guard let url = launchURL(for: event) else {
             logError("MeetingLauncher: no meeting URL for \(event.title)")
             return
         }
         open(url)
 
-        if CalendarSettings.shared.autoRecordOnJoin,
+        let shouldRecord = record ?? CalendarSettings.shared.autoRecordOnJoin
+        if shouldRecord,
            let store = meetingStore,
            !store.captureCoordinator.isCapturing {
             store.startRecording(from: event)
