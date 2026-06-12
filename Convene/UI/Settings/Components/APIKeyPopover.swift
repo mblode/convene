@@ -105,7 +105,7 @@ struct APIKeyPopover: View {
             if hasKey {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(Color.accentOlive)
+                        .foregroundStyle(Color.accent)
                     Text("A key is currently saved.")
                         .font(.system(size: 12))
                         .foregroundStyle(Color.textSecondary)

@@ -13,7 +13,7 @@ struct SidebarRow: View {
             HStack(spacing: 10) {
                 Image(systemName: icon)
                     .font(.system(size: 14))
-                    .foregroundStyle(isSelected ? Color.accentOlive : Color.textSecondary)
+                    .foregroundStyle(isSelected ? Color.accent : Color.textSecondary)
                     .frame(width: 18)
                 Text(label)
                     .font(.system(size: 13))
@@ -35,7 +35,7 @@ struct SidebarRow: View {
     }
 
     private var background: Color {
-        if isSelected { return Color.accentOliveSoft }
+        if isSelected { return Color.accentSoft }
         if isHovering { return Color.hoverBackground }
         return .clear
     }

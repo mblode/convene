@@ -6,7 +6,6 @@ struct MenuBarView: View {
     @ObservedObject private var calendarSettings = CalendarSettings.shared
 
     @State private var now: Date = Date()
-    @State private var recordingStartedAt: Date?
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -18,14 +17,6 @@ struct MenuBarView: View {
             await meetingStore.calendarService.refreshEvents()
         }
         .onReceive(tick) { now = $0 }
-        .onAppear {
-            if meetingStore.captureCoordinator.isCapturing && recordingStartedAt == nil {
-                recordingStartedAt = Date()
-            }
-        }
-        .onChange(of: meetingStore.captureCoordinator.isCapturing) { _, capturing in
-            recordingStartedAt = capturing ? Date() : nil
-        }
     }
 
     @ViewBuilder
@@ -51,14 +42,25 @@ struct MenuBarView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            statusLabel
-            Spacer(minLength: Theme.Spacing.sm)
-            recordButton
+        VStack(spacing: 4) {
+            HStack(spacing: Theme.Spacing.sm) {
+                statusLabel
+                Spacer(minLength: Theme.Spacing.sm)
+                recordButton
+            }
+            if let banner = meetingStore.headerBanner {
+                Text(banner.text)
+                    .font(.system(size: 11))
+                    .foregroundStyle(banner.isError ? Color.recordingRed : Color.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            }
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, 10)
         .animation(.easeInOut(duration: 0.2), value: meetingStore.captureCoordinator.isCapturing)
+        .animation(.easeInOut(duration: 0.2), value: meetingStore.headerBanner?.text)
     }
 
     /// Left side of the header. Carries recording *status* (so the button can carry the *action*):
@@ -92,7 +94,7 @@ struct MenuBarView: View {
                     ProgressView()
                         .controlSize(.small)
                         .tint(.white)
-                    Text(isCapturing ? "Stopping…" : "Starting…")
+                    Text(meetingStore.togglePhase == .stopping ? "Stopping…" : "Starting…")
                         .font(.system(size: 13, weight: .medium))
                 } else {
                     Image(systemName: isCapturing ? "stop.fill" : "record.circle.fill")
@@ -106,7 +108,7 @@ struct MenuBarView: View {
             .padding(.vertical, 5)
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
-                    .fill(isCapturing ? Color.recordingRed : Color.accentOlive)
+                    .fill(isCapturing ? Color.recordingRed : Color.accent)
             )
         }
         .buttonStyle(.plain)
@@ -116,7 +118,7 @@ struct MenuBarView: View {
     }
 
     private var recordingElapsedText: String {
-        guard let start = recordingStartedAt else { return "0:00" }
+        guard let start = meetingStore.meetingStartedAt else { return "0:00" }
         let total = max(0, Int(now.timeIntervalSince(start)))
         let h = total / 3600
         let m = (total % 3600) / 60
@@ -132,8 +134,14 @@ struct MenuBarView: View {
     private func contextualActions(for event: MeetingEvent) -> some View {
         VStack(spacing: 1) {
             if event.meetingURL != nil {
+                if !meetingStore.captureCoordinator.isCapturing {
+                    ActionRow(icon: "record.circle", label: "Join and Record", tint: Color.accent) {
+                        MeetingLauncher.shared.join(event, record: true)
+                        StatusItemController.shared.hidePanel()
+                    }
+                }
                 ActionRow(icon: "video.fill", label: event.meetingService?.joinLabel ?? "Join Meeting") {
-                    MeetingLauncher.shared.join(event)
+                    MeetingLauncher.shared.join(event, record: false)
                     StatusItemController.shared.hidePanel()
                 }
             }
@@ -152,15 +160,15 @@ struct MenuBarView: View {
     // MARK: - Schedule
 
     private var schedule: some View {
-        let events = meetingStore.calendarService.todaysEvents
+        let sections = meetingStore.calendarService.groupedByDay()
         return VStack(alignment: .leading, spacing: 0) {
-            dayHeader("Today, " + now.formatted(.dateTime.day().month(.wide)))
-            if events.isEmpty {
+            if sections.isEmpty {
+                dayHeader("Today, " + now.formatted(.dateTime.day().month(.wide)))
                 VStack(spacing: Theme.Spacing.sm) {
                     Image(systemName: "checkmark.circle")
                         .font(.system(size: 22))
                         .foregroundStyle(.tertiary)
-                    Text("Nothing else today")
+                    Text("Nothing scheduled")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
@@ -168,21 +176,26 @@ struct MenuBarView: View {
                 .padding(.vertical, 28)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 1) {
-                        ForEach(events) { event in
-                            EventRow(
-                                event: event,
-                                status: status(for: event),
-                                now: now,
-                                canJoin: event.meetingURL != nil
-                            ) {
-                                rowTapped(event)
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(sections) { section in
+                            dayHeader(section.title)
+                            VStack(spacing: 1) {
+                                ForEach(section.events) { event in
+                                    EventRow(
+                                        event: event,
+                                        status: status(for: event),
+                                        now: now,
+                                        canJoin: event.meetingURL != nil
+                                    ) {
+                                        rowTapped(event)
+                                    }
+                                    .contextMenu { eventContextMenu(for: event) }
+                                }
                             }
-                            .contextMenu { eventContextMenu(for: event) }
+                            .padding(.horizontal, 6)
+                            .padding(.bottom, 6)
                         }
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.bottom, 6)
                 }
                 .frame(maxHeight: 360)
             }
@@ -191,7 +204,7 @@ struct MenuBarView: View {
 
     private func dayHeader(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 11, weight: .medium))
+            .font(.pillLabel.weight(.medium))
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
@@ -202,8 +215,12 @@ struct MenuBarView: View {
     private func rowTapped(_ event: MeetingEvent) {
         if event.meetingURL != nil {
             MeetingLauncher.shared.join(event)
-        } else if !meetingStore.captureCoordinator.isCapturing {
+        } else if status(for: event) != .past, !meetingStore.captureCoordinator.isCapturing {
             meetingStore.startRecording(from: event)
+        } else {
+            // No actionable target (finished event, or already recording with no link to open).
+            // Leave the panel open rather than closing on a tap that did nothing.
+            return
         }
         StatusItemController.shared.hidePanel()
     }
@@ -395,9 +412,9 @@ private struct EventRow: View {
             HStack(spacing: 10) {
                 StatusCircle(status: status, color: tint)
                 timeRange
-                    .font(.system(size: 12).monospacedDigit())
+                    .font(.menuInfo.monospacedDigit())
                 Text(event.title)
-                    .font(.system(size: 13))
+                    .font(.menuRow.weight(.medium))
                     .foregroundStyle(status == .past ? Color.secondary : Color.primary)
                     .lineLimit(1)
                 Spacer(minLength: 8)
@@ -423,20 +440,42 @@ private struct EventRow: View {
     private var trailing: some View {
         if hovering && canJoin {
             Text("Join")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.pillLabel.weight(.semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 2)
-                .background(Capsule().fill(Color.accentOlive))
+                .background(Capsule().fill(Color.accent))
+                .fixedSize()
+        } else if let label = relativeLabel {
+            Text(label)
+                .font(.pillLabel.weight(.semibold))
+                .foregroundStyle(status == .current ? Color.white : Color.accent)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(status == .current ? Color.accent : Color.accentSoft))
                 .fixedSize()
         } else if event.attendees.count >= 1 {
             HStack(spacing: 3) {
                 Image(systemName: "person")
                     .font(.system(size: 10))
                 Text("\(event.attendees.count)")
-                    .font(.system(size: 11).monospacedDigit())
+                    .font(.pillLabel.monospacedDigit())
             }
             .foregroundStyle(.tertiary)
+        }
+    }
+
+    /// Glanceable countdown like Granola/Raycast: "Now" while in progress, "in Xm" for
+    /// events starting within the hour. Nil otherwise so the row falls back to attendees.
+    private var relativeLabel: String? {
+        switch status {
+        case .current:
+            return "Now"
+        case .upcoming:
+            let minutes = Int(ceil(event.startDate.timeIntervalSince(now) / 60))
+            return (1...60).contains(minutes) ? "in \(minutes)m" : nil
+        case .past:
+            return nil
         }
     }
 
@@ -453,14 +492,15 @@ private struct EventRow: View {
     }
 
     private var rowBackground: Color {
-        if status == .current { return Color.accentOliveSoft }
+        if status == .current { return Color.accentSoft }
         if hovering { return Color.hoverBackground }
         return .clear
     }
 
     private var timeRange: Text {
-        Text(formatted(event.startDate)).foregroundColor(Color.primary)
-            + Text(" – \(formatted(event.endDate))").foregroundColor(Color.secondary)
+        // Quiet metadata: the title is the row's anchor, so the time recedes.
+        Text(formatted(event.startDate)).foregroundColor(.secondary)
+            + Text(" – \(formatted(event.endDate))").foregroundColor(Color.textTertiary)
     }
 
     private func formatted(_ date: Date) -> String {
@@ -471,7 +511,7 @@ private struct EventRow: View {
         if let nsColor = event.calendarColor {
             return Color(nsColor)
         }
-        return Color.accentOlive
+        return Color.accent
     }
 }
 
@@ -523,7 +563,7 @@ private struct OliveProminentButtonStyle: ButtonStyle {
             .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
-                    .fill(Color.accentOlive)
+                    .fill(Color.accent)
                     .opacity(configuration.isPressed ? 0.85 : 1)
             )
     }

@@ -283,7 +283,7 @@ struct PermissionsPage: View {
         }
         .buttonStyle(.borderless)
         .font(.system(size: 12))
-        .foregroundStyle(Color.accentOlive)
+        .foregroundStyle(Color.accent)
         .disabled(isRefreshing)
     }
 
@@ -300,7 +300,7 @@ struct PermissionsPage: View {
         }
         .buttonStyle(.borderless)
         .font(.system(size: 12))
-        .foregroundStyle(Color.accentOlive)
+        .foregroundStyle(Color.accent)
     }
 
     private func enableSystemAudio() {

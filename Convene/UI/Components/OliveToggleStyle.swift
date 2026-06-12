@@ -12,7 +12,7 @@ struct OliveToggleStyle: ToggleStyle {
         } label: {
             ZStack(alignment: configuration.isOn ? .trailing : .leading) {
                 Capsule()
-                    .fill(configuration.isOn ? Color.accentOlive : Color.toggleOffBackground)
+                    .fill(configuration.isOn ? Color.accent : Color.toggleOffBackground)
                 Circle()
                     .fill(Color.white)
                     .frame(width: knobSize, height: knobSize)

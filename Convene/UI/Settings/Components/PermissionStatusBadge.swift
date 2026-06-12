@@ -23,7 +23,7 @@ enum PermissionState {
 
     var fill: Color {
         switch self {
-        case .granted:       return Color.accentOliveSoft
+        case .granted:       return Color.accentSoft
         case .denied:        return Color.iconBadgeBackground
         case .notDetermined: return Color.iconBadgeBackground
         case .restricted:    return Color.iconBadgeBackground
@@ -35,7 +35,7 @@ enum PermissionState {
 
     var foreground: Color {
         switch self {
-        case .granted:       return Color.accentOlive
+        case .granted:       return Color.accent
         default:             return Color.textSecondary
         }
     }
