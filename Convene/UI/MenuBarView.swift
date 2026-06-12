@@ -51,12 +51,34 @@ struct MenuBarView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(spacing: 8) {
-            Spacer()
+        HStack(spacing: Theme.Spacing.sm) {
+            statusLabel
+            Spacer(minLength: Theme.Spacing.sm)
             recordButton
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, 10)
+        .animation(.easeInOut(duration: 0.2), value: meetingStore.captureCoordinator.isCapturing)
+    }
+
+    /// Left side of the header. Carries recording *status* (so the button can carry the *action*):
+    /// a live pulse and elapsed time while capturing, otherwise the quiet wordmark.
+    @ViewBuilder
+    private var statusLabel: some View {
+        if meetingStore.captureCoordinator.isCapturing {
+            HStack(spacing: 6) {
+                PulsingDot(color: .recordingRed)
+                Text(recordingElapsedText)
+                    .font(.system(size: 12, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            .transition(.opacity)
+        } else {
+            Text("Convene")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+                .transition(.opacity)
+        }
     }
 
     private var recordButton: some View {
@@ -75,9 +97,8 @@ struct MenuBarView: View {
                 } else {
                     Image(systemName: isCapturing ? "stop.fill" : "record.circle.fill")
                         .font(.system(size: 11))
-                    Text(isCapturing ? recordingDurationText : "Record")
+                    Text(isCapturing ? "Stop" : "Record")
                         .font(.system(size: 13, weight: .medium))
-                        .monospacedDigit()
                 }
             }
             .foregroundStyle(.white)
@@ -94,15 +115,15 @@ struct MenuBarView: View {
         .accessibilityLabel(isCapturing ? "Stop recording" : "Start recording")
     }
 
-    private var recordingDurationText: String {
-        guard let start = recordingStartedAt else { return "Stop" }
+    private var recordingElapsedText: String {
+        guard let start = recordingStartedAt else { return "0:00" }
         let total = max(0, Int(now.timeIntervalSince(start)))
         let h = total / 3600
         let m = (total % 3600) / 60
         let s = total % 60
         return h > 0
-            ? String(format: "Stop  %d:%02d:%02d", h, m, s)
-            : String(format: "Stop  %d:%02d", m, s)
+            ? String(format: "%d:%02d:%02d", h, m, s)
+            : String(format: "%d:%02d", m, s)
     }
 
     // MARK: - Contextual actions (active event)
@@ -135,12 +156,16 @@ struct MenuBarView: View {
         return VStack(alignment: .leading, spacing: 0) {
             dayHeader("Today, " + now.formatted(.dateTime.day().month(.wide)))
             if events.isEmpty {
-                Text("Nothing else today.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                VStack(spacing: Theme.Spacing.sm) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 22))
+                        .foregroundStyle(.tertiary)
+                    Text("Nothing else today")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 28)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 1) {
@@ -153,6 +178,7 @@ struct MenuBarView: View {
                             ) {
                                 rowTapped(event)
                             }
+                            .contextMenu { eventContextMenu(for: event) }
                         }
                     }
                     .padding(.horizontal, 6)
@@ -180,6 +206,36 @@ struct MenuBarView: View {
             meetingStore.startRecording(from: event)
         }
         StatusItemController.shared.hidePanel()
+    }
+
+    @ViewBuilder
+    private func eventContextMenu(for event: MeetingEvent) -> some View {
+        if event.meetingURL != nil {
+            Button {
+                MeetingLauncher.shared.join(event, record: true)
+                StatusItemController.shared.hidePanel()
+            } label: {
+                Label("Join and Record", systemImage: "record.circle")
+            }
+            Button {
+                MeetingLauncher.shared.join(event, record: false)
+                StatusItemController.shared.hidePanel()
+            } label: {
+                Label("Join Without Recording", systemImage: "video")
+            }
+            Divider()
+        }
+        Button {
+            MeetingLauncher.shared.openInCalendar(event)
+            StatusItemController.shared.hidePanel()
+        } label: {
+            Label("Open in Calendar", systemImage: "calendar")
+        }
+        Button {
+            MeetingLauncher.shared.dismiss(event)
+        } label: {
+            Label("Dismiss Event", systemImage: "xmark.circle")
+        }
     }
 
     // MARK: - Footer
@@ -416,6 +472,22 @@ private struct EventRow: View {
             return Color(nsColor)
         }
         return Color.accentOlive
+    }
+}
+
+/// A small dot that gently breathes — used as the live recording indicator in the header.
+private struct PulsingDot: View {
+    let color: Color
+    @State private var pulsing = false
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 7, height: 7)
+            .opacity(pulsing ? 0.35 : 1)
+            .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulsing)
+            .onAppear { pulsing = true }
+            .accessibilityHidden(true)
     }
 }
 
