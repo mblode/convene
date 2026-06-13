@@ -1,95 +1,61 @@
-# Convene
+<p align="center">
+  <img src="AppIcon-iOS-Default-1024x1024@1x.png" width="128" alt="Convene app icon">
+</p>
 
-macOS meeting transcription app — Granola-style. Captures both sides of a video call (mic + system audio), transcribes live with OpenAI Realtime, takes notes alongside, and produces an AI summary on stop.
+<h1 align="center">Convene</h1>
 
-BYO OpenAI key. Local-first storage. Multi-calendar via EventKit. Auto-detects Zoom / Teams / Webex / Meet / BlueJeans / Slack on launch.
+<p align="center">
+  Open-source meeting transcription for macOS. Bring your own API keys.
+</p>
 
-## Status
+## How it works
 
-All seven phases of the [implementation plan](../../.claude/plans/i-want-to-make-compressed-kahan.md) are scaffolded:
+- Records both sides of a call: your mic and the other side's audio
+- Transcribes live as the meeting happens
+- Take notes next to the transcript, get an AI summary when you stop
+- Spots Zoom, Teams, Webex, Meet, BlueJeans, and Slack when they open
+- Links recordings to your calendar (iCloud, Gmail, Fastmail, and more)
+- Stays on your Mac. Notes save to a folder you pick, keys live in the Keychain
+- `Option + Shift + R` to record, `Option + Shift + ,` for Settings
 
-- **Phase 1** — Audio capture (mic via VoiceProcessingIO + AEC, system via ScreenCaptureKit), 24 kHz PCM mono
-- **Phase 2** — Two-stream live transcription through OpenAI Realtime, merged segment list
-- **Phase 3** — Notes editor + Markdown / JSON persistence to a security-scoped output folder
-- **Phase 4** — AI summary via OpenAI Responses API (`text.format: json_schema`, `store: false`)
-- **Phase 5** — EventKit-backed today's-events list (iCloud + Gmail + Fastmail + any other CalDAV/Exchange) with one-click "start recording from this event"
-- **Phase 6** — App-launch detection (Zoom / Teams / Webex / Meet / BlueJeans / Slack) with notification banners
-- **Phase 7** — Makefile, GitHub Actions release workflow, Homebrew cask template
+## Install
 
-The Xcode project (`Convene.xcodeproj`) is generated from `project.yml` and committed for convenience.
+Needs macOS 15 (Sequoia) or later.
 
-## Repo layout
-
-```
-Convene/
-├── Audio/                  Mic + system audio capture, WAV writer
-├── Transcription/          OpenAI Realtime transcription client
-├── Calendar/               EventKit wrapper (multi-account)
-├── Detection/              NSWorkspace meeting detector + UN delegate
-├── Storage/                Markdown / JSON persistence with security-scoped bookmarks
-├── Summary/                Responses API structured-output summary service
-├── Models/                 MeetingStore, Meeting, TranscriptSegment
-├── UI/                     SwiftUI views: meeting window, menu, settings
-├── Util/                   Logger
-├── Hotkeys/                KeyboardShortcuts setup
-├── Keychain/               OpenAI API key storage
-├── Info.plist
-└── Convene.entitlements
-.github/workflows/release.yml   Build → notarize → DMG → GitHub Release
-homebrew/convene.rb             Cask template (publish to mblode/homebrew-tap)
-Makefile                        build / install / archive / dmg / notarize
-```
-
-## Bootstrap (one-time)
-
-The Xcode project is generated from `project.yml` by [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+<strong><a href="https://github.com/mblode/convene/releases/latest">Download the latest release</a></strong>, or:
 
 ```bash
-brew install xcodegen           # one-time
-xcodegen generate                # refreshes Convene.xcodeproj
-open Convene.xcodeproj           # or `make install` to build + relaunch
+brew tap mblode/tap
+brew install --cask convene
 ```
 
-Re-run `xcodegen generate` whenever you add a Swift file or change `project.yml`. SPM resolves the `KeyboardShortcuts` dependency automatically on first build.
+Add two keys in Settings. They're stored in your Keychain.
 
-## Required permissions (first run)
+- **[AssemblyAI](https://www.assemblyai.com/)** for transcription. Get a key from the [dashboard](https://www.assemblyai.com/dashboard/api-keys).
+- **[OpenAI](https://platform.openai.com/api-keys) or [Anthropic](https://console.anthropic.com/settings/keys)** for summaries. Optional. Claude works best.
 
-Convene will prompt for these:
+On first launch Convene asks for Microphone, Screen Recording (audio only, no video), Calendar, and Notifications.
 
-- **Microphone** — to capture your side
-- **Screen Recording** — required by ScreenCaptureKit even for audio-only capture; no video is recorded
-- **Calendar** — to attach meetings to events from all configured macOS calendars
-- **Notifications** — for the "meeting detected" banner
+## Updates
 
-## Build
+Convene updates itself through Sparkle. Use **Check for Updates...** from the menu bar or Settings, or run `brew upgrade --cask convene`.
+
+## Troubleshooting
+
+Can't see the menu bar icon? Press `Option + Shift + ,` to open Settings.
+
+No transcript? Make sure Screen Recording is on in **System Settings > Privacy & Security > Screen Recording**, then relaunch.
+
+## Building from source
 
 ```bash
-make build          # Release build
-make install        # Debug build → /Applications/Convene.app → relaunch
-make dmg            # Build + sign + create DMG
-make notarize       # Build + DMG + notarize (requires APPLE_TEAM_ID, NOTARIZE_APPLE_ID, NOTARIZE_PASSWORD)
-make clean          # Remove /tmp/convene-build
+brew install xcodegen   # one-time
+xcodegen generate       # refreshes Convene.xcodeproj
+make install            # build and launch
 ```
 
-## Reuse provenance
+Re-run `xcodegen generate` after adding a Swift file. See the [Makefile](Makefile) for more targets.
 
-Bits of code adapted from sibling projects:
+## License
 
-- `Transcription/OpenAIRealtimeTranscriber.swift` — OpenAI Realtime transcription client adapted from `~/Code/mblode/commandment/`, updated for `gpt-realtime-whisper` and Convene's two-stream meeting capture.
-- `Keychain/KeychainManager.swift`, `Util/Logger.swift`, `Hotkeys/HotkeyManager.swift` — adapted from `~/Code/mblode/commandment/` (service id / log filename swapped).
-- `Audio/MicCapture.swift` — slimmed-down adaptation of `~/Code/mblode/rubber-duck/apps/macos/AudioManager.swift`. Kept the 24 kHz PCM mono pipeline + noise gate. Dropped the playback-coupled software AEC and startup planner (not relevant for meeting transcription).
-- Everything in `Audio/SystemAudioCapture.swift`, `Audio/AudioCaptureCoordinator.swift`, `Audio/WAVFileWriter.swift`, `Calendar/`, `Detection/`, `Storage/`, `Summary/`, and most of `Models/` and `UI/` — new.
-
-## Release flow
-
-Tag-driven via GitHub Actions:
-
-```bash
-git tag v0.1.0 && git push origin main --tags
-```
-
-The `release.yml` workflow builds → signs (Developer ID) → notarizes → creates a GitHub Release with the DMG attached → signs and publishes the Sparkle appcast → updates the Homebrew tap.
-
-Required secrets: `DEVELOPER_ID_CERT_P12`, `DEVELOPER_ID_CERT_PASSWORD`, `APPLE_TEAM_ID`, `NOTARIZE_APPLE_ID`, `NOTARIZE_PASSWORD`, `SPARKLE_PRIVATE_ED_KEY`, and `HOMEBREW_TAP_TOKEN`.
-
-Sparkle checks `https://raw.githubusercontent.com/mblode/convene/main/appcast.xml`, and the generated Homebrew cask is published to `mblode/homebrew-tap`.
+MIT
