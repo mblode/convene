@@ -1,6 +1,6 @@
-import Image from "next/image";
+import Image from "next/image"
 
-import { siteConfig } from "@/lib/config";
+import { siteConfig } from "@/lib/config"
 
 export const SiteFooter = () => (
   <footer className="border-t border-charcoal-black bg-twilight-ink">
@@ -38,4 +38,4 @@ export const SiteFooter = () => (
       </div>
     </div>
   </footer>
-);
+)

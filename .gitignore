@@ -19,3 +19,22 @@ xcuserdata/
 # Secrets
 .env
 Convene.xcodeproj/
+
+# Node / Turborepo (apps/*)
+node_modules
+out
+dist
+*.tgz
+coverage
+*.lcov
+*.log
+.eslintcache
+.cache
+*.tsbuildinfo
+.turbo
+.vercel
+.next/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

@@ -1,0 +1,26 @@
+{
+  "name": "convene",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@10.9.3",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "format": "turbo format",
+    "format:check": "turbo format:check",
+    "check-types": "turbo check-types",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "lefthook": "^1.7.0",
+    "turbo": "^2",
+    "ultracite": "7.8.3"
+  }
+}
