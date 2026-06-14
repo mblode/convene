@@ -113,7 +113,6 @@ struct MenuBarView: View {
         }
         .buttonStyle(.plain)
         .animation(.easeInOut(duration: 0.15), value: isBusy)
-        .keyboardShortcut("r", modifiers: [.option, .shift])
         .accessibilityLabel(isCapturing ? "Stop recording" : "Start recording")
     }
 
