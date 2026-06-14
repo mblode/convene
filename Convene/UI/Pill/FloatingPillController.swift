@@ -57,6 +57,13 @@ final class FloatingPillController {
         observers.append(center.addObserver(forName: .conveneLiveRecap, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.toggleRecap() }
         })
+        // Re-anchor when displays are added/removed/rearranged (e.g. plugging in an external
+        // monitor flips notch docking on/off).
+        observers.append(center.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.reflow() }
+        })
     }
 
     // MARK: - Hotkey actions
@@ -147,10 +154,15 @@ final class FloatingPillController {
         )
         panel.contentViewController = host
         panel.isFloatingPanel = true
+        // Above the menu bar (`.statusBar` > `.mainMenu`) so the docked surface can visually
+        // merge with the notch; `.fullScreenAuxiliary` keeps it visible over fullscreen Zoom/Meet.
+        // Deliberately below `.screenSaver`/alert levels so we never sit over system dialogs.
         panel.level = .statusBar
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.hasShadow = true
+        // The SwiftUI content draws its own shadow over a transparent, padded window — a window
+        // shadow would frame the whole transparent rect. Matches DynamicNotchKit.
+        panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
@@ -191,47 +203,44 @@ final class FloatingPillController {
         let visible = screen.visibleFrame
         let full = screen.frame
 
-        // Snug to the menu bar: 2pt below the visible-area top. When docked at the notch the pill's
-        // top edge meets the menu bar so it reads as hanging from the notch.
-        let topGap: CGFloat = notchFrame(on: screen) != nil ? 0 : 6
-        let originY = visible.maxY - size.height - topGap
-
-        let centerX: CGFloat
-        if let notch = notchFrame(on: screen) {
-            centerX = notch.midX
+        if screen.notchFrame != nil {
+            // Docked: the panel's top edge meets the very top of the screen so the content's dark
+            // connector merges with the notch hardware; the interactive pill hangs into the safe
+            // area below the menu bar (HIG: keep controls out from behind the camera housing).
+            let originY = full.maxY - size.height
+            let originX = clampedX(center: full.midX, width: size.width, visible: visible)
+            panel.setFrame(NSRect(x: originX, y: originY, width: size.width, height: size.height),
+                           display: true, animate: false)
         } else {
-            centerX = full.midX
+            // Floating: a pill just below the menu bar, centered on the screen.
+            let originY = visible.maxY - size.height - 6
+            let originX = clampedX(center: full.midX, width: size.width, visible: visible)
+            panel.setFrame(NSRect(x: originX, y: originY, width: size.width, height: size.height),
+                           display: true, animate: false)
         }
-        var originX = centerX - size.width / 2
-        // Keep fully on-screen.
-        originX = min(max(originX, visible.minX + 8), visible.maxX - size.width - 8)
-
-        panel.setFrame(NSRect(x: originX, y: originY, width: size.width, height: size.height), display: true, animate: false)
     }
 
-    /// The screen to host the pill: the one with the menu bar / key window, falling back to main.
+    /// Horizontal origin centered on `center`, kept fully on-screen with an 8pt inset.
+    private func clampedX(center: CGFloat, width: CGFloat, visible: NSRect) -> CGFloat {
+        let raw = center - width / 2
+        return min(max(raw, visible.minX + 8), visible.maxX - width - 8)
+    }
+
+    /// The screen to host the pill: prefer the built-in notched display (the pill's natural home),
+    /// else the active/main screen.
     private func preferredScreen() -> NSScreen {
-        NSScreen.main ?? NSScreen.screens.first ?? NSScreen.screens[0]
-    }
-
-    /// The notch's rect in screen coordinates on notched MacBooks, else nil. Derived from the
-    /// auxiliary top areas flanking the notch (macOS 12+).
-    private func notchFrame(on screen: NSScreen) -> NSRect? {
-        guard screen.safeAreaInsets.top > 0 else { return nil }
-        guard let left = screen.auxiliaryTopLeftArea,
-              let right = screen.auxiliaryTopRightArea else { return nil }
-        let notchWidth = right.minX - left.maxX
-        guard notchWidth > 0 else { return nil }
-        return NSRect(
-            x: left.maxX,
-            y: screen.frame.maxY - screen.safeAreaInsets.top,
-            width: notchWidth,
-            height: screen.safeAreaInsets.top
-        )
+        NSScreen.screens.first(where: \.hasNotch) ?? NSScreen.main ?? NSScreen.screens[0]
     }
 
     var isNotchDocked: Bool {
-        notchFrame(on: preferredScreen()) != nil
+        preferredScreen().notchFrame != nil
+    }
+
+    /// Vertical inset reserved at the top of the docked content for the notch/menu-bar band, so
+    /// the interactive pill sits in the safe area below it. Zero when floating.
+    var notchTopInset: CGFloat {
+        let screen = preferredScreen()
+        return screen.notchFrame != nil ? screen.menubarHeight : 0
     }
 }
 
