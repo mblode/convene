@@ -196,12 +196,14 @@ final class CalendarService: ObservableObject {
     func groupedByDay() -> [DaySection] {
         let cal = Calendar.current
         let now = Date()
-        // Keep all of today's events — including ones that already finished, which the popover
-        // shows with a checkmark — plus everything upcoming. Only drop fully-past days and
-        // events the user has dismissed from the menu.
+        // Show only today's events — including ones that already finished, which the popover
+        // shows with a checkmark. Like Raycast's menu bar, the schedule stays scoped to today.
+        // Drop events the user has dismissed from the menu.
         let startOfToday = cal.startOfDay(for: now)
         let dismissed = CalendarSettings.shared.dismissedEventIDs
-        let upcoming = visibleEvents.filter { $0.endDate >= startOfToday && !dismissed.contains($0.id) }
+        let upcoming = visibleEvents.filter {
+            cal.isDateInToday($0.startDate) && $0.endDate >= startOfToday && !dismissed.contains($0.id)
+        }
         let buckets = Dictionary(grouping: upcoming) { cal.startOfDay(for: $0.startDate) }
         return buckets.keys.sorted().map { day in
             DaySection(
