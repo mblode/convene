@@ -13,6 +13,20 @@ struct FloatingPillView: View {
 
     var body: some View {
         Group {
+            if controller.isNotchDocked {
+                dockedContainer
+            } else {
+                floatingContainer
+            }
+        }
+        .onReceive(tick) { now = $0 }
+        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: model.mode)
+    }
+
+    /// The mode-specific content, at a deterministic width so the self-sizing panel can measure
+    /// a stable frame. Mirrors the controller's per-mode width budget.
+    private var modeContent: some View {
+        Group {
             switch model.mode {
             case .collapsed: collapsedPill
             case .capture: capturePill
@@ -20,23 +34,8 @@ struct FloatingPillView: View {
             }
         }
         .frame(width: contentWidth, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .themeShadow(Theme.Shadow.menu)
-        .padding(6)
-        .onReceive(tick) { now = $0 }
-        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: model.mode)
     }
 
-    /// Fixed content width per mode so the self-sizing panel can measure a deterministic frame.
-    /// Mirrors the controller's per-mode width budget.
     private var contentWidth: CGFloat {
         switch model.mode {
         case .collapsed: return 238
@@ -45,8 +44,47 @@ struct FloatingPillView: View {
         }
     }
 
-    /// Flat top corners when docked under the notch so the pill reads as hanging from it.
-    private var cornerRadius: CGFloat { controller.isNotchDocked ? 14 : 16 }
+    // MARK: - Containers
+
+    /// Free-floating rounded pill below the menu bar (non-notched displays).
+    private var floatingContainer: some View {
+        modeContent
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .themeShadow(Theme.Shadow.menu)
+            .padding(6)
+    }
+
+    /// Notch-docked surface: a dark band reserves the notch/menu-bar height at the top so it
+    /// merges with the camera housing, and the interactive content hangs into the safe area
+    /// below with rounded bottom corners (Dynamic-Island-style). Forced dark scheme keeps text
+    /// legible on the black band regardless of system appearance.
+    private var dockedContainer: some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: controller.notchTopInset)
+            modeContent
+                .padding(.horizontal, 6)
+                .padding(.bottom, 6)
+        }
+        .background(
+            UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous)
+                .fill(Color.black)
+        )
+        .clipShape(
+            UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous)
+        )
+        .themeShadow(Theme.Shadow.menu)
+        .padding(.horizontal, 6)
+        .padding(.bottom, 10)
+        .environment(\.colorScheme, .dark)
+    }
 
     // MARK: - Collapsed
 
