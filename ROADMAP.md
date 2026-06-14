@@ -4,30 +4,25 @@
 
 Ordered by leverage. Each item notes *why now* and what it builds on.
 
-## P0 — Key Moments (the differentiator) ⭐
+## ✅ P0 — Key Moments (the differentiator) ⭐ — shipped
 
-Timestamped, human-marked flags you drop **live** with a hotkey (`⌘K`-style),
+Timestamped, human-marked flags you drop **live** with a hotkey (`⌥⇧K`),
 landing inline in the transcript at the exact second — plus a "Key Moments"
 index at the top that links to the spot.
 
-- *Why*: it's the one feature the landing page sells, HN praised, and the code
-  lacks. It encodes **human judgment** ("this matters"), which no amount of model
-  inference replaces — and it's what makes Convene an *annotation layer* rather
-  than passive transcription.
-- *Builds on*: add `keyMoments: [{ offset, text }]` to `Meeting`; reuse the
-  existing `MM:SS` section anchors and `citation()` wikilink logic in
-  `MarkdownRenderer`; add a hotkey + lightweight always-on-top capture field.
-- *Small, high-impact.*
+- *Shipped as*: `KeyMoment { offset, text }` on `Meeting`; `MarkdownRenderer`
+  renders the index (reusing the `MM:SS` section anchors + wikilink logic) and
+  inline `⭐` markers; flags persist through the WAL; capture lives in the
+  floating pill's always-on-top field.
 
-## P1 — Live Recap (`⌘?`), pull not push
+## ✅ P1 — Live Recap (`⌥⇧/`), pull not push — shipped
 
 Glanceable last-2-minutes view, interleaved with your flagged moments, on demand.
 
-- *Why*: solves the "I zoned out" moment and is genuinely novel on-device.
-- *Guardrail*: keep it **pull** (you summon it), never proactive suggestion —
-  that would contradict "out of the way until you need it" and wander into a
-  different product. Latency target: feels live (sub-few-seconds) when summoned.
-- *Builds on*: `meeting.transcript` is already live in memory.
+- *Shipped as*: `LiveRecap.timeline(...)` windows the in-memory transcript +
+  moments for an instant on-device view; an optional Claude catch-up
+  (`generateLiveRecap`) enriches it when summoned. Strictly **pull** — surfaced
+  only via the `⌥⇧/` hotkey / pill button, never proactively.
 
 ## P2 — On-device / offline path (close the privacy gap)
 
@@ -43,16 +38,17 @@ Local transcription (WhisperKit / Apple Speech) and **local summarization**
   progressive compression around the Key-Moment timestamps (verbatim at flags,
   summarized between).
 
-## P3 — Floating pill + notch surface (Amie-inspired)
+## ✅ P3 — Floating pill + notch surface (Amie-inspired) — shipped
 
-A summonable HUD that lives over any app (Zoom/Meet/Teams), showing record state,
-timer, `⌘K` entry, and `⌘?` recap. On notched MacBooks it docks into the **notch**
-(Dynamic-Island-style, expands on interaction); elsewhere it's a floating pill.
+A HUD that lives over any app (Zoom/Meet/Teams), showing record state, timer,
+`⌥⇧K` entry, and `⌥⇧/` recap. On notched MacBooks it docks under the **notch**
+(flat top edge, expands on interaction); elsewhere it's a floating pill.
 
-- *Why*: the pill is the product's signature surface; the menu bar stays the
-  passive "home / library", the pill is the active session HUD.
-- *Shape*: one state machine, two presentations (pill = baseline, notch =
-  enhancement when hardware allows).
+- *Shipped as*: `FloatingPillController` (a non-activating `NSPanel` at
+  `.statusBar` level, all-spaces) + `FloatingPillView`/`FloatingPillModel` —
+  one state machine (collapsed / capture / recap), notch-vs-float anchoring
+  derived from `NSScreen.safeAreaInsets` + auxiliary top areas. The menu bar
+  stays the passive "home / library"; the pill is the active session HUD.
 
 ## P4 — Speaker identity that persists
 

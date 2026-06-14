@@ -18,6 +18,22 @@ struct HotkeysPage: View {
                             .controlSize(.small)
                     }
                     SettingsRow(
+                        icon: "star",
+                        title: "Flag key moment",
+                        description: "Mark this moment live, then optionally annotate it"
+                    ) {
+                        KeyboardShortcuts.Recorder("", name: .flagKeyMoment)
+                            .controlSize(.small)
+                    }
+                    SettingsRow(
+                        icon: "sparkles",
+                        title: "Live recap",
+                        description: "Catch up on the last few minutes on demand"
+                    ) {
+                        KeyboardShortcuts.Recorder("", name: .liveRecap)
+                            .controlSize(.small)
+                    }
+                    SettingsRow(
                         icon: "gearshape",
                         title: "Open settings",
                         description: "Open this window",

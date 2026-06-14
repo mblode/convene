@@ -5,12 +5,21 @@ import KeyboardShortcuts
 extension KeyboardShortcuts.Name {
     static let toggleRecording = Self("toggleRecording", default: .init(.r, modifiers: [.option, .shift]))
     static let openSettings = Self("openSettings", default: .init(.comma, modifiers: [.option, .shift]))
+    static let flagKeyMoment = Self("flagKeyMoment", default: .init(.k, modifiers: [.option, .shift]))
+    static let liveRecap = Self("liveRecap", default: .init(.slash, modifiers: [.option, .shift]))
+}
+
+extension Notification.Name {
+    static let conveneFlagKeyMoment = Notification.Name("ConveneFlagKeyMoment")
+    static let conveneLiveRecap = Notification.Name("ConveneLiveRecap")
 }
 
 @MainActor
 class HotkeyManager: ObservableObject {
     @Published var recordingShortcutDisplay: String = ""
     @Published var settingsShortcutDisplay: String = ""
+    @Published var keyMomentShortcutDisplay: String = ""
+    @Published var liveRecapShortcutDisplay: String = ""
 
     init() {
         logInfo("HotkeyManager: Initializing")
@@ -25,15 +34,32 @@ class HotkeyManager: ObservableObject {
             logDebug("HotkeyManager: openSettings")
             SettingsWindowController.shared.show()
         }
+
+        KeyboardShortcuts.onKeyUp(for: .flagKeyMoment) {
+            logDebug("HotkeyManager: flagKeyMoment")
+            NotificationCenter.default.post(name: .conveneFlagKeyMoment, object: nil)
+        }
+
+        KeyboardShortcuts.onKeyUp(for: .liveRecap) {
+            logDebug("HotkeyManager: liveRecap")
+            NotificationCenter.default.post(name: .conveneLiveRecap, object: nil)
+        }
     }
 
     func refreshDisplays() {
         recordingShortcutDisplay = HotkeyManager.display(for: .toggleRecording)
         settingsShortcutDisplay = HotkeyManager.display(for: .openSettings)
+        keyMomentShortcutDisplay = HotkeyManager.display(for: .flagKeyMoment)
+        liveRecapShortcutDisplay = HotkeyManager.display(for: .liveRecap)
     }
 
     private static func display(for name: KeyboardShortcuts.Name) -> String {
         guard let shortcut = KeyboardShortcuts.getShortcut(for: name) else { return "Not set" }
         return shortcut.description
+    }
+
+    /// The shortcut's symbol string (e.g. "⌥⇧K"), or empty when unset — for inline hints.
+    static func displayString(for name: KeyboardShortcuts.Name) -> String {
+        KeyboardShortcuts.getShortcut(for: name)?.description ?? ""
     }
 }
