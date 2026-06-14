@@ -8,19 +8,19 @@
     <description>Convene updates</description>
     <language>en</language>
     <item>
-      <title>Version 0.1.5</title>
-      <pubDate>Fri, 12 Jun 2026 00:05:36 +0000</pubDate>
-      <link>https://github.com/mblode/convene/releases/tag/v0.1.5</link>
-      <sparkle:version>0.1.5</sparkle:version>
-      <sparkle:shortVersionString>0.1.5</sparkle:shortVersionString>
+      <title>Version 0.1.6</title>
+      <pubDate>Sun, 14 Jun 2026 00:51:16 +0000</pubDate>
+      <link>https://github.com/mblode/convene/releases/tag/v0.1.6</link>
+      <sparkle:version>0.1.6</sparkle:version>
+      <sparkle:shortVersionString>0.1.6</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/mblode/convene/releases/download/v0.1.5/Convene-0.1.5.dmg"
-        sparkle:version="0.1.5"
-        sparkle:shortVersionString="0.1.5"
-        sparkle:edSignature="5gnnyCWHzN5DPGLkv/xTED6BQZF8gVfkmUtn+z1H9K9pmPxUhmSAbudbSQKawlkPp4lDLYZKufkDUeLC41AZAQ=="
+        url="https://github.com/mblode/convene/releases/download/v0.1.6/Convene-0.1.6.dmg"
+        sparkle:version="0.1.6"
+        sparkle:shortVersionString="0.1.6"
+        sparkle:edSignature="r6ci9xyGdVpmL9OVAdBeYGwLaYmGZU34CXAFyLWZyoWkSClP0jaFQRijS1lH2ievyOpi1ZeMQkzpm84DTc2wAg=="
         type="application/octet-stream"
-        length="3060553" />
+        length="3095469" />
     </item>
   </channel>
 </rss>
