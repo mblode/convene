@@ -29,6 +29,7 @@ enum MarkdownRenderer {
         let transcriptBlocks = TranscriptFormatter.mergedBlocks(transcriptSegments)
         let transcriptSections = TranscriptFormatter.sections(transcriptBlocks)
         let transcriptEnd = transcriptBlocks.map(\.endedAt).max() ?? 0
+        let keyMoments = meeting.keyMoments.sorted { $0.offset < $1.offset }
 
         var out = ""
         out += "---\n"
@@ -80,6 +81,13 @@ enum MarkdownRenderer {
 
         out += "# \(meeting.title)\n\n"
 
+        appendKeyMomentsIndex(
+            keyMoments,
+            sections: transcriptSections,
+            transcriptEnd: transcriptEnd,
+            to: &out
+        )
+
         if let summary = meeting.summary {
             out += "## TL;DR\n\n"
             out += cleanParagraphs(summary.overview)
@@ -116,9 +124,17 @@ enum MarkdownRenderer {
 
         if !transcriptSegments.isEmpty {
             out += "## Transcript\n\n"
+            // Walk key moments in lockstep with the blocks so each flag lands inline at the
+            // spot it was dropped.
+            var momentIndex = 0
             for section in transcriptSections {
                 out += "### \(TranscriptFormatter.timestampString(section.startedAt))\n\n"
                 for block in section.blocks {
+                    while momentIndex < keyMoments.count,
+                          keyMoments[momentIndex].offset <= block.startedAt {
+                        out += inlineKeyMomentMarker(keyMoments[momentIndex])
+                        momentIndex += 1
+                    }
                     let name = TranscriptFormatter.displayName(
                         for: block.speaker,
                         selfName: meeting.selfName,
@@ -129,9 +145,61 @@ enum MarkdownRenderer {
                     out += "**\(name):**\(partialMarker) \(cleanInline(block.text))\n\n"
                 }
             }
+            // Any moments flagged after the last transcribed block.
+            while momentIndex < keyMoments.count {
+                out += inlineKeyMomentMarker(keyMoments[momentIndex])
+                momentIndex += 1
+            }
         }
 
         return out
+    }
+
+    /// Renders the "## Key Moments" index near the top: one bullet per flag, linking to the
+    /// transcript section it falls under. Omitted entirely when there are no moments.
+    private static func appendKeyMomentsIndex(
+        _ moments: [KeyMoment],
+        sections: [TranscriptFormatter.Section],
+        transcriptEnd: TimeInterval,
+        to out: inout String
+    ) {
+        guard !moments.isEmpty else { return }
+        out += "## Key Moments\n\n"
+        for moment in moments {
+            let link = keyMomentLink(
+                offset: moment.offset,
+                sections: sections,
+                transcriptEnd: transcriptEnd
+            )
+            let text = cleanInline(moment.text)
+            out += text.isEmpty ? "- \(link)\n" : "- \(link) — \(text)\n"
+        }
+        out += "\n"
+    }
+
+    /// A blockquote marker dropped inline in the transcript at a flagged moment.
+    private static func inlineKeyMomentMarker(_ moment: KeyMoment) -> String {
+        let stamp = TranscriptFormatter.timestampString(moment.offset)
+        let text = cleanInline(moment.text)
+        return text.isEmpty
+            ? "> ⭐ **Key moment** (\(stamp))\n\n"
+            : "> ⭐ **Key moment** (\(stamp)) — \(text)\n\n"
+    }
+
+    /// Wikilink from a key-moment offset to the transcript section header it falls under,
+    /// mirroring `citation`. Falls back to a plain `MM:SS` label when there's no transcript
+    /// to link into (so the index still reads cleanly).
+    private static func keyMomentLink(
+        offset: TimeInterval,
+        sections: [TranscriptFormatter.Section],
+        transcriptEnd: TimeInterval
+    ) -> String {
+        let label = TranscriptFormatter.timestampString(offset)
+        guard offset <= transcriptEnd,
+              let anchor = TranscriptFormatter.sectionTimestamp(for: offset, in: sections) else {
+            return label
+        }
+        return "[[#\(anchor)|\(label)]]"
     }
 
     static func encodeJSON(_ meeting: Meeting) throws -> Data {

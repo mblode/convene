@@ -61,6 +61,18 @@ final class TranscriptWALService: Sendable {
         }
     }
 
+    /// Appends a flagged key moment. Stored as its own line; recovery disambiguates it from
+    /// transcript segments by their disjoint key sets (`offset`/`createdAt` vs `speaker`/`isFinal`).
+    func appendKeyMoment(_ moment: KeyMoment) {
+        queue.async { [encoder] in
+            guard let handle = self.fileHandle else { return }
+            guard let data = try? encoder.encode(moment) else { return }
+            handle.write(data)
+            handle.write(Data("\n".utf8))
+            handle.synchronizeFile()
+        }
+    }
+
     @discardableResult
     func endSession() -> URL? {
         queue.sync {
@@ -98,20 +110,20 @@ final class TranscriptWALService: Sendable {
         let header = try decoder.decode(Header.self, from: headerData)
 
         var segments: [TranscriptSegment] = []
+        var keyMoments: [KeyMoment] = []
         for line in lines.dropFirst() {
             guard let data = line.data(using: .utf8) else { continue }
-            guard let segment = try? decoder.decode(TranscriptSegment.self, from: data) else {
-                continue
+            if let segment = try? decoder.decode(TranscriptSegment.self, from: data) {
+                segments.append(segment)
+            } else if let moment = try? decoder.decode(KeyMoment.self, from: data) {
+                keyMoments.append(moment)
             }
-            segments.append(segment)
         }
 
-        let endedAt: Date
-        if let lastEnd = segments.last?.endedAt {
-            endedAt = header.startedAt.addingTimeInterval(lastEnd)
-        } else {
-            endedAt = header.startedAt
-        }
+        let lastOffset = max(segments.last?.endedAt ?? 0, keyMoments.map(\.offset).max() ?? 0)
+        let endedAt = lastOffset > 0
+            ? header.startedAt.addingTimeInterval(lastOffset)
+            : header.startedAt
 
         return Meeting(
             id: header.meetingId,
@@ -120,6 +132,7 @@ final class TranscriptWALService: Sendable {
             startedAt: header.startedAt,
             endedAt: endedAt,
             transcript: segments,
+            keyMoments: keyMoments,
             notes: "",
             transcriptionError: segments.isEmpty ? nil : "Recovered from crash — speaker labels not available"
         )

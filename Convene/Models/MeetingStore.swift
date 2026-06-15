@@ -42,6 +42,17 @@ final class MeetingStore: ObservableObject {
     @Published private(set) var lastSavedURL: URL?
     @Published private(set) var currentSummary: MeetingSummary?
 
+    /// Human-marked flags dropped live during the in-flight meeting (the differentiator).
+    /// Reset at the start of each recording; folded into the saved `Meeting` on stop.
+    @Published private(set) var keyMoments: [KeyMoment] = []
+
+    /// On-demand AI catch-up for the Live Recap surface. Nil until summoned/ready; the recap
+    /// view always shows the raw transcript timeline regardless, so this only ever enriches it.
+    @Published private(set) var liveRecap: String?
+    @Published private(set) var isGeneratingRecap: Bool = false
+    /// Bumped each time the recap is summoned so a stale in-flight result is discarded.
+    private var recapRequestToken = 0
+
     let captureCoordinator = AudioCaptureCoordinator()
     let transcriber = AssemblyAIRealtimeTranscriber()
     let persistence = PersistenceService()
@@ -327,6 +338,72 @@ final class MeetingStore: ObservableObject {
         toggleRecording()
     }
 
+    // MARK: - Key Moments & Live Recap
+
+    /// Current meeting-relative offset in seconds, or nil when idle. The anchor for both
+    /// key moments and the recap window.
+    var currentMeetingOffset: TimeInterval? {
+        meetingStartedAt.map { max(0, Date().timeIntervalSince($0)) }
+    }
+
+    var isRecording: Bool { captureCoordinator.isCapturing }
+
+    /// Drops a key moment at the current offset. No-op (returns nil) when not recording.
+    /// `text` may be empty — a bare flag is still a valid "this matters" marker.
+    @discardableResult
+    func flagKeyMoment(text: String = "") -> KeyMoment? {
+        guard captureCoordinator.isCapturing, let offset = currentMeetingOffset else { return nil }
+        let moment = KeyMoment(offset: offset, text: text.trimmingCharacters(in: .whitespacesAndNewlines))
+        keyMoments.append(moment)
+        walService.appendKeyMoment(moment)
+        logInfo("MeetingStore: flagged key moment at \(moment.formattedTimestamp)")
+        return moment
+    }
+
+    /// Updates the annotation on an already-dropped moment (e.g. the user types after flagging).
+    func annotateKeyMoment(id: UUID, text: String) {
+        guard let index = keyMoments.firstIndex(where: { $0.id == id }) else { return }
+        keyMoments[index].text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        walService.appendKeyMoment(keyMoments[index])
+    }
+
+    /// The glanceable recap timeline (last `LiveRecap.defaultWindow` seconds), interleaving
+    /// transcript with flagged moments. Empty when idle.
+    func liveRecapTimeline() -> [LiveRecap.Item] {
+        guard let offset = currentMeetingOffset else { return [] }
+        return LiveRecap.timeline(
+            segments: transcriber.segments,
+            keyMoments: keyMoments,
+            now: offset
+        )
+    }
+
+    /// Summons an AI catch-up of the last few minutes. Best-effort: leaves `liveRecap` nil
+    /// (and the view on the raw timeline) when there's no Claude key or nothing to summarize.
+    func requestLiveRecap() {
+        guard captureCoordinator.isCapturing, let offset = currentMeetingOffset else { return }
+        guard hasClaudeAPIKey,
+              let window = LiveRecap.transcriptText(segments: transcriber.segments, now: offset) else {
+            return
+        }
+        recapRequestToken += 1
+        let token = recapRequestToken
+        isGeneratingRecap = true
+        Task { [weak self] in
+            guard let self else { return }
+            let recap = await self.claudeSummaryService.generateLiveRecap(
+                transcriptWindow: window,
+                apiKey: self.claudeAPIKey,
+                model: self.claudeSummaryModel
+            )
+            await MainActor.run {
+                guard self.recapRequestToken == token else { return }
+                self.isGeneratingRecap = false
+                if let recap { self.liveRecap = recap }
+            }
+        }
+    }
+
     func quit() {
         guard togglePhase == .idle else {
             captureStatus = "Busy - wait for previous action to finish"
@@ -399,6 +476,9 @@ final class MeetingStore: ObservableObject {
         lastSavedURL = nil
         currentSummary = nil
         activeMeetingId = nil
+        keyMoments = []
+        liveRecap = nil
+        isGeneratingRecap = false
         meetingStartedAt = Date()
 
         guard hasAssemblyAIKey else {
@@ -470,6 +550,7 @@ final class MeetingStore: ObservableObject {
             startedAt: started,
             endedAt: Date(),
             transcript: transcript,
+            keyMoments: keyMoments,
             notes: trimmedNotes,
             summary: nil,
             transcriptionError: transcriptionError,
@@ -607,7 +688,7 @@ final class MeetingStore: ObservableObject {
         for walURL in orphans {
             do {
                 let meeting = try TranscriptWALService.recoverMeeting(from: walURL)
-                if !meeting.transcript.isEmpty {
+                if !meeting.transcript.isEmpty || !meeting.keyMoments.isEmpty {
                     persistence.save(meeting)
                     logInfo("MeetingStore: recovered meeting from WAL: \(meeting.title)")
                 }

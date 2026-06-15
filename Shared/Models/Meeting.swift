@@ -7,6 +7,9 @@ struct Meeting: Identifiable, Codable, Equatable {
     let startedAt: Date
     var endedAt: Date?
     var transcript: [TranscriptSegment]
+    /// Live, human-marked flags dropped during the meeting (the differentiator). Optional in
+    /// persisted JSON so legacy files without the key still decode.
+    var keyMoments: [KeyMoment]
     var notes: String
     var summary: MeetingSummary?
     var transcriptionError: String?
@@ -24,6 +27,7 @@ struct Meeting: Identifiable, Codable, Equatable {
         startedAt: Date = Date(),
         endedAt: Date? = nil,
         transcript: [TranscriptSegment] = [],
+        keyMoments: [KeyMoment] = [],
         notes: String = "",
         summary: MeetingSummary? = nil,
         transcriptionError: String? = nil,
@@ -37,12 +41,32 @@ struct Meeting: Identifiable, Codable, Equatable {
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.transcript = transcript
+        self.keyMoments = keyMoments
         self.notes = notes
         self.summary = summary
         self.transcriptionError = transcriptionError
         self.audioFilename = audioFilename
         self.selfName = selfName
         self.othersName = othersName
+    }
+
+    // Custom decode so legacy persisted JSON without `keyMoments` still loads. The encoder
+    // stays synthesized.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        attendees = try container.decode([String].self, forKey: .attendees)
+        startedAt = try container.decode(Date.self, forKey: .startedAt)
+        endedAt = try container.decodeIfPresent(Date.self, forKey: .endedAt)
+        transcript = try container.decode([TranscriptSegment].self, forKey: .transcript)
+        keyMoments = try container.decodeIfPresent([KeyMoment].self, forKey: .keyMoments) ?? []
+        notes = try container.decode(String.self, forKey: .notes)
+        summary = try container.decodeIfPresent(MeetingSummary.self, forKey: .summary)
+        transcriptionError = try container.decodeIfPresent(String.self, forKey: .transcriptionError)
+        audioFilename = try container.decodeIfPresent(String.self, forKey: .audioFilename)
+        selfName = try container.decodeIfPresent(String.self, forKey: .selfName)
+        othersName = try container.decodeIfPresent(String.self, forKey: .othersName)
     }
 }
 
