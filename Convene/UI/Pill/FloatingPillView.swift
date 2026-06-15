@@ -67,23 +67,23 @@ struct FloatingPillView: View {
     /// below with rounded bottom corners (Dynamic-Island-style). Forced dark scheme keeps text
     /// legible on the black band regardless of system appearance.
     private var dockedContainer: some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: controller.notchTopInset)
-            modeContent
-                .padding(.horizontal, 6)
-                .padding(.bottom, 6)
-        }
-        .background(
-            UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous)
-                .fill(Color.black)
-        )
-        .clipShape(
-            UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous)
-        )
-        .themeShadow(Theme.Shadow.menu)
-        .padding(.horizontal, 6)
-        .padding(.bottom, 10)
-        .environment(\.colorScheme, .dark)
+        // `modeContent` carries a fixed width, so the black band hugs it instead of stretching to
+        // fill the panel. The top inset reserves the notch/menu-bar shoulder above the content so
+        // the flat top edge merges with the camera housing.
+        modeContent
+            .padding(.top, controller.notchTopInset)
+            .background(
+                UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous)
+                    .fill(Color.black)
+            )
+            .clipShape(
+                UnevenRoundedRectangle(bottomLeadingRadius: 18, bottomTrailingRadius: 18, style: .continuous)
+            )
+            .themeShadow(Theme.Shadow.menu)
+            .padding(.horizontal, 6)
+            .padding(.bottom, 10)
+            .fixedSize()
+            .environment(\.colorScheme, .dark)
     }
 
     // MARK: - Collapsed
