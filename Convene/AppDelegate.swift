@@ -24,6 +24,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         StatusItemController.shared.configure(meetingStore: meetingStore, hotkeyManager: hotkeyManager)
         StatusItemController.shared.installStatusItem()
 
+        FloatingPillController.shared.configure(meetingStore: meetingStore)
+        FloatingPillController.shared.install()
+
         meetingStore.recoverOrphanedMeetings()
         Task { await meetingStore.calendarService.refreshEvents() }
 
