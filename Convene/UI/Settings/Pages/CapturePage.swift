@@ -14,7 +14,7 @@ struct CapturePage: View {
                     SettingsRow(
                         icon: "app.badge",
                         title: "Auto-detect meeting apps",
-                        description: "Notifies when Zoom, Teams, Webex, Slack, Meet, BlueJeans launch",
+                        description: "Notifies when Zoom, Teams, Webex, Meet, BlueJeans launch",
                         showsDivider: true
                     ) {
                         Toggle("", isOn: Binding(

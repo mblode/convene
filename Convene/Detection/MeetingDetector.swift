@@ -15,8 +15,9 @@ final class MeetingDetector: ObservableObject {
         ("com.cisco.webexmeetingsapp", "Webex"),
         ("com.cisco.webex.meetings", "Webex"),
         ("com.google.GoogleMeet", "Google Meet"),
-        ("com.bluejeansnet.BlueJeans", "BlueJeans"),
-        ("com.tinyspeck.slackmacgap", "Slack")
+        ("com.bluejeansnet.BlueJeans", "BlueJeans")
+        // Slack is intentionally excluded: it runs all day for chat, so its launch is not a
+        // meeting signal. A Slack huddle would need call-state detection, not app-launch.
     ]
 
     @Published var enabled: Bool = UserDefaults.standard.object(forKey: "meetingAutoDetect") as? Bool ?? true {
