@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let updateManager = UpdateManager()
 
     private var didRunCaptureSmokeTest = false
+    private var flagKeyMomentObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NotificationActionHandler.shared.install()
@@ -24,8 +25,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         StatusItemController.shared.configure(meetingStore: meetingStore, hotkeyManager: hotkeyManager)
         StatusItemController.shared.installStatusItem()
 
-        FloatingPillController.shared.configure(meetingStore: meetingStore)
-        FloatingPillController.shared.install()
+        // `⌥⇧K` drops a key moment at the current offset (no-op when not recording). The flag is
+        // silent — the menu bar stays the only UI surface.
+        flagKeyMomentObserver = NotificationCenter.default.addObserver(
+            forName: .conveneFlagKeyMoment, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.meetingStore.flagKeyMoment() }
+        }
 
         meetingStore.recoverOrphanedMeetings()
         Task { await meetingStore.calendarService.refreshEvents() }

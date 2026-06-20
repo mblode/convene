@@ -46,13 +46,6 @@ final class MeetingStore: ObservableObject {
     /// Reset at the start of each recording; folded into the saved `Meeting` on stop.
     @Published private(set) var keyMoments: [KeyMoment] = []
 
-    /// On-demand AI catch-up for the Live Recap surface. Nil until summoned/ready; the recap
-    /// view always shows the raw transcript timeline regardless, so this only ever enriches it.
-    @Published private(set) var liveRecap: String?
-    @Published private(set) var isGeneratingRecap: Bool = false
-    /// Bumped each time the recap is summoned so a stale in-flight result is discarded.
-    private var recapRequestToken = 0
-
     let captureCoordinator = AudioCaptureCoordinator()
     let transcriber = AssemblyAIRealtimeTranscriber()
     let persistence = PersistenceService()
@@ -338,7 +331,7 @@ final class MeetingStore: ObservableObject {
         toggleRecording()
     }
 
-    // MARK: - Key Moments & Live Recap
+    // MARK: - Key Moments
 
     /// Current meeting-relative offset in seconds, or nil when idle. The anchor for both
     /// key moments and the recap window.
@@ -358,50 +351,6 @@ final class MeetingStore: ObservableObject {
         walService.appendKeyMoment(moment)
         logInfo("MeetingStore: flagged key moment at \(moment.formattedTimestamp)")
         return moment
-    }
-
-    /// Updates the annotation on an already-dropped moment (e.g. the user types after flagging).
-    func annotateKeyMoment(id: UUID, text: String) {
-        guard let index = keyMoments.firstIndex(where: { $0.id == id }) else { return }
-        keyMoments[index].text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        walService.appendKeyMoment(keyMoments[index])
-    }
-
-    /// The glanceable recap timeline (last `LiveRecap.defaultWindow` seconds), interleaving
-    /// transcript with flagged moments. Empty when idle.
-    func liveRecapTimeline() -> [LiveRecap.Item] {
-        guard let offset = currentMeetingOffset else { return [] }
-        return LiveRecap.timeline(
-            segments: transcriber.segments,
-            keyMoments: keyMoments,
-            now: offset
-        )
-    }
-
-    /// Summons an AI catch-up of the last few minutes. Best-effort: leaves `liveRecap` nil
-    /// (and the view on the raw timeline) when there's no Claude key or nothing to summarize.
-    func requestLiveRecap() {
-        guard captureCoordinator.isCapturing, let offset = currentMeetingOffset else { return }
-        guard hasClaudeAPIKey,
-              let window = LiveRecap.transcriptText(segments: transcriber.segments, now: offset) else {
-            return
-        }
-        recapRequestToken += 1
-        let token = recapRequestToken
-        isGeneratingRecap = true
-        Task { [weak self] in
-            guard let self else { return }
-            let recap = await self.claudeSummaryService.generateLiveRecap(
-                transcriptWindow: window,
-                apiKey: self.claudeAPIKey,
-                model: self.claudeSummaryModel
-            )
-            await MainActor.run {
-                guard self.recapRequestToken == token else { return }
-                self.isGeneratingRecap = false
-                if let recap { self.liveRecap = recap }
-            }
-        }
     }
 
     func quit() {
@@ -477,8 +426,6 @@ final class MeetingStore: ObservableObject {
         currentSummary = nil
         activeMeetingId = nil
         keyMoments = []
-        liveRecap = nil
-        isGeneratingRecap = false
         meetingStartedAt = Date()
 
         guard hasAssemblyAIKey else {

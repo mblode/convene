@@ -23,17 +23,8 @@
 - Source-grounded prompt (no invented facts); transcript deduped before summarizing.
 
 ### Key moments (live annotation) ⭐
-- **Timestamped flags** dropped live with a hotkey (`⌥⇧K`): mark "this matters" the instant it happens, anchored to the exact meeting second.
-- **Optional annotation**: the flag lands immediately; a lightweight always-on-top capture field lets you add a note (or skip it — a bare flag still counts).
+- **Timestamped flags** dropped live with a hotkey (`⌥⇧K`): mark "this matters" the instant it happens, anchored to the exact meeting second. The flag lands silently while recording.
 - **Renders inline + indexed**: a "## Key Moments" index near the top links to the spot, and each flag appears as an inline `⭐` marker in the transcript. Survives crashes via the WAL.
-
-### Live recap (`⌥⇧/`)
-- **Pull, never push**: summon a glanceable view of the last ~2 minutes, interleaved with your flagged moments — on-device and instant.
-- **Optional AI catch-up**: when a Claude key is set, a 2–3 sentence "what's being discussed right now" recap fills in on demand; the raw timeline shows regardless.
-
-### Floating pill (HUD over any app)
-- **Signature session surface**: a non-activating floating pill appears over Zoom/Meet/Teams while recording, showing the record dot, live timer, and `⌥⇧K` / `⌥⇧/` affordances.
-- **Notch-aware**: docks snug under the notch (Dynamic-Island-style, flat top edge) on notched MacBooks; a free-floating pill below the menu bar elsewhere. One state machine, two presentations — expands into the capture field or recap on interaction.
 
 ### Notes
 - Free-text `notes` field per meeting, rendered as one section in the markdown. **Untimed**, and **no editing UI in the macOS menu bar** (mobile has a field).
@@ -44,7 +35,7 @@
 
 ### Surface & control
 - **Menu-bar app** (NSPopover): record button + live timer, imminent-event pill, schedule grouped by day, per-event actions, open-latest-transcript.
-- **Global hotkeys**: toggle recording (`⌥⇧R`), flag key moment (`⌥⇧K`), live recap (`⌥⇧/`), open settings (`⌥⇧,`) — all rebindable.
+- **Global hotkeys**: toggle recording (`⌥⇧R`), flag key moment (`⌥⇧K`), open settings (`⌥⇧,`) — all rebindable.
 - **Settings**: General, Models (keys + summary model), Calendar, Capture, Hotkeys, Permissions, About.
 
 ### Output & storage
@@ -61,7 +52,5 @@
 These are referenced in the landing copy or implied by positioning, but are **not** in the code today. See [ROADMAP.md](ROADMAP.md) for how each is addressed.
 
 - ✅ Timestamped **key moments** (`⌥⇧K` inline flags) — shipped (see Key moments above).
-- ✅ Live **recap** (`⌥⇧/`) during the call — shipped (on-device timeline + optional AI catch-up).
-- ✅ Floating **pill** + **notch** UI — shipped (see Floating pill above).
 - ❌ **On-device / offline** transcription & summary — all cloud today (AssemblyAI + OpenAI/Anthropic).
 - ❌ **Browser-based** meeting detection (Meet/Zoom in a tab).

@@ -12,17 +12,8 @@ index at the top that links to the spot.
 
 - *Shipped as*: `KeyMoment { offset, text }` on `Meeting`; `MarkdownRenderer`
   renders the index (reusing the `MM:SS` section anchors + wikilink logic) and
-  inline `⭐` markers; flags persist through the WAL; capture lives in the
-  floating pill's always-on-top field.
-
-## ✅ P1 — Live Recap (`⌥⇧/`), pull not push — shipped
-
-Glanceable last-2-minutes view, interleaved with your flagged moments, on demand.
-
-- *Shipped as*: `LiveRecap.timeline(...)` windows the in-memory transcript +
-  moments for an instant on-device view; an optional Claude catch-up
-  (`generateLiveRecap`) enriches it when summoned. Strictly **pull** — surfaced
-  only via the `⌥⇧/` hotkey / pill button, never proactively.
+  inline `⭐` markers; flags persist through the WAL; dropped live via the
+  `⌥⇧K` global hotkey (a silent flag at the current offset).
 
 ## P2 — On-device / offline path (close the privacy gap)
 
@@ -37,18 +28,6 @@ Local transcription (WhisperKit / Apple Speech) and **local summarization**
   local engine toggle in **Models** settings. For very long calls, anchor
   progressive compression around the Key-Moment timestamps (verbatim at flags,
   summarized between).
-
-## ✅ P3 — Floating pill + notch surface (Amie-inspired) — shipped
-
-A HUD that lives over any app (Zoom/Meet/Teams), showing record state, timer,
-`⌥⇧K` entry, and `⌥⇧/` recap. On notched MacBooks it docks under the **notch**
-(flat top edge, expands on interaction); elsewhere it's a floating pill.
-
-- *Shipped as*: `FloatingPillController` (a non-activating `NSPanel` at
-  `.statusBar` level, all-spaces) + `FloatingPillView`/`FloatingPillModel` —
-  one state machine (collapsed / capture / recap), notch-vs-float anchoring
-  derived from `NSScreen.safeAreaInsets` + auxiliary top areas. The menu bar
-  stays the passive "home / library"; the pill is the active session HUD.
 
 ## P4 — Speaker identity that persists
 

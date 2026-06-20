@@ -54,57 +54,6 @@ final class ClaudeSummaryService: ObservableObject {
         }
     }
 
-    /// Best-effort, on-demand recap of the last few minutes for the Live Recap surface.
-    /// Returns a short plain-text paragraph (2–3 sentences) or nil on any failure — callers
-    /// fall back to the raw transcript timeline, so this never blocks the glanceable view.
-    func generateLiveRecap(
-        transcriptWindow: String,
-        apiKey: String,
-        model: String = "claude-fable-5"
-    ) async -> String? {
-        let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedWindow = transcriptWindow.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedKey.isEmpty, !trimmedWindow.isEmpty else { return nil }
-
-        let system = """
-        You catch someone up who just zoned out of a live meeting. Given the last few minutes \
-        of transcript, write 2–3 plain sentences on what's being discussed right now and what \
-        they'd need to know to rejoin. Present tense, no preamble, no bullet points, no headers.
-        """
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 320,
-            "system": system,
-            "messages": [
-                ["role": "user", "content": "Last few minutes of the meeting:\n\n\(trimmedWindow)"]
-            ]
-        ]
-
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.setValue(trimmedKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        guard let httpBody = try? JSONSerialization.data(withJSONObject: body) else { return nil }
-        request.httpBody = httpBody
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-                logError("ClaudeSummaryService: live recap HTTP error")
-                return nil
-            }
-            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let content = json["content"] as? [[String: Any]],
-                  let text = content.first?["text"] as? String else { return nil }
-            let recap = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            return recap.isEmpty ? nil : recap
-        } catch {
-            logError("ClaudeSummaryService: live recap network error: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
     /// Transport-only request body. Note: `claude-fable-5` and `claude-opus-4-8` reject
     /// `temperature`/`top_p`/`top_k` and any `thinking` parameter — never add them here.
     private func requestBody(meeting: Meeting, model: String) -> [String: Any] {
