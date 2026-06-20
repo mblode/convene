@@ -6,7 +6,7 @@ struct HotkeysPage: View {
 
     /// Every configurable global shortcut, so "Restore defaults" stays in sync as new ones are added.
     private static let allNames: [KeyboardShortcuts.Name] = [
-        .toggleRecording, .flagKeyMoment, .liveRecap, .openSettings
+        .toggleRecording, .flagKeyMoment, .openSettings
     ]
 
     var body: some View {
@@ -27,17 +27,9 @@ struct HotkeysPage: View {
                     SettingsRow(
                         icon: "star",
                         title: "Flag key moment",
-                        description: "Mark this moment live, then optionally annotate it"
+                        description: "Mark this moment live while recording"
                     ) {
                         KeyboardShortcuts.Recorder("", name: .flagKeyMoment)
-                            .controlSize(.small)
-                    }
-                    SettingsRow(
-                        icon: "sparkles",
-                        title: "Live recap",
-                        description: "Catch up on the last few minutes on demand"
-                    ) {
-                        KeyboardShortcuts.Recorder("", name: .liveRecap)
                             .controlSize(.small)
                     }
                     SettingsRow(

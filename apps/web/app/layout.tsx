@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { GoogleAnalytics } from "@next/third-parties/google"
 import localFont from "next/font/local"
 import { Agentation } from "agentation"
 import "./globals.css"
@@ -27,6 +28,9 @@ export const metadata: Metadata = {
     title: "Convene",
   },
   title: "Convene",
+  verification: {
+    google: "mFwyBIbXTaKK4uF_NA0MzVWFyY40hPgBjFObg3rje04",
+  },
 }
 
 export default function RootLayout({
@@ -40,6 +44,7 @@ export default function RootLayout({
         {children}
         {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
+      <GoogleAnalytics gaId="G-NPZHV88NWJ" />
     </html>
   )
 }
