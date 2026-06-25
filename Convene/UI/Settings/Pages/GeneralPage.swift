@@ -2,10 +2,39 @@ import SwiftUI
 
 struct GeneralPage: View {
     @EnvironmentObject var meetingStore: MeetingStore
+    @ObservedObject private var loginItem = LoginItemManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xxl) {
             PageTitle("General")
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                SectionLabel("Startup")
+                SettingsCard {
+                    SettingsRow(
+                        icon: "power",
+                        title: "Open at login",
+                        description: loginItem.requiresApproval
+                            ? "Allow Convene in System Settings › Login Items."
+                            : "Launch Convene automatically when you sign in to your Mac.",
+                        showsDivider: false
+                    ) {
+                        if loginItem.requiresApproval {
+                            Button("Open Settings") { loginItem.openLoginItemsSettings() }
+                                .buttonStyle(.borderless)
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.accent)
+                        } else {
+                            Toggle("", isOn: Binding(
+                                get: { loginItem.isEnabled },
+                                set: { loginItem.setEnabled($0) }
+                            ))
+                            .toggleStyle(OliveToggleStyle())
+                            .labelsHidden()
+                        }
+                    }
+                }
+            }
 
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("Identity")
@@ -76,6 +105,7 @@ struct GeneralPage: View {
             }
         }
         .padding(.top, Theme.Spacing.xl)
+        .onAppear { loginItem.refresh() }
     }
 
     private var outputFolderDescription: String {
