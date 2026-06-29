@@ -59,3 +59,7 @@ Re-run `xcodegen generate` after adding a Swift file. See the [Makefile](Makefil
 ## License
 
 MIT
+
+---
+
+Crafted by [<img src="https://matthewblode.com/avatar-sm.png" width="20" align="top" />](https://matthewblode.com) [Matthew Blode](https://matthewblode.com)

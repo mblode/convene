@@ -10,7 +10,7 @@ export const SiteFooter = () => (
         <a
           className="flex items-center gap-2 rounded-full py-1.5 pr-2.5 pl-1.5 text-pewter-mist transition-colors hover:text-polar-white"
           href={siteConfig.links.author}
-          rel="noopener noreferrer"
+          rel="author noopener noreferrer"
           target="_blank"
         >
           <Image
