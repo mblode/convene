@@ -415,8 +415,12 @@ final class MeetingStore: ObservableObject {
     #endif
 
     private func startRecording(eventOverride: MeetingEvent? = nil) async {
-        if let event = eventOverride {
+        // An explicit event (Join & Record / event row) wins; otherwise adopt the event in
+        // progress right now, so a recording started with the button or hotkey during a meeting
+        // still inherits its title and attendee context.
+        if let event = eventOverride ?? calendarService.currentEventForRecording() {
             meetingTitle = event.title
+            currentEvent = event
         } else {
             meetingTitle = defaultTitle()
             currentEvent = nil
