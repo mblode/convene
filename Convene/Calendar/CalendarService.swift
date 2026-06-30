@@ -192,6 +192,24 @@ final class CalendarService: ObservableObject {
         }
     }
 
+    /// The calendar event to attach to a recording the user starts manually (record button or
+    /// hotkey) right now: an event already in progress, or one starting within the next 5 minutes.
+    /// Returns nil when nothing matches, or when more than one event qualifies — ambiguity means
+    /// we don't guess and fall back to the generic title. Dismissed events are ignored, matching
+    /// the rest of the calendar surface.
+    func currentEventForRecording() -> MeetingEvent? {
+        let now = Date()
+        let grace: TimeInterval = 5 * 60
+        let dismissed = CalendarSettings.shared.dismissedEventIDs
+        let matches = visibleEvents.filter { event in
+            guard !dismissed.contains(event.id) else { return false }
+            if event.isInProgress { return true }
+            let untilStart = event.startDate.timeIntervalSince(now)
+            return untilStart > 0 && untilStart <= grace
+        }
+        return matches.count == 1 ? matches.first : nil
+    }
+
     /// Visible events grouped into ordered day buckets for the popover, e.g. "Today, 9 June".
     func groupedByDay() -> [DaySection] {
         let cal = Calendar.current
