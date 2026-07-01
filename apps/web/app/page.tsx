@@ -17,7 +17,7 @@ const FEATURES = [
   "Records both sides of a call — your mic and the other side's audio",
   "Transcribes live as the meeting happens",
   "Take notes beside the transcript, get an AI summary when you stop",
-  "Spots Zoom, Teams, Webex, Meet, BlueJeans, and Slack when they open",
+  "Spots Zoom, Teams, Webex, Meet, and BlueJeans when they open",
   "Links recordings to your calendar — iCloud, Gmail, Fastmail, and more",
   "Stays on your Mac: notes save to a folder you pick, keys live in the Keychain",
 ] as const

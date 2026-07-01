@@ -25,8 +25,6 @@ export const SiteFooter = () => (
         </a>
       </div>
       <div className="flex items-center gap-2 text-obsidian-grey">
-        <span className="text-pewter-mist">v{siteConfig.version}</span>
-        <span aria-hidden="true">·</span>
         <a
           className="text-pewter-mist transition-colors hover:text-cerulean-accent"
           href={siteConfig.links.github}
