@@ -36,7 +36,7 @@ final class CrossStreamGate {
 
     /// Feed every system-audio PCM16 chunk through here (whether or not the mic is gated).
     func observeSystemChunk(_ pcm16: Data) {
-        let rms = Self.rmsLevel(pcm16: pcm16)
+        let rms = AudioSampleConverter.rms(pcm16: pcm16)
         let now = Date()
 
         // Exponentially decay the tracked system level toward zero between loud chunks.
@@ -58,7 +58,7 @@ final class CrossStreamGate {
         let systemActive = Date() <= systemActiveUntil
         var drop = false
         if systemActive, recentSystemRMS > 0 {
-            let micRMS = Self.rmsLevel(pcm16: pcm16)
+            let micRMS = AudioSampleConverter.rms(pcm16: pcm16)
             drop = micRMS < Constants.micPassRatio * recentSystemRMS
         }
 
@@ -74,20 +74,5 @@ final class CrossStreamGate {
         #endif
 
         return drop
-    }
-
-    /// RMS of a 16-bit little-endian mono PCM chunk, normalized to 0...1.
-    private static func rmsLevel(pcm16 data: Data) -> Float {
-        let sampleCount = data.count / 2
-        guard sampleCount > 0 else { return 0 }
-        var sum: Float = 0
-        data.withUnsafeBytes { raw in
-            let int16 = raw.bindMemory(to: Int16.self)
-            for i in 0..<sampleCount {
-                let sample = Float(Int16(littleEndian: int16[i])) / 32768.0
-                sum += sample * sample
-            }
-        }
-        return (sum / Float(sampleCount)).squareRoot()
     }
 }

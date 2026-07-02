@@ -39,8 +39,8 @@ final class MobileMeetingStore: ObservableObject {
     private var nestedCancellables = Set<AnyCancellable>()
 
     init() {
-        recorder.onAudioBuffer = { [weak self] buffer in
-            self?.transcriber.ingestAudio(buffer)
+        recorder.onPCM16 = { [weak self] data in
+            self?.transcriber.ingestPCM16(data)
         }
 
         recorder.objectWillChange

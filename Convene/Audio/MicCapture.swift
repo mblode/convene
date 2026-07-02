@@ -3,9 +3,8 @@ import Foundation
 import AppKit
 
 enum MicAudioConstants {
-    static let sampleRate: Double = 16000
+    static let sampleRate = Double(TranscriptionAudio.sampleRate)
     static let captureBufferSize: AVAudioFrameCount = 1024
-    static let channels: AVAudioChannelCount = 1
     static let noiseGateThreshold: Float = 0.006
     static let noiseGateHoldTime: TimeInterval = 0.35
 }
@@ -90,21 +89,14 @@ final class MicCapture: ObservableObject {
                           userInfo: [NSLocalizedDescriptionKey: "Invalid input format"])
         }
 
-        let targetFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: MicAudioConstants.sampleRate,
-            channels: MicAudioConstants.channels,
-            interleaved: false
-        )!
-
         let captureFormat: AVAudioFormat
-        if inputFormat.channelCount == MicAudioConstants.channels {
+        if inputFormat.channelCount == TranscriptionAudio.channels {
             captureFormat = inputFormat
         } else {
             captureFormat = AVAudioFormat(
                 standardFormatWithSampleRate: inputFormat.sampleRate,
-                channels: MicAudioConstants.channels
-            ) ?? targetFormat
+                channels: TranscriptionAudio.channels
+            ) ?? TranscriptionAudio.targetFormat
             logInfo("MicCapture: downmixing \(inputFormat.channelCount)-channel input to mono")
         }
 
@@ -116,10 +108,7 @@ final class MicCapture: ObservableObject {
         engine.prepare()
 
         // Per-stream state owned by the audio queue.
-        let processor = MicAudioProcessor(
-            captureFormat: captureFormat,
-            targetFormat: targetFormat
-        )
+        let processor = MicAudioProcessor(captureFormat: captureFormat)
         let onPCM16 = self.onPCM16
         let onFloat32 = self.onFloat32
         let queue = audioQueue
@@ -157,19 +146,14 @@ final class MicCapture: ObservableObject {
 /// the audio dispatch queue — never accessed from elsewhere.
 private final class MicAudioProcessor: @unchecked Sendable {
     private let captureFormat: AVAudioFormat
-    private let targetFormat: AVAudioFormat
-    private var converter: AVAudioConverter?
+    private let converter = AudioSampleConverter()
     private var lastAboveThresholdTime = Date()
     #if DEBUG
     private var debugChunkCount = 0
     #endif
 
-    init(captureFormat: AVAudioFormat, targetFormat: AVAudioFormat) {
+    init(captureFormat: AVAudioFormat) {
         self.captureFormat = captureFormat
-        self.targetFormat = targetFormat
-        if captureFormat != targetFormat {
-            self.converter = AVAudioConverter(from: captureFormat, to: targetFormat)
-        }
     }
 
     func process(
@@ -177,14 +161,14 @@ private final class MicAudioProcessor: @unchecked Sendable {
         onFloat32: (@Sendable (UnsafePointer<Float>, Int) -> Void)?,
         onPCM16: (@Sendable (Data) -> Void)?
     ) {
-        guard let final = convert(buffer: buffer), let floatData = final.floatChannelData else { return }
+        guard let final = converter.convert(buffer, from: captureFormat), let floatData = final.floatChannelData else { return }
         let frameCount = Int(final.frameLength)
         guard frameCount > 0 else { return }
 
         let threshold = MicAudioConstants.noiseGateThreshold
         let holdTime = MicAudioConstants.noiseGateHoldTime
         let now = Date()
-        let rms = rmsLevel(floatData[0], frameCount: frameCount)
+        let rms = AudioSampleConverter.rms(floatData[0], frameCount: frameCount)
         var gated = false
 
         // Debug WAVs should show what the mic produced before the local noise gate mutates it.
@@ -199,7 +183,7 @@ private final class MicAudioProcessor: @unchecked Sendable {
 
         #if DEBUG
         if debugChunkCount < 6 {
-            let outputRMS = rmsLevel(floatData[0], frameCount: frameCount)
+            let outputRMS = AudioSampleConverter.rms(floatData[0], frameCount: frameCount)
             logInfo(
                 "MicCapture: chunk \(debugChunkCount + 1) input=\(formatSummary(captureFormat)) frames=\(buffer.frameLength) convertedFrames=\(frameCount) rms=\(rms) outputRMS=\(outputRMS) threshold=\(threshold) gated=\(gated)"
             )
@@ -207,49 +191,7 @@ private final class MicAudioProcessor: @unchecked Sendable {
         }
         #endif
 
-        if let pcm16 = pcm16(from: floatData[0], frameCount: frameCount) {
-            onPCM16?(pcm16)
-        }
-    }
-
-    private func convert(buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
-        if captureFormat == targetFormat { return buffer }
-        guard let converter else { return buffer }
-
-        let frameCount = AVAudioFrameCount(ceil(Float(buffer.frameLength) * Float(targetFormat.sampleRate) / Float(captureFormat.sampleRate)))
-        guard let out = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else { return nil }
-
-        var error: NSError?
-        var consumed = false
-        let status = converter.convert(to: out, error: &error) { _, status in
-            if consumed { status.pointee = .noDataNow; return nil }
-            consumed = true
-            status.pointee = .haveData
-            return buffer
-        }
-        if status == .error || error != nil {
-            logError("MicCapture: conversion error: \(error?.localizedDescription ?? "unknown")")
-            return nil
-        }
-        return out
-    }
-
-    private func rmsLevel(_ samples: UnsafePointer<Float>, frameCount: Int) -> Float {
-        var sum: Float = 0
-        for i in 0..<frameCount { sum += samples[i] * samples[i] }
-        return (sum / Float(frameCount)).squareRoot()
-    }
-
-    private func pcm16(from samples: UnsafePointer<Float>, frameCount: Int) -> Data? {
-        var data = Data(count: frameCount * 2)
-        data.withUnsafeMutableBytes { raw in
-            let int16 = raw.bindMemory(to: Int16.self)
-            for i in 0..<frameCount {
-                let scaled = Int32(samples[i] * 32767.0)
-                int16[i] = Int16(max(-32768, min(32767, scaled))).littleEndian
-            }
-        }
-        return data
+        onPCM16?(AudioSampleConverter.pcm16Data(floatData[0], frameCount: frameCount))
     }
 
     #if DEBUG

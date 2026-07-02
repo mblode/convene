@@ -1,7 +1,6 @@
-import AVFoundation
 import Foundation
 
-private let assemblyAISampleRate = 16_000
+private let assemblyAISampleRate = TranscriptionAudio.sampleRate
 private let assemblyAISpeechModel = "u3-rt-pro"
 private let assemblyAIEndpoint = "wss://streaming.assemblyai.com/v3/ws"
 
@@ -82,11 +81,6 @@ final class AssemblyAIRealtimeTranscriber: ObservableObject {
             guard isRunning else { return }
             clients[speaker.rawValue]?.sendAudioChunk(data)
         }
-    }
-
-    nonisolated func ingestAudio(_ buffer: AVAudioPCMBuffer, speaker: TranscriptSegment.Speaker = .you) {
-        guard let data = Self.pcm16Data(from: buffer) else { return }
-        ingestPCM16(data, speaker: speaker)
     }
 
     func stop() async {
@@ -321,21 +315,6 @@ final class AssemblyAIRealtimeTranscriber: ObservableObject {
         return components.url
     }
 
-    private nonisolated static func pcm16Data(from buffer: AVAudioPCMBuffer) -> Data? {
-        guard let channelData = buffer.floatChannelData?[0] else { return nil }
-        let frameCount = Int(buffer.frameLength)
-        guard frameCount > 0 else { return nil }
-
-        var data = Data(count: frameCount * 2)
-        data.withUnsafeMutableBytes { raw in
-            let int16 = raw.bindMemory(to: Int16.self)
-            for i in 0..<frameCount {
-                let scaled = Int32(channelData[i] * 32767.0)
-                int16[i] = Int16(max(-32768, min(32767, scaled))).littleEndian
-            }
-        }
-        return data
-    }
 }
 
 // MARK: - Streaming client
