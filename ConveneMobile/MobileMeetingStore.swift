@@ -4,14 +4,14 @@ import SwiftUI
 
 @MainActor
 final class MobileMeetingStore: ObservableObject {
-    @Published var openAIAPIKey: String = "" {
-        didSet { saveOpenAIAPIKey() }
+    @Published var openAIKeyField = APIKeyField(.openAI) {
+        didSet { openAIKeyField.save() }
     }
-    @Published var claudeAPIKey: String = "" {
-        didSet { saveClaudeAPIKey() }
+    @Published var claudeKeyField = APIKeyField(.claude) {
+        didSet { claudeKeyField.save() }
     }
-    @Published var assemblyAIKey: String = "" {
-        didSet { saveAssemblyAIKey() }
+    @Published var assemblyAIKeyField = APIKeyField(.assemblyAI) {
+        didSet { assemblyAIKeyField.save() }
     }
     @Published var summaryModel: String = UserDefaults.standard.string(forKey: "summaryModel") ?? "claude-fable-5" {
         didSet { UserDefaults.standard.set(summaryModel, forKey: "summaryModel") }
@@ -32,9 +32,6 @@ final class MobileMeetingStore: ObservableObject {
     let persistence = MobilePersistenceService()
     let claudeSummaryService = ClaudeSummaryService()
 
-    var hasOpenAIAPIKey: Bool { !openAIAPIKey.isEmpty }
-    var hasClaudeAPIKey: Bool { !claudeAPIKey.isEmpty }
-    var hasAssemblyAIKey: Bool { !assemblyAIKey.isEmpty }
     var isRecording: Bool { recorder.isRecording }
 
     private(set) var meetingStartedAt: Date?
@@ -42,16 +39,6 @@ final class MobileMeetingStore: ObservableObject {
     private var nestedCancellables = Set<AnyCancellable>()
 
     init() {
-        if let saved = KeychainManager.loadAPIKey() {
-            openAIAPIKey = saved
-        }
-        if let saved = KeychainManager.loadClaudeAPIKey() {
-            claudeAPIKey = saved
-        }
-        if let saved = KeychainManager.loadAssemblyAIAPIKey() {
-            assemblyAIKey = saved
-        }
-
         recorder.onAudioBuffer = { [weak self] buffer in
             self?.transcriber.ingestAudio(buffer)
         }
@@ -84,45 +71,6 @@ final class MobileMeetingStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &nestedCancellables)
-    }
-
-    @discardableResult
-    func saveOpenAIAPIKey() -> Bool {
-        let trimmed = openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            KeychainManager.deleteAPIKey()
-            openAIAPIKey = ""
-            return true
-        }
-        guard KeychainManager.saveAPIKey(trimmed) else { return false }
-        openAIAPIKey = trimmed
-        return true
-    }
-
-    @discardableResult
-    func saveClaudeAPIKey() -> Bool {
-        let trimmed = claudeAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            KeychainManager.deleteClaudeAPIKey()
-            claudeAPIKey = ""
-            return true
-        }
-        guard KeychainManager.saveClaudeAPIKey(trimmed) else { return false }
-        claudeAPIKey = trimmed
-        return true
-    }
-
-    @discardableResult
-    func saveAssemblyAIKey() -> Bool {
-        let trimmed = assemblyAIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            KeychainManager.deleteAssemblyAIAPIKey()
-            assemblyAIKey = ""
-            return true
-        }
-        guard KeychainManager.saveAssemblyAIAPIKey(trimmed) else { return false }
-        assemblyAIKey = trimmed
-        return true
     }
 
     func toggleRecording() {
@@ -158,7 +106,7 @@ final class MobileMeetingStore: ObservableObject {
         pendingTranscriptionError = nil
         meetingStartedAt = Date()
 
-        guard hasAssemblyAIKey else {
+        guard assemblyAIKeyField.hasKey else {
             status = "Add your AssemblyAI API key in Settings to record"
             meetingStartedAt = nil
             return
@@ -172,7 +120,7 @@ final class MobileMeetingStore: ObservableObject {
 
         status = "Connecting to AssemblyAI…"
         await transcriber.start(
-            apiKey: assemblyAIKey,
+            apiKey: assemblyAIKeyField.value,
             speakers: [.you],
             attendeeNames: [],
             meetingTitle: meetingTitle
@@ -230,12 +178,12 @@ final class MobileMeetingStore: ObservableObject {
 
         meetingStartedAt = nil
 
-        if generateSummaryAfterMeeting && hasClaudeAPIKey
+        if generateSummaryAfterMeeting && claudeKeyField.hasKey
             && (!meeting.transcript.isEmpty || !meeting.notes.isEmpty) {
             status = "Generating summary..."
             let summary = await claudeSummaryService.generate(
                 meeting: meeting,
-                apiKey: claudeAPIKey,
+                apiKey: claudeKeyField.value,
                 model: summaryModel
             )
             if let summary {
