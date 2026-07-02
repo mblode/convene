@@ -4,9 +4,6 @@ import SwiftUI
 
 @MainActor
 final class MobileMeetingStore: ObservableObject {
-    @Published var openAIKeyField = APIKeyField(.openAI) {
-        didSet { openAIKeyField.save() }
-    }
     @Published var claudeKeyField = APIKeyField(.claude) {
         didSet { claudeKeyField.save() }
     }
