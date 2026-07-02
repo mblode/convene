@@ -21,6 +21,10 @@ final class AudioCaptureCoordinator: ObservableObject {
     /// (speaker, pcm16) per chunk. Wire this to TranscriptionCoordinator.
     var onPCM16: ((SpeakerStream, Data) -> Void)?
 
+    /// When set before `start()`, both streams are also written to `<base>-you.wav` /
+    /// `<base>-others.wav` for debugging. Set by the store from the "save debug WAVs" setting.
+    var debugWAVBaseURL: URL?
+
     /// Optional debug WAV writer. When non-nil, both streams are written to separate WAV files.
     private var youWAV: WAVFileWriter?
     private var othersWAV: WAVFileWriter?
@@ -93,10 +97,9 @@ final class AudioCaptureCoordinator: ObservableObject {
     }
 
     /// Start capturing. Callers must ensure permissions via `requestPermissions()` first — the
-    /// mic/system `start()` calls surface a denial as `startError` rather than prompting.
-    /// Optionally provide a base URL — if set, two WAV files (`<base>-you.wav`,
-    /// `<base>-others.wav`) are written for debug.
-    func start(debugWAVBaseURL: URL? = nil) async {
+    /// mic/system `start()` calls surface a denial as `startError` rather than prompting. Set
+    /// `debugWAVBaseURL` beforehand to also write debug WAVs.
+    func start() async {
         guard !isCapturing else { return }
         startError = nil
 

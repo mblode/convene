@@ -73,7 +73,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.terminate(nil)
                 return
             }
-            await meetingStore.captureCoordinator.start(debugWAVBaseURL: baseURL)
+            meetingStore.captureCoordinator.debugWAVBaseURL = baseURL
+            await meetingStore.captureCoordinator.start()
             if let error = meetingStore.captureCoordinator.startError {
                 logError("CaptureSmokeTest: start failed: \(error)")
                 NSApp.terminate(nil)
