@@ -12,6 +12,7 @@ enum CaptureStatus: Equatable {
     case busy
     case alreadyRecording
     case needsAPIKey
+    case cancelled
     case error(String)
     case transcriptionWarning(String)
     case saved(message: String)
@@ -26,6 +27,7 @@ enum CaptureStatus: Equatable {
         case .busy: return "Busy - wait for previous action to finish"
         case .alreadyRecording: return "Already recording"
         case .needsAPIKey: return "Add your AssemblyAI API key in Settings to start recording"
+        case .cancelled: return "Recording cancelled"
         case .error(let message): return message
         case .transcriptionWarning(let message): return message
         case .saved(let message): return message

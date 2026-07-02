@@ -9,6 +9,8 @@ final class MobilePersistenceService: ObservableObject {
     @Published private(set) var vaultFolderURL: URL?
     @Published private(set) var lastSavedFileURL: URL?
     @Published private(set) var lastError: String?
+    /// True when the last save fell back to the app's local folder instead of the vault.
+    @Published private(set) var lastUsedFallback = false
 
     var hasConfiguredVault: Bool { vaultFolderURL != nil }
 
@@ -48,6 +50,7 @@ final class MobilePersistenceService: ObservableObject {
 
     @discardableResult
     func save(_ meeting: Meeting) -> URL? {
+        lastUsedFallback = false
         let rendered: MeetingFileWriter.Rendered
         do {
             rendered = try MeetingFileWriter.render(meeting)
@@ -68,6 +71,7 @@ final class MobilePersistenceService: ObservableObject {
         if let fallback = fallbackFolder() {
             if let url = writeToFolder(fallback, rendered: rendered) {
                 lastSavedFileURL = url
+                lastUsedFallback = true
                 if vaultFolderURL != nil {
                     lastError = "Vault save failed; saved locally instead"
                 }
@@ -117,3 +121,5 @@ final class MobilePersistenceService: ObservableObject {
         }
     }
 }
+
+extension MobilePersistenceService: MeetingPersisting {}

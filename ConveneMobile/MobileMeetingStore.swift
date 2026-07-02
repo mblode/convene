@@ -17,184 +17,69 @@ final class MobileMeetingStore: ObservableObject {
         didSet { UserDefaults.standard.set(generateSummaryAfterMeeting, forKey: "generateSummaryAfterMeeting") }
     }
 
-    @Published private(set) var status: String = "Ready"
+    /// Live meeting title/notes. Owned here (not the session) so SwiftUI can bind to them.
     @Published var meetingTitle: String = ""
     @Published var meetingNotes: String = ""
-    @Published private(set) var lastSavedURL: URL?
-    @Published private(set) var currentSummary: MeetingSummary?
-    @Published private(set) var isToggling = false
 
     let recorder = MicRecorder()
-    let transcriber = AssemblyAIRealtimeTranscriber()
     let persistence = MobilePersistenceService()
     let claudeSummaryService = ClaudeSummaryService()
 
-    var isRecording: Bool { recorder.isRecording }
-
-    private(set) var meetingStartedAt: Date?
-    private var pendingTranscriptionError: String?
+    private(set) var session: RecordingSession!
     private var nestedCancellables = Set<AnyCancellable>()
 
+    // MARK: - Session passthroughs
+
+    var transcriber: AssemblyAIRealtimeTranscriber { session.transcriber }
+    var status: String { session.captureStatus.displayText }
+    var isRecording: Bool { session.isRecording }
+    var isToggling: Bool { session.isToggling }
+    var meetingStartedAt: Date? { session.meetingStartedAt }
+    var currentSummary: MeetingSummary? { session.currentSummary }
+
+    func toggleRecording() { session.toggleRecording() }
+    func cancelRecording() { session.cancelRecording() }
+    func recoverOrphanedMeetings() { session.recoverOrphanedMeetings() }
+
     init() {
-        recorder.onPCM16 = { [weak self] data in
-            self?.transcriber.ingestPCM16(data)
-        }
+        session = RecordingSession(
+            audioSource: recorder,
+            persistence: persistence,
+            makeContext: { [weak self] in self?.makeContext() ?? .empty },
+            meetingMetadata: { [weak self] in (self?.meetingTitle ?? "", self?.meetingNotes ?? "") },
+            transcriptionKey: { [weak self] in self?.assemblyAIKeyField.value ?? "" },
+            shouldSummarize: { [weak self] in
+                guard let self else { return false }
+                return self.generateSummaryAfterMeeting && self.claudeKeyField.hasKey
+            },
+            summarize: { [weak self] meeting in
+                guard let self else { return nil }
+                return await self.claudeSummaryService.generate(
+                    meeting: meeting,
+                    apiKey: self.claudeKeyField.value,
+                    model: self.summaryModel
+                )
+            },
+            summaryError: { [weak self] in self?.claudeSummaryService.lastError }
+        )
 
-        recorder.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedCancellables)
-        transcriber.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedCancellables)
-        transcriber.$lastError
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] error in
-                guard let self, let error, !error.isEmpty else { return }
-                self.status = "Transcription error: \(error)"
-                if self.transcriber.isRunning {
-                    Task { @MainActor [weak self] in
-                        await self?.stopAfterTranscriptionFailure(error)
-                    }
-                }
-            }
-            .store(in: &nestedCancellables)
-        persistence.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedCancellables)
-        claudeSummaryService.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedCancellables)
+        forwardObjectWillChange(from: session, into: &nestedCancellables)
+        forwardObjectWillChange(from: recorder, into: &nestedCancellables)
+        forwardObjectWillChange(from: persistence, into: &nestedCancellables)
+        forwardObjectWillChange(from: claudeSummaryService, into: &nestedCancellables)
     }
 
-    func toggleRecording() {
-        guard !isToggling else { return }
-        isToggling = true
-        Task {
-            defer { isToggling = false }
-            if recorder.isRecording {
-                await stopRecording()
-            } else {
-                await startRecording()
-            }
-        }
-    }
-
-    func cancelRecording() {
-        guard recorder.isRecording, !isToggling else { return }
-        isToggling = true
-        Task {
-            defer { isToggling = false }
-            recorder.stop()
-            await transcriber.stop()
-            meetingStartedAt = nil
-            status = "Recording cancelled"
-        }
-    }
-
-    private func startRecording() async {
+    private func makeContext() -> RecordingSession.Context {
         meetingTitle = defaultTitle()
         meetingNotes = ""
-        lastSavedURL = nil
-        currentSummary = nil
-        pendingTranscriptionError = nil
-        meetingStartedAt = Date()
-
-        guard assemblyAIKeyField.hasKey else {
-            status = "Add your AssemblyAI API key in Settings to record"
-            meetingStartedAt = nil
-            return
-        }
-
-        guard await recorder.requestPermission() else {
-            status = "Microphone permission required"
-            meetingStartedAt = nil
-            return
-        }
-
-        status = "Connecting to AssemblyAI…"
-        await transcriber.start(
-            apiKey: assemblyAIKeyField.value,
+        return RecordingSession.Context(
+            title: meetingTitle,
+            attendees: [],
+            selfName: nil,
+            othersName: nil,
             speakers: [.you],
-            attendeeNames: [],
-            meetingTitle: meetingTitle
+            expectedSpeakerCount: nil
         )
-        guard transcriber.isRunning else {
-            status = transcriber.lastError ?? "Transcription engine failed to start"
-            meetingStartedAt = nil
-            return
-        }
-
-        do {
-            try recorder.start()
-            status = "Recording..."
-        } catch {
-            await transcriber.stop()
-            meetingStartedAt = nil
-            status = "Mic start failed: \(error.localizedDescription)"
-        }
-    }
-
-    private func stopRecording() async {
-        recorder.stop()
-        status = "Processing transcript..."
-        await transcriber.stop()
-        await persistMeeting()
-    }
-
-    private func stopAfterTranscriptionFailure(_ error: String) async {
-        recorder.stop()
-        await transcriber.stop()
-        pendingTranscriptionError = error
-        await persistMeeting()
-        status = "Transcription error: \(error)"
-    }
-
-    private func persistMeeting() async {
-        guard let started = meetingStartedAt else { return }
-        let trimmedTitle = meetingTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let meeting = Meeting(
-            title: trimmedTitle.isEmpty ? "Untitled meeting" : trimmedTitle,
-            startedAt: started,
-            endedAt: Date(),
-            transcript: transcriber.segments,
-            notes: meetingNotes.trimmingCharacters(in: .whitespacesAndNewlines),
-            transcriptionError: pendingTranscriptionError
-        )
-
-        if let url = persistence.save(meeting) {
-            lastSavedURL = url
-            status = "Saved: \(url.lastPathComponent)"
-        } else {
-            status = persistence.lastError ?? "Save failed"
-        }
-
-        meetingStartedAt = nil
-
-        if generateSummaryAfterMeeting && claudeKeyField.hasKey
-            && (!meeting.transcript.isEmpty || !meeting.notes.isEmpty) {
-            status = "Generating summary..."
-            let summary = await claudeSummaryService.generate(
-                meeting: meeting,
-                apiKey: claudeKeyField.value,
-                model: summaryModel
-            )
-            if let summary {
-                currentSummary = summary
-                var enriched = meeting
-                enriched.summary = summary
-                if let url = persistence.save(enriched) {
-                    lastSavedURL = url
-                    status = "Summary saved: \(url.lastPathComponent)"
-                }
-            } else if let err = claudeSummaryService.lastError {
-                status = err
-            }
-        }
     }
 
     private func defaultTitle() -> String {

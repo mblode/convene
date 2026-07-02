@@ -8,6 +8,7 @@ struct ConveneMobileApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
+                .task { store.recoverOrphanedMeetings() }
         }
     }
 }
