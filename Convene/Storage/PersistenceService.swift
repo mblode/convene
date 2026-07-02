@@ -208,3 +208,5 @@ final class PersistenceService: ObservableObject {
         return true
     }
 }
+
+extension PersistenceService: MeetingPersisting {}
