@@ -134,34 +134,13 @@ final class MeetingStore: ObservableObject {
                 }
             }
 
-        captureCoordinator.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
-        transcriber.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
-        persistence.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
-        summaryService.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
-        claudeSummaryService.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
-        calendarService.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
-        meetingDetector.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
+        forwardObjectWillChange(from: captureCoordinator, into: &nestedObjectCancellables)
+        forwardObjectWillChange(from: transcriber, into: &nestedObjectCancellables)
+        forwardObjectWillChange(from: persistence, into: &nestedObjectCancellables)
+        forwardObjectWillChange(from: summaryService, into: &nestedObjectCancellables)
+        forwardObjectWillChange(from: claudeSummaryService, into: &nestedObjectCancellables)
+        forwardObjectWillChange(from: calendarService, into: &nestedObjectCancellables)
+        forwardObjectWillChange(from: meetingDetector, into: &nestedObjectCancellables)
 
         let center = NotificationCenter.default
         hotkeyObservers.append(
@@ -188,35 +167,38 @@ final class MeetingStore: ObservableObject {
         }
     }
 
-    func toggleRecording() {
+    /// Runs `operation` under the toggle guard: a no-op (optionally reporting busy) when a
+    /// start/stop transition is already in flight, otherwise holds `phase` for its duration and
+    /// restores `.idle` afterward.
+    private func runExclusive(
+        _ phase: TogglePhase,
+        reportBusy: Bool = true,
+        operation: @escaping () async -> Void
+    ) {
         guard togglePhase == .idle else {
-            captureStatus = .busy
+            if reportBusy { captureStatus = .busy }
             return
         }
+        togglePhase = phase
+        Task {
+            defer { togglePhase = .idle }
+            await operation()
+        }
+    }
+
+    func toggleRecording() {
         if captureCoordinator.isCapturing {
-            togglePhase = .stopping
-            Task {
-                defer { togglePhase = .idle }
-                await stopRecording()
-            }
+            runExclusive(.stopping) { [weak self] in await self?.stopRecording() }
         } else {
-            togglePhase = .starting
-            Task {
-                defer { togglePhase = .idle }
-                await startRecording()
-            }
+            runExclusive(.starting) { [weak self] in await self?.startRecording() }
         }
     }
 
     /// Stop an in-progress recording in response to an external signal (e.g. the meeting app
     /// quit). No-op when idle or already mid-transition.
     func stopRecordingIfActive() {
-        guard captureCoordinator.isCapturing, togglePhase == .idle else { return }
-        togglePhase = .stopping
-        Task {
-            defer { togglePhase = .idle }
-            await stopRecording()
-        }
+        guard captureCoordinator.isCapturing else { return }
+        runExclusive(.stopping, reportBusy: false) { [weak self] in await self?.stopRecording() }
     }
 
     /// Start recording with metadata prefilled from a calendar event.
@@ -225,15 +207,9 @@ final class MeetingStore: ObservableObject {
             captureStatus = .alreadyRecording
             return
         }
-        guard togglePhase == .idle else {
-            captureStatus = .busy
-            return
-        }
-        togglePhase = .starting
-        currentEvent = event
-        Task {
-            defer { togglePhase = .idle }
-            await startRecording(eventOverride: event)
+        runExclusive(.starting) { [weak self] in
+            self?.currentEvent = event
+            await self?.startRecording(eventOverride: event)
         }
     }
 
@@ -265,17 +241,11 @@ final class MeetingStore: ObservableObject {
     }
 
     func quit() {
-        guard togglePhase == .idle else {
-            captureStatus = .busy
-            return
-        }
         let wasCapturing = captureCoordinator.isCapturing
-        togglePhase = wasCapturing ? .stopping : .starting
-        Task {
+        runExclusive(wasCapturing ? .stopping : .starting) { [weak self] in
             if wasCapturing {
-                await stopRecording()
+                await self?.stopRecording()
             }
-            togglePhase = .idle
             NSApp.terminate(nil)
         }
     }
@@ -387,6 +357,12 @@ final class MeetingStore: ObservableObject {
     private func stopRecording() async {
         await captureCoordinator.stop()
         await Task.yield()
+        await finalizeMeeting()
+    }
+
+    /// Shared tail of a normal stop and a capture-failure stop: drain the transcriber, persist
+    /// the meeting, and close out the WAL.
+    private func finalizeMeeting() async {
         await transcriber.stop()
         transcriber.onSegmentConfirmed = nil
         persistCurrentMeeting()
@@ -531,12 +507,7 @@ final class MeetingStore: ObservableObject {
     }
 
     private func stopAfterCaptureFailure() async {
-        await transcriber.stop()
-        transcriber.onSegmentConfirmed = nil
-        persistCurrentMeeting()
-        if let walURL = walService.endSession() {
-            TranscriptWALService.deleteWAL(at: walURL)
-        }
+        await finalizeMeeting()
     }
 
     func recoverOrphanedMeetings() {

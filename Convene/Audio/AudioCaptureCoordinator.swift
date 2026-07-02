@@ -67,14 +67,8 @@ final class AudioCaptureCoordinator: ObservableObject {
                 await self?.handleSystemError(error)
             }
         }
-        mic.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
-        system.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
+        forwardObjectWillChange(from: mic, into: &nestedObjectCancellables)
+        forwardObjectWillChange(from: system, into: &nestedObjectCancellables)
     }
 
     func refreshPermissionStates() {
