@@ -95,7 +95,7 @@ struct AssemblyAITerminationMessage: Codable, Equatable {
 /// turn_order → speaker_label pairs, so we accept both an array of
 /// `{turn_order, speaker_label}` objects (under `turns` or `revisions`) and a flat
 /// `{"<turn_order>": "<label>"}` dictionary, ignoring anything else.
-struct AssemblyAISpeakerRevisionMessage: Codable, Equatable {
+struct AssemblyAISpeakerRevisionMessage: Decodable, Equatable {
     /// turn_order → revised speaker label.
     let revisions: [Int: String]
 
@@ -103,7 +103,7 @@ struct AssemblyAISpeakerRevisionMessage: Codable, Equatable {
         self.revisions = revisions
     }
 
-    private struct RevisionPair: Codable {
+    private struct RevisionPair: Decodable {
         let turnOrder: Int
         let speakerLabel: String
 
@@ -141,14 +141,6 @@ struct AssemblyAISpeakerRevisionMessage: Codable, Equatable {
         }
 
         revisions = collected
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: ContainerKeys.self)
-        let pairs = revisions
-            .sorted { $0.key < $1.key }
-            .map { RevisionPair(turnOrder: $0.key, speakerLabel: $0.value) }
-        try container.encode(pairs, forKey: .turns)
     }
 }
 
