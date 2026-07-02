@@ -511,7 +511,7 @@ final class MeetingStore: ObservableObject {
     }
 
     func recoverOrphanedMeetings() {
-        let orphans = TranscriptWALService.findOrphanedWALs()
+        let orphans = walService.findOrphanedWALs()
         guard !orphans.isEmpty else { return }
 
         for walURL in orphans {

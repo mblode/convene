@@ -2,15 +2,6 @@ import XCTest
 @testable import Convene
 
 final class SummaryPromptTests: XCTestCase {
-    private func segment(
-        _ speaker: TranscriptSegment.Speaker,
-        start: TimeInterval,
-        end: TimeInterval,
-        text: String,
-        isFinal: Bool = true
-    ) -> TranscriptSegment {
-        TranscriptSegment(speaker: speaker, startedAt: start, endedAt: end, text: text, isFinal: isFinal)
-    }
 
     private func meeting(selfName: String? = nil, othersName: String? = nil) -> Meeting {
         Meeting(
@@ -19,8 +10,8 @@ final class SummaryPromptTests: XCTestCase {
             startedAt: Date(timeIntervalSince1970: 1_750_000_000),
             endedAt: Date(timeIntervalSince1970: 1_750_001_800),
             transcript: [
-                segment(.you, start: 5, end: 9, text: "Hello there."),
-                segment(.others, start: 65, end: 70, text: "Can you send the doc?")
+                makeSegment(.you, start: 5, end: 9, text: "Hello there."),
+                makeSegment(.others, start: 65, end: 70, text: "Can you send the doc?")
             ],
             notes: "",
             selfName: selfName,

@@ -2,31 +2,13 @@ import XCTest
 @testable import Convene
 
 final class TranscriptFormatterTests: XCTestCase {
-    private func segment(
-        _ speaker: TranscriptSegment.Speaker,
-        start: TimeInterval,
-        end: TimeInterval,
-        text: String,
-        isFinal: Bool = true,
-        diarized: String? = nil
-    ) -> TranscriptSegment {
-        var segment = TranscriptSegment(
-            speaker: speaker,
-            startedAt: start,
-            endedAt: end,
-            text: text,
-            isFinal: isFinal
-        )
-        segment.diarizedSpeaker = diarized
-        return segment
-    }
 
     // MARK: - Merging
 
     func testMergesConsecutiveSameSpeakerSegmentsWithinGapThreshold() {
         let segments = [
-            segment(.you, start: 0, end: 4, text: "Hello there."),
-            segment(.you, start: 6, end: 10, text: "How are you?")
+            makeSegment(.you, start: 0, end: 4, text: "Hello there."),
+            makeSegment(.you, start: 6, end: 10, text: "How are you?")
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments)
         XCTAssertEqual(blocks.count, 1)
@@ -38,8 +20,8 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testGapBeyondThresholdStartsNewBlock() {
         let segments = [
-            segment(.you, start: 0, end: 4, text: "First."),
-            segment(.you, start: 14.5, end: 18, text: "Second.")
+            makeSegment(.you, start: 0, end: 4, text: "First."),
+            makeSegment(.you, start: 14.5, end: 18, text: "Second.")
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments, gapThreshold: 10)
         XCTAssertEqual(blocks.count, 2)
@@ -49,8 +31,8 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testGapExactlyAtThresholdStillMerges() {
         let segments = [
-            segment(.you, start: 0, end: 4, text: "First."),
-            segment(.you, start: 14, end: 18, text: "Second.")
+            makeSegment(.you, start: 0, end: 4, text: "First."),
+            makeSegment(.you, start: 14, end: 18, text: "Second.")
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments, gapThreshold: 10)
         XCTAssertEqual(blocks.count, 1)
@@ -58,9 +40,9 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testSpeakerChangeSplitsBlocks() {
         let segments = [
-            segment(.you, start: 0, end: 4, text: "Hi."),
-            segment(.others, start: 4, end: 8, text: "Hey."),
-            segment(.you, start: 8, end: 12, text: "Ready?")
+            makeSegment(.you, start: 0, end: 4, text: "Hi."),
+            makeSegment(.others, start: 4, end: 8, text: "Hey."),
+            makeSegment(.you, start: 8, end: 12, text: "Ready?")
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments)
         XCTAssertEqual(blocks.count, 3)
@@ -69,8 +51,8 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testBlockIsPartialWhenAnyConstituentIsNonFinal() {
         let segments = [
-            segment(.you, start: 0, end: 4, text: "Final part."),
-            segment(.you, start: 5, end: 9, text: "Partial part", isFinal: false)
+            makeSegment(.you, start: 0, end: 4, text: "Final part."),
+            makeSegment(.you, start: 5, end: 9, text: "Partial part", isFinal: false)
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments)
         XCTAssertEqual(blocks.count, 1)
@@ -81,9 +63,9 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testSectionStartsWhenBlockBeginsIntervalAfterSectionStart() {
         let segments = [
-            segment(.you, start: 0, end: 5, text: "A"),
-            segment(.others, start: 60, end: 65, text: "B"),
-            segment(.you, start: 76, end: 80, text: "C")
+            makeSegment(.you, start: 0, end: 5, text: "A"),
+            makeSegment(.others, start: 60, end: 65, text: "B"),
+            makeSegment(.you, start: 76, end: 80, text: "C")
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments)
         let sections = TranscriptFormatter.sections(blocks, interval: 75)
@@ -98,9 +80,9 @@ final class TranscriptFormatterTests: XCTestCase {
         // Block at 100 is < 75s after the section start at 80, so it stays in that section
         // even though it is > 75s after the very first block.
         let blocks = TranscriptFormatter.mergedBlocks([
-            segment(.you, start: 0, end: 5, text: "A"),
-            segment(.others, start: 80, end: 85, text: "B"),
-            segment(.you, start: 100, end: 105, text: "C")
+            makeSegment(.you, start: 0, end: 5, text: "A"),
+            makeSegment(.others, start: 80, end: 85, text: "B"),
+            makeSegment(.you, start: 100, end: 105, text: "C")
         ])
         let sections = TranscriptFormatter.sections(blocks, interval: 75)
         XCTAssertEqual(sections.count, 2)
@@ -110,9 +92,9 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testSectionTimestampLookupIsDeterministic() {
         let blocks = TranscriptFormatter.mergedBlocks([
-            segment(.you, start: 0, end: 5, text: "A"),
-            segment(.others, start: 90, end: 95, text: "B"),
-            segment(.you, start: 3700, end: 3705, text: "C")
+            makeSegment(.you, start: 0, end: 5, text: "A"),
+            makeSegment(.others, start: 90, end: 95, text: "B"),
+            makeSegment(.you, start: 3700, end: 3705, text: "C")
         ])
         let sections = TranscriptFormatter.sections(blocks, interval: 75)
         XCTAssertEqual(TranscriptFormatter.sectionTimestamp(for: 0, in: sections), "00:00")
@@ -189,9 +171,9 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testMergedBlocksSplitOnDiarizedSpeakerChange() {
         let segments = [
-            segment(.others, start: 0, end: 4, text: "Hi all.", diarized: "A"),
-            segment(.others, start: 5, end: 9, text: "Hello.", diarized: "B"),
-            segment(.others, start: 10, end: 14, text: "Anyway.", diarized: "A")
+            makeSegment(.others, start: 0, end: 4, text: "Hi all.", diarized: "A"),
+            makeSegment(.others, start: 5, end: 9, text: "Hello.", diarized: "B"),
+            makeSegment(.others, start: 10, end: 14, text: "Anyway.", diarized: "A")
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments)
         XCTAssertEqual(blocks.count, 3)
@@ -200,8 +182,8 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testMergedBlocksMergeSameDiarizedSpeaker() {
         let segments = [
-            segment(.others, start: 0, end: 4, text: "Hi all.", diarized: "A"),
-            segment(.others, start: 5, end: 9, text: "Good to see you.", diarized: "A")
+            makeSegment(.others, start: 0, end: 4, text: "Hi all.", diarized: "A"),
+            makeSegment(.others, start: 5, end: 9, text: "Good to see you.", diarized: "A")
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments)
         XCTAssertEqual(blocks.count, 1)
@@ -211,8 +193,8 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testMergedBlocksTreatNilDiarizedSpeakersAsSame() {
         let segments = [
-            segment(.others, start: 0, end: 4, text: "First."),
-            segment(.others, start: 5, end: 9, text: "Second.")
+            makeSegment(.others, start: 0, end: 4, text: "First."),
+            makeSegment(.others, start: 5, end: 9, text: "Second.")
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments)
         XCTAssertEqual(blocks.count, 1)
@@ -221,8 +203,8 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testMergedBlocksSplitWhenDiarizedSpeakerBecomesNil() {
         let segments = [
-            segment(.others, start: 0, end: 4, text: "Labeled.", diarized: "A"),
-            segment(.others, start: 5, end: 9, text: "Unlabeled.")
+            makeSegment(.others, start: 0, end: 4, text: "Labeled.", diarized: "A"),
+            makeSegment(.others, start: 5, end: 9, text: "Unlabeled.")
         ]
         let blocks = TranscriptFormatter.mergedBlocks(segments)
         XCTAssertEqual(blocks.count, 2)
