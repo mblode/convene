@@ -58,6 +58,65 @@ jobs:
             MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
             build
 
+      - name: Test
+        run: |
+          xcodebuild test \
+            -scheme Convene \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -derivedDataPath /tmp/convene-build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+  ios-build:
+    name: iOS Build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (iOS Simulator, Debug, no signing)
+        run: |
+          xcodebuild \
+            -scheme ConveneMobile \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath /tmp/convene-ios \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check types
+        run: npm run check-types
+
+      - name: Build
+        run: npm run build
+
   release:
     name: Release
     needs: build
@@ -177,11 +236,11 @@ jobs:
             1. Download **Convene-${{ steps.version.outputs.VERSION }}.dmg** below
             2. Open the DMG and drag Convene to Applications
             3. Launch Convene from Applications
-            4. Click the record icon in the menu bar -> Settings -> enter your OpenAI API key
+            4. Click the record icon in the menu bar -> Settings -> enter your AssemblyAI and Anthropic API keys
             5. Choose an output folder (iCloud Drive recommended for sync across devices)
             6. Grant microphone, screen recording, calendar, and notification permissions when prompted
 
-            **Requires macOS 15.0 or later and an OpenAI API key.**
+            **Requires macOS 15.0 or later, plus AssemblyAI and Anthropic API keys.**
           files: /tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg
           draft: false
           prerelease: false
@@ -274,7 +333,7 @@ jobs:
 
             url "https://github.com/mblode/convene/releases/download/v#{version}/Convene-#{version}.dmg"
             name "Convene"
-            desc "macOS meeting transcription app - BYO OpenAI API key"
+            desc "macOS meeting transcription app - BYO AssemblyAI and Anthropic API keys"
             homepage "https://github.com/mblode/convene"
 
             depends_on macos: ">= :sequoia"

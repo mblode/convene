@@ -3,16 +3,8 @@ import XCTest
 
 final class AssemblyAIMessageDecodingTests: XCTestCase {
 
-    private func fixtureData(_ name: String) throws -> Data {
-        let url = try XCTUnwrap(
-            Bundle(for: Self.self).url(forResource: name, withExtension: "json"),
-            "Fixture \(name).json missing from test bundle"
-        )
-        return try Data(contentsOf: url)
-    }
-
     private func decode(_ name: String) throws -> AssemblyAIServerMessage {
-        try AssemblyAIServerMessage.decode(from: try fixtureData(name))
+        try AssemblyAIServerMessage.decode(from: try TestFixtures.data(name))
     }
 
     func testDecodesBeginMessage() throws {

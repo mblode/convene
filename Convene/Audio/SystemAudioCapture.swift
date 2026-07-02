@@ -41,11 +41,6 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         Task { @MainActor in self.refreshPermissionState() }
     }
 
-    @MainActor
-    var hasScreenRecordingPermission: Bool {
-        permissionState.isGranted
-    }
-
     /// Non-prompting permission state read.
     @MainActor
     func refreshPermissionState() {
@@ -260,17 +255,10 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
     }
 }
 
-/// Audio-queue-confined conversion + emission. Holds the Float32 16 kHz target format and an
-/// AVAudioConverter that's recreated whenever the input format changes.
+/// Audio-queue-confined conversion + emission. Resamples system audio to the shared
+/// transcription format via an AudioSampleConverter, replaced for each fresh session.
 private final class ProcessorBox: @unchecked Sendable {
-    private let targetFormat: AVAudioFormat = AVAudioFormat(
-        commonFormat: .pcmFormatFloat32,
-        sampleRate: MicAudioConstants.sampleRate,
-        channels: 1,
-        interleaved: false
-    )!
-    private var converter: AVAudioConverter?
-    private var converterInputFormat: AVAudioFormat?
+    private var converter = AudioSampleConverter()
     private var onPCM16: ((Data) -> Void)?
     private var onFloat32: ((UnsafePointer<Float>, Int) -> Void)?
     #if DEBUG
@@ -278,8 +266,7 @@ private final class ProcessorBox: @unchecked Sendable {
     #endif
 
     func reset(onPCM16: ((Data) -> Void)?, onFloat32: ((UnsafePointer<Float>, Int) -> Void)?) {
-        self.converter = nil
-        self.converterInputFormat = nil
+        self.converter = AudioSampleConverter()
         self.onPCM16 = onPCM16
         self.onFloat32 = onFloat32
         #if DEBUG
@@ -288,67 +275,27 @@ private final class ProcessorBox: @unchecked Sendable {
     }
 
     func process(buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat) {
-        if converter == nil || converterInputFormat != inputFormat {
-            converter = AVAudioConverter(from: inputFormat, to: targetFormat)
-            converterInputFormat = inputFormat
-        }
-        guard let converter else { return }
-
-        let outFrames = AVAudioFrameCount(ceil(Double(buffer.frameLength) * targetFormat.sampleRate / inputFormat.sampleRate))
-        guard outFrames > 0,
-              let out = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: outFrames) else { return }
-
-        // Capture buffer in a non-Sendable manner via a wrapper closure.
-        var consumed = false
-        let inputBlock: AVAudioConverterInputBlock = { _, status in
-            if consumed { status.pointee = .noDataNow; return nil }
-            consumed = true
-            status.pointee = .haveData
-            return buffer
-        }
-        var error: NSError?
-        let status = converter.convert(to: out, error: &error, withInputFrom: inputBlock)
-        if status == .error || error != nil {
-            logError("SystemAudioCapture: conversion error: \(error?.localizedDescription ?? "unknown")")
-            return
-        }
-
-        guard let floats = out.floatChannelData else { return }
+        guard let out = converter.convert(buffer, from: inputFormat),
+              let floats = out.floatChannelData else { return }
         let frameCount = Int(out.frameLength)
         guard frameCount > 0 else { return }
 
         #if DEBUG
         if debugChunkCount < 6 {
-            let inputRMS = buffer.floatChannelData.map { rmsLevel($0[0], frameCount: Int(buffer.frameLength)) }
-            let outputRMS = rmsLevel(floats[0], frameCount: frameCount)
+            let inputRMS = buffer.floatChannelData.map { AudioSampleConverter.rms($0[0], frameCount: Int(buffer.frameLength)) }
+            let outputRMS = AudioSampleConverter.rms(floats[0], frameCount: frameCount)
             logInfo(
-                "SystemAudioCapture: chunk \(debugChunkCount + 1) input=\(formatSummary(inputFormat)) frames=\(buffer.frameLength) rms=\(inputRMS.map { "\($0)" } ?? "n/a") outputFrames=\(frameCount) outputRMS=\(outputRMS) status=\(status)"
+                "SystemAudioCapture: chunk \(debugChunkCount + 1) input=\(formatSummary(inputFormat)) frames=\(buffer.frameLength) rms=\(inputRMS.map { "\($0)" } ?? "n/a") outputFrames=\(frameCount) outputRMS=\(outputRMS)"
             )
             debugChunkCount += 1
         }
         #endif
 
         onFloat32?(floats[0], frameCount)
-
-        var data = Data(count: frameCount * 2)
-        data.withUnsafeMutableBytes { raw in
-            let int16 = raw.bindMemory(to: Int16.self)
-            for i in 0..<frameCount {
-                let scaled = Int32(floats[0][i] * 32767.0)
-                int16[i] = Int16(max(-32768, min(32767, scaled))).littleEndian
-            }
-        }
-        onPCM16?(data)
+        onPCM16?(AudioSampleConverter.pcm16Data(floats[0], frameCount: frameCount))
     }
 
     #if DEBUG
-    private func rmsLevel(_ samples: UnsafePointer<Float>, frameCount: Int) -> Float {
-        guard frameCount > 0 else { return 0 }
-        var sum: Float = 0
-        for i in 0..<frameCount { sum += samples[i] * samples[i] }
-        return (sum / Float(frameCount)).squareRoot()
-    }
-
     private func formatSummary(_ format: AVAudioFormat) -> String {
         "\(Int(format.sampleRate))Hz/\(format.channelCount)ch/\(format.commonFormat)/interleaved=\(format.isInterleaved)"
     }

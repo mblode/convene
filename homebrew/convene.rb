@@ -4,7 +4,7 @@ cask "convene" do
 
   url "https://github.com/mblode/convene/releases/download/v#{version}/Convene-#{version}.dmg"
   name "Convene"
-  desc "macOS meeting transcription app — BYO OpenAI API key"
+  desc "macOS meeting transcription app — BYO AssemblyAI and Anthropic API keys"
   homepage "https://github.com/mblode/convene"
 
   depends_on macos: ">= :sequoia"

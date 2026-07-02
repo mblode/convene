@@ -3,13 +3,10 @@ import Foundation
 import AppKit
 
 enum MicAudioConstants {
-    static let sampleRate: Double = 16000
+    static let sampleRate = Double(TranscriptionAudio.sampleRate)
     static let captureBufferSize: AVAudioFrameCount = 1024
-    static let channels: AVAudioChannelCount = 1
-    static let noiseGateThreshold: Float = 0.002
-    static let noiseGateThresholdWithoutAEC: Float = 0.006
-    static let noiseGateHoldTime: TimeInterval = 0.25
-    static let noiseGateHoldTimeWithoutAEC: TimeInterval = 0.35
+    static let noiseGateThreshold: Float = 0.006
+    static let noiseGateHoldTime: TimeInterval = 0.35
 }
 
 enum MicrophonePermissionState: String {
@@ -28,12 +25,10 @@ enum MicrophonePermissionState: String {
     }
 }
 
-/// Mic capture at 16 kHz PCM mono with hardware AEC (VoiceProcessingIO) when available.
-/// AEC is critical for meetings: system audio playing through speakers bleeds into the mic
-/// and would otherwise be transcribed twice (once from system capture, once from mic).
+/// Mic capture at 16 kHz PCM mono. Hardware AEC (VoiceProcessingIO) is deliberately off —
+/// see `start()` for why — so a local noise gate compensates instead.
 final class MicCapture: ObservableObject {
     @MainActor @Published private(set) var isStreaming = false
-    @MainActor @Published private(set) var isHardwareAECActive = false
     @MainActor @Published private(set) var permissionState: MicrophonePermissionState = .notDetermined
 
     /// Set before `start()`. Called from a non-main background queue per chunk.
@@ -43,7 +38,6 @@ final class MicCapture: ObservableObject {
 
     private var engine: AVAudioEngine?
     private var tapNode: AVAudioNode?
-    private var mixerNode: AVAudioMixerNode?
     private let audioQueue = DispatchQueue(label: "co.blode.convene.mic")
 
     init() {
@@ -88,30 +82,21 @@ final class MicCapture: ObservableObject {
         // side effect macOS ducks all other system audio while it's active, making whatever is
         // playing through the speakers go quiet during a recording. Like Granola, we capture the
         // mic and system audio as two separate raw streams and rely on diarization instead, so
-        // the speaker stays at full volume. The higher no-AEC noise-gate threshold compensates.
-        let voiceProcessingEnabled = false
-
+        // the speaker stays at full volume. The noise-gate threshold compensates.
         let inputFormat = input.outputFormat(forBus: 0)
         guard inputFormat.channelCount > 0, inputFormat.sampleRate > 0 else {
             throw NSError(domain: "co.blode.convene.mic", code: -2,
                           userInfo: [NSLocalizedDescriptionKey: "Invalid input format"])
         }
 
-        let targetFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: MicAudioConstants.sampleRate,
-            channels: MicAudioConstants.channels,
-            interleaved: false
-        )!
-
         let captureFormat: AVAudioFormat
-        if inputFormat.channelCount == MicAudioConstants.channels {
+        if inputFormat.channelCount == TranscriptionAudio.channels {
             captureFormat = inputFormat
         } else {
             captureFormat = AVAudioFormat(
                 standardFormatWithSampleRate: inputFormat.sampleRate,
-                channels: MicAudioConstants.channels
-            ) ?? targetFormat
+                channels: TranscriptionAudio.channels
+            ) ?? TranscriptionAudio.targetFormat
             logInfo("MicCapture: downmixing \(inputFormat.channelCount)-channel input to mono")
         }
 
@@ -123,11 +108,7 @@ final class MicCapture: ObservableObject {
         engine.prepare()
 
         // Per-stream state owned by the audio queue.
-        let processor = MicAudioProcessor(
-            captureFormat: captureFormat,
-            targetFormat: targetFormat,
-            hwAEC: voiceProcessingEnabled
-        )
+        let processor = MicAudioProcessor(captureFormat: captureFormat)
         let onPCM16 = self.onPCM16
         let onFloat32 = self.onFloat32
         let queue = audioQueue
@@ -141,10 +122,8 @@ final class MicCapture: ObservableObject {
         try engine.start()
         self.engine = engine
         self.tapNode = mixer
-        self.mixerNode = mixer
         self.isStreaming = true
-        self.isHardwareAECActive = voiceProcessingEnabled
-        logInfo("MicCapture: started (hwAEC=\(voiceProcessingEnabled))")
+        logInfo("MicCapture: started")
     }
 
     @MainActor
@@ -153,10 +132,8 @@ final class MicCapture: ObservableObject {
         engine?.stop()
         tapNode?.removeTap(onBus: 0)
         tapNode = nil
-        mixerNode = nil
         engine = nil
         isStreaming = false
-        isHardwareAECActive = false
         logInfo("MicCapture: stopped")
     }
 
@@ -169,21 +146,14 @@ final class MicCapture: ObservableObject {
 /// the audio dispatch queue — never accessed from elsewhere.
 private final class MicAudioProcessor: @unchecked Sendable {
     private let captureFormat: AVAudioFormat
-    private let targetFormat: AVAudioFormat
-    private let hwAEC: Bool
-    private var converter: AVAudioConverter?
+    private let converter = AudioSampleConverter()
     private var lastAboveThresholdTime = Date()
     #if DEBUG
     private var debugChunkCount = 0
     #endif
 
-    init(captureFormat: AVAudioFormat, targetFormat: AVAudioFormat, hwAEC: Bool) {
+    init(captureFormat: AVAudioFormat) {
         self.captureFormat = captureFormat
-        self.targetFormat = targetFormat
-        self.hwAEC = hwAEC
-        if captureFormat != targetFormat {
-            self.converter = AVAudioConverter(from: captureFormat, to: targetFormat)
-        }
     }
 
     func process(
@@ -191,14 +161,14 @@ private final class MicAudioProcessor: @unchecked Sendable {
         onFloat32: (@Sendable (UnsafePointer<Float>, Int) -> Void)?,
         onPCM16: (@Sendable (Data) -> Void)?
     ) {
-        guard let final = convert(buffer: buffer), let floatData = final.floatChannelData else { return }
+        guard let final = converter.convert(buffer, from: captureFormat), let floatData = final.floatChannelData else { return }
         let frameCount = Int(final.frameLength)
         guard frameCount > 0 else { return }
 
-        let threshold = hwAEC ? MicAudioConstants.noiseGateThreshold : MicAudioConstants.noiseGateThresholdWithoutAEC
-        let holdTime = hwAEC ? MicAudioConstants.noiseGateHoldTime : MicAudioConstants.noiseGateHoldTimeWithoutAEC
+        let threshold = MicAudioConstants.noiseGateThreshold
+        let holdTime = MicAudioConstants.noiseGateHoldTime
         let now = Date()
-        let rms = rmsLevel(floatData[0], frameCount: frameCount)
+        let rms = AudioSampleConverter.rms(floatData[0], frameCount: frameCount)
         var gated = false
 
         // Debug WAVs should show what the mic produced before the local noise gate mutates it.
@@ -213,7 +183,7 @@ private final class MicAudioProcessor: @unchecked Sendable {
 
         #if DEBUG
         if debugChunkCount < 6 {
-            let outputRMS = rmsLevel(floatData[0], frameCount: frameCount)
+            let outputRMS = AudioSampleConverter.rms(floatData[0], frameCount: frameCount)
             logInfo(
                 "MicCapture: chunk \(debugChunkCount + 1) input=\(formatSummary(captureFormat)) frames=\(buffer.frameLength) convertedFrames=\(frameCount) rms=\(rms) outputRMS=\(outputRMS) threshold=\(threshold) gated=\(gated)"
             )
@@ -221,49 +191,7 @@ private final class MicAudioProcessor: @unchecked Sendable {
         }
         #endif
 
-        if let pcm16 = pcm16(from: floatData[0], frameCount: frameCount) {
-            onPCM16?(pcm16)
-        }
-    }
-
-    private func convert(buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
-        if captureFormat == targetFormat { return buffer }
-        guard let converter else { return buffer }
-
-        let frameCount = AVAudioFrameCount(ceil(Float(buffer.frameLength) * Float(targetFormat.sampleRate) / Float(captureFormat.sampleRate)))
-        guard let out = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else { return nil }
-
-        var error: NSError?
-        var consumed = false
-        let status = converter.convert(to: out, error: &error) { _, status in
-            if consumed { status.pointee = .noDataNow; return nil }
-            consumed = true
-            status.pointee = .haveData
-            return buffer
-        }
-        if status == .error || error != nil {
-            logError("MicCapture: conversion error: \(error?.localizedDescription ?? "unknown")")
-            return nil
-        }
-        return out
-    }
-
-    private func rmsLevel(_ samples: UnsafePointer<Float>, frameCount: Int) -> Float {
-        var sum: Float = 0
-        for i in 0..<frameCount { sum += samples[i] * samples[i] }
-        return (sum / Float(frameCount)).squareRoot()
-    }
-
-    private func pcm16(from samples: UnsafePointer<Float>, frameCount: Int) -> Data? {
-        var data = Data(count: frameCount * 2)
-        data.withUnsafeMutableBytes { raw in
-            let int16 = raw.bindMemory(to: Int16.self)
-            for i in 0..<frameCount {
-                let scaled = Int32(samples[i] * 32767.0)
-                int16[i] = Int16(max(-32768, min(32767, scaled))).littleEndian
-            }
-        }
-        return data
+        onPCM16?(AudioSampleConverter.pcm16Data(floatData[0], frameCount: frameCount))
     }
 
     #if DEBUG

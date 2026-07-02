@@ -2,9 +2,7 @@ import AVFoundation
 import Foundation
 
 enum MicRecorderConstants {
-    static let sampleRate: Double = 24000
     static let captureBufferSize: AVAudioFrameCount = 1024
-    static let channels: AVAudioChannelCount = 1
 }
 
 @MainActor
@@ -13,7 +11,9 @@ final class MicRecorder: ObservableObject {
     @Published private(set) var permissionGranted = false
     @Published private(set) var lastError: String?
 
-    var onAudioBuffer: (@Sendable (AVAudioPCMBuffer) -> Void)?
+    /// Emits 16 kHz mono PCM16 chunks (the format AssemblyAI is told to expect). Called from a
+    /// background audio queue.
+    var onPCM16: (@Sendable (Data) -> Void)?
 
     private var engine: AVAudioEngine?
     private var mixer: AVAudioMixerNode?
@@ -52,21 +52,14 @@ final class MicRecorder: ObservableObject {
                           userInfo: [NSLocalizedDescriptionKey: "Invalid audio input format"])
         }
 
-        let targetFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: MicRecorderConstants.sampleRate,
-            channels: MicRecorderConstants.channels,
-            interleaved: false
-        )!
-
         let captureFormat: AVAudioFormat
-        if inputFormat.channelCount == MicRecorderConstants.channels {
+        if inputFormat.channelCount == TranscriptionAudio.channels {
             captureFormat = inputFormat
         } else {
             captureFormat = AVAudioFormat(
                 standardFormatWithSampleRate: inputFormat.sampleRate,
-                channels: MicRecorderConstants.channels
-            ) ?? targetFormat
+                channels: TranscriptionAudio.channels
+            ) ?? TranscriptionAudio.targetFormat
         }
 
         let mixerNode = AVAudioMixerNode()
@@ -75,37 +68,15 @@ final class MicRecorder: ObservableObject {
         engine.connect(input, to: mixerNode, format: captureFormat)
         engine.prepare()
 
-        let converter: AVAudioConverter? = captureFormat != targetFormat
-            ? AVAudioConverter(from: captureFormat, to: targetFormat)
-            : nil
-
-        let onAudioBuffer = self.onAudioBuffer
+        let converter = AudioSampleConverter()
+        let onPCM16 = self.onPCM16
         let queue = audioQueue
 
         mixerNode.installTap(onBus: 0, bufferSize: MicRecorderConstants.captureBufferSize, format: captureFormat) { buffer, _ in
             queue.async {
-                let finalBuffer: AVAudioPCMBuffer
-                if let converter {
-                    let frameCount = AVAudioFrameCount(
-                        ceil(Float(buffer.frameLength) * Float(targetFormat.sampleRate) / Float(captureFormat.sampleRate))
-                    )
-                    guard let out = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else { return }
-                    var error: NSError?
-                    var consumed = false
-                    converter.convert(to: out, error: &error) { _, status in
-                        if consumed { status.pointee = .noDataNow; return nil }
-                        consumed = true
-                        status.pointee = .haveData
-                        return buffer
-                    }
-                    guard error == nil else { return }
-                    finalBuffer = out
-                } else {
-                    finalBuffer = buffer
-                }
-
-                guard finalBuffer.frameLength > 0 else { return }
-                onAudioBuffer?(finalBuffer)
+                guard let out = converter.convert(buffer, from: captureFormat),
+                      let data = AudioSampleConverter.pcm16Data(from: out) else { return }
+                onPCM16?(data)
             }
         }
 
@@ -114,7 +85,7 @@ final class MicRecorder: ObservableObject {
         self.mixer = mixerNode
         isRecording = true
         lastError = nil
-        logInfo("MicRecorder: started (24kHz float32 mono)")
+        logInfo("MicRecorder: started (16kHz PCM16 mono)")
     }
 
     func stop() {

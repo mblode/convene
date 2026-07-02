@@ -48,19 +48,16 @@ final class MobilePersistenceService: ObservableObject {
 
     @discardableResult
     func save(_ meeting: Meeting) -> URL? {
-        let baseName = MarkdownRenderer.filenameStem(for: meeting)
-        let markdown = MarkdownRenderer.renderMarkdown(meeting)
-
-        let jsonData: Data
+        let rendered: MeetingFileWriter.Rendered
         do {
-            jsonData = try MarkdownRenderer.encodeJSON(meeting)
+            rendered = try MeetingFileWriter.render(meeting)
         } catch {
             lastError = "Save failed: \(error.localizedDescription)"
             return nil
         }
 
         if let folder = vaultFolderURL {
-            if let url = writeToFolder(folder, baseName: baseName, markdown: markdown, jsonData: jsonData) {
+            if let url = writeToFolder(folder, rendered: rendered) {
                 lastSavedFileURL = url
                 lastError = nil
                 return url
@@ -69,7 +66,7 @@ final class MobilePersistenceService: ObservableObject {
 
         // Fallback to app's Documents directory
         if let fallback = fallbackFolder() {
-            if let url = writeToFolder(fallback, baseName: baseName, markdown: markdown, jsonData: jsonData) {
+            if let url = writeToFolder(fallback, rendered: rendered) {
                 lastSavedFileURL = url
                 if vaultFolderURL != nil {
                     lastError = "Vault save failed; saved locally instead"
@@ -82,16 +79,12 @@ final class MobilePersistenceService: ObservableObject {
         return nil
     }
 
-    private func writeToFolder(_ folder: URL, baseName: String, markdown: String, jsonData: Data) -> URL? {
+    private func writeToFolder(_ folder: URL, rendered: MeetingFileWriter.Rendered) -> URL? {
         let didStartScope = folder.startAccessingSecurityScopedResource()
         defer { if didStartScope { folder.stopAccessingSecurityScopedResource() } }
 
         do {
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let markdownURL = folder.appendingPathComponent("\(baseName).md")
-            let jsonURL = folder.appendingPathComponent("\(baseName).transcript.json")
-            try markdown.write(to: markdownURL, atomically: true, encoding: .utf8)
-            try jsonData.write(to: jsonURL, options: .atomic)
+            let markdownURL = try MeetingFileWriter.write(rendered, to: folder)
             logInfo("MobilePersistenceService: saved \(markdownURL.lastPathComponent)")
             return markdownURL
         } catch {

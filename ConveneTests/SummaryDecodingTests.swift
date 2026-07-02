@@ -70,11 +70,7 @@ final class SummaryDecodingTests: XCTestCase {
     // MARK: - Persisted fixture (pre-details JSON on disk)
 
     func testPersistedMeetingFixtureWithoutDetailsStillDecodes() throws {
-        let url = try XCTUnwrap(
-            Bundle(for: Self.self).url(forResource: "meeting-4ec85721", withExtension: "json"),
-            "Fixture meeting-4ec85721.json missing from test bundle"
-        )
-        let meeting = try decoder().decode(Meeting.self, from: Data(contentsOf: url))
+        let meeting = try decoder().decode(Meeting.self, from: TestFixtures.data("meeting-4ec85721"))
         let summary = try XCTUnwrap(meeting.summary)
         XCTAssertEqual(summary.details, [])
         XCTAssertFalse(summary.overview.isEmpty)

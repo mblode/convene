@@ -67,14 +67,8 @@ final class AudioCaptureCoordinator: ObservableObject {
                 await self?.handleSystemError(error)
             }
         }
-        mic.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
-        system.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.objectWillChange.send() }
-            .store(in: &nestedObjectCancellables)
+        forwardObjectWillChange(from: mic, into: &nestedObjectCancellables)
+        forwardObjectWillChange(from: system, into: &nestedObjectCancellables)
     }
 
     func refreshPermissionStates() {
@@ -98,13 +92,13 @@ final class AudioCaptureCoordinator: ObservableObject {
         }
     }
 
-    /// Start capturing. Optionally provide a base URL — if set, two WAV files
-    /// (`<base>-you.wav`, `<base>-others.wav`) are written for debug.
+    /// Start capturing. Callers must ensure permissions via `requestPermissions()` first — the
+    /// mic/system `start()` calls surface a denial as `startError` rather than prompting.
+    /// Optionally provide a base URL — if set, two WAV files (`<base>-you.wav`,
+    /// `<base>-others.wav`) are written for debug.
     func start(debugWAVBaseURL: URL? = nil) async {
         guard !isCapturing else { return }
         startError = nil
-
-        guard await requestPermissions() else { return }
 
         if let base = debugWAVBaseURL {
             youWAV = try? WAVFileWriter(url: base.appendingPathExtension("you.wav"))
@@ -149,7 +143,7 @@ final class AudioCaptureCoordinator: ObservableObject {
     func requestPermissions() async -> Bool {
         startError = nil
 
-        guard await ensureMicPermission() else {
+        guard await mic.requestPermission() else {
             startError = "Microphone permission required"
             return false
         }
@@ -165,10 +159,6 @@ final class AudioCaptureCoordinator: ObservableObject {
         }
 
         return true
-    }
-
-    private func ensureMicPermission() async -> Bool {
-        await mic.requestPermission()
     }
 
     private func cleanupWriters() {
