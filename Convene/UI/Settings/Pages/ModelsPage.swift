@@ -2,9 +2,6 @@ import SwiftUI
 
 struct ModelsPage: View {
     @EnvironmentObject var meetingStore: MeetingStore
-    @State private var showAPIKeyPopover = false
-    @State private var showClaudeAPIKeyPopover = false
-    @State private var showAssemblyAIKeyPopover = false
 
     private var usesAnthropic: Bool { meetingStore.summaryProvider == "anthropic" }
 
@@ -24,73 +21,15 @@ struct ModelsPage: View {
                             .font(.system(size: 12))
                             .foregroundStyle(Color.textSecondary)
                     }
-                    Button {
-                        showAssemblyAIKeyPopover = true
-                    } label: {
-                        SettingsRow(
-                            icon: "key.fill",
-                            title: "AssemblyAI API key",
-                            description: meetingStore.assemblyAIKeyField.hasKey ? "Saved to Keychain" : "Required for transcription",
-                            showsDivider: false
-                        ) {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 11))
-                                .foregroundStyle(Color.textTertiary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .popover(isPresented: $showAssemblyAIKeyPopover, arrowEdge: .trailing) {
-                        APIKeyPopover(isPresented: $showAssemblyAIKeyPopover, provider: .assemblyAI)
-                            .environmentObject(meetingStore)
-                    }
+                    APIKeyRow(provider: .assemblyAI, showsDivider: false)
                 }
             }
 
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                 SectionLabel("Summary")
                 SettingsCard {
-                    Button {
-                        showAPIKeyPopover = true
-                    } label: {
-                        SettingsRow(
-                            icon: "key.fill",
-                            title: "OpenAI API key",
-                            description: meetingStore.openAIKeyField.hasKey ? "Saved to Keychain" : "Required for OpenAI summaries"
-                        ) {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 11))
-                                .foregroundStyle(Color.textTertiary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .popover(isPresented: $showAPIKeyPopover, arrowEdge: .trailing) {
-                        APIKeyPopover(isPresented: $showAPIKeyPopover, provider: .openAI)
-                            .environmentObject(meetingStore)
-                    }
-                    Button {
-                        showClaudeAPIKeyPopover = true
-                    } label: {
-                        SettingsRow(
-                            icon: "key.fill",
-                            title: "Anthropic API key",
-                            description: meetingStore.claudeKeyField.hasKey ? "Saved to Keychain" : "Required for Claude summaries"
-                        ) {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 11))
-                                .foregroundStyle(Color.textTertiary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .popover(isPresented: $showClaudeAPIKeyPopover, arrowEdge: .trailing) {
-                        APIKeyPopover(isPresented: $showClaudeAPIKeyPopover, provider: .anthropic)
-                            .environmentObject(meetingStore)
-                    }
+                    APIKeyRow(provider: .openAI)
+                    APIKeyRow(provider: .anthropic)
                     SettingsRow(
                         icon: "text.append",
                         title: "Generate summary after each meeting",
@@ -153,5 +92,40 @@ struct ModelsPage: View {
             }
         }
         .padding(.top, Theme.Spacing.xl)
+    }
+}
+
+/// A settings row that opens the API-key popover for one provider, owning its own popover state.
+private struct APIKeyRow: View {
+    @EnvironmentObject var meetingStore: MeetingStore
+    let provider: APIKeyPopover.Provider
+    var showsDivider: Bool = true
+
+    @State private var showPopover = false
+
+    var body: some View {
+        Button {
+            showPopover = true
+        } label: {
+            SettingsRow(
+                icon: "key.fill",
+                title: provider.title,
+                description: meetingStore[keyPath: provider.keyPath].hasKey
+                    ? "Saved to Keychain"
+                    : provider.requiredDescription,
+                showsDivider: showsDivider
+            ) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.textTertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showPopover, arrowEdge: .trailing) {
+            APIKeyPopover(isPresented: $showPopover, provider: provider)
+                .environmentObject(meetingStore)
+        }
     }
 }

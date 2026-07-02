@@ -30,6 +30,15 @@ struct APIKeyPopover: View {
             }
         }
 
+        /// The settings-row subtitle shown when no key is saved yet.
+        var requiredDescription: String {
+            switch self {
+            case .openAI: return "Required for OpenAI summaries"
+            case .anthropic: return "Required for Claude summaries"
+            case .assemblyAI: return "Required for transcription"
+            }
+        }
+
         /// The `MeetingStore` field this provider reads and writes.
         var keyPath: ReferenceWritableKeyPath<MeetingStore, APIKeyField> {
             switch self {
