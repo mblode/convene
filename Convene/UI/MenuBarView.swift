@@ -145,7 +145,7 @@ struct MenuBarView: View {
                 }
             }
             ActionRow(icon: "calendar", label: "Open in Calendar") {
-                MeetingLauncher.shared.openInCalendar(event)
+                MeetingLauncher.shared.openCalendarApp()
                 StatusItemController.shared.hidePanel()
             }
             ActionRow(icon: "xmark.circle", label: "Dismiss Event", tint: Color.secondary) {
@@ -245,7 +245,7 @@ struct MenuBarView: View {
             Divider()
         }
         Button {
-            MeetingLauncher.shared.openInCalendar(event)
+            MeetingLauncher.shared.openCalendarApp()
             StatusItemController.shared.hidePanel()
         } label: {
             Label("Open in Calendar", systemImage: "calendar")

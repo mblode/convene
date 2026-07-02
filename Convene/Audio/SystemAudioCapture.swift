@@ -41,11 +41,6 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         Task { @MainActor in self.refreshPermissionState() }
     }
 
-    @MainActor
-    var hasScreenRecordingPermission: Bool {
-        permissionState.isGranted
-    }
-
     /// Non-prompting permission state read.
     @MainActor
     func refreshPermissionState() {

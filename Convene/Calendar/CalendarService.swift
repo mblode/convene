@@ -59,11 +59,6 @@ struct MeetingEvent: Identifiable, Hashable {
         let now = Date()
         return now >= startDate && now <= endDate
     }
-
-    var startsWithinNextHour: Bool {
-        let interval = startDate.timeIntervalSinceNow
-        return interval > 0 && interval <= 3600
-    }
 }
 
 /// Reads events from every calendar configured in macOS Calendar.app — iCloud, Google,

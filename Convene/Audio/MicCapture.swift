@@ -6,10 +6,8 @@ enum MicAudioConstants {
     static let sampleRate: Double = 16000
     static let captureBufferSize: AVAudioFrameCount = 1024
     static let channels: AVAudioChannelCount = 1
-    static let noiseGateThreshold: Float = 0.002
-    static let noiseGateThresholdWithoutAEC: Float = 0.006
-    static let noiseGateHoldTime: TimeInterval = 0.25
-    static let noiseGateHoldTimeWithoutAEC: TimeInterval = 0.35
+    static let noiseGateThreshold: Float = 0.006
+    static let noiseGateHoldTime: TimeInterval = 0.35
 }
 
 enum MicrophonePermissionState: String {
@@ -28,12 +26,10 @@ enum MicrophonePermissionState: String {
     }
 }
 
-/// Mic capture at 16 kHz PCM mono with hardware AEC (VoiceProcessingIO) when available.
-/// AEC is critical for meetings: system audio playing through speakers bleeds into the mic
-/// and would otherwise be transcribed twice (once from system capture, once from mic).
+/// Mic capture at 16 kHz PCM mono. Hardware AEC (VoiceProcessingIO) is deliberately off —
+/// see `start()` for why — so a local noise gate compensates instead.
 final class MicCapture: ObservableObject {
     @MainActor @Published private(set) var isStreaming = false
-    @MainActor @Published private(set) var isHardwareAECActive = false
     @MainActor @Published private(set) var permissionState: MicrophonePermissionState = .notDetermined
 
     /// Set before `start()`. Called from a non-main background queue per chunk.
@@ -43,7 +39,6 @@ final class MicCapture: ObservableObject {
 
     private var engine: AVAudioEngine?
     private var tapNode: AVAudioNode?
-    private var mixerNode: AVAudioMixerNode?
     private let audioQueue = DispatchQueue(label: "co.blode.convene.mic")
 
     init() {
@@ -88,9 +83,7 @@ final class MicCapture: ObservableObject {
         // side effect macOS ducks all other system audio while it's active, making whatever is
         // playing through the speakers go quiet during a recording. Like Granola, we capture the
         // mic and system audio as two separate raw streams and rely on diarization instead, so
-        // the speaker stays at full volume. The higher no-AEC noise-gate threshold compensates.
-        let voiceProcessingEnabled = false
-
+        // the speaker stays at full volume. The noise-gate threshold compensates.
         let inputFormat = input.outputFormat(forBus: 0)
         guard inputFormat.channelCount > 0, inputFormat.sampleRate > 0 else {
             throw NSError(domain: "co.blode.convene.mic", code: -2,
@@ -125,8 +118,7 @@ final class MicCapture: ObservableObject {
         // Per-stream state owned by the audio queue.
         let processor = MicAudioProcessor(
             captureFormat: captureFormat,
-            targetFormat: targetFormat,
-            hwAEC: voiceProcessingEnabled
+            targetFormat: targetFormat
         )
         let onPCM16 = self.onPCM16
         let onFloat32 = self.onFloat32
@@ -141,10 +133,8 @@ final class MicCapture: ObservableObject {
         try engine.start()
         self.engine = engine
         self.tapNode = mixer
-        self.mixerNode = mixer
         self.isStreaming = true
-        self.isHardwareAECActive = voiceProcessingEnabled
-        logInfo("MicCapture: started (hwAEC=\(voiceProcessingEnabled))")
+        logInfo("MicCapture: started")
     }
 
     @MainActor
@@ -153,10 +143,8 @@ final class MicCapture: ObservableObject {
         engine?.stop()
         tapNode?.removeTap(onBus: 0)
         tapNode = nil
-        mixerNode = nil
         engine = nil
         isStreaming = false
-        isHardwareAECActive = false
         logInfo("MicCapture: stopped")
     }
 
@@ -170,17 +158,15 @@ final class MicCapture: ObservableObject {
 private final class MicAudioProcessor: @unchecked Sendable {
     private let captureFormat: AVAudioFormat
     private let targetFormat: AVAudioFormat
-    private let hwAEC: Bool
     private var converter: AVAudioConverter?
     private var lastAboveThresholdTime = Date()
     #if DEBUG
     private var debugChunkCount = 0
     #endif
 
-    init(captureFormat: AVAudioFormat, targetFormat: AVAudioFormat, hwAEC: Bool) {
+    init(captureFormat: AVAudioFormat, targetFormat: AVAudioFormat) {
         self.captureFormat = captureFormat
         self.targetFormat = targetFormat
-        self.hwAEC = hwAEC
         if captureFormat != targetFormat {
             self.converter = AVAudioConverter(from: captureFormat, to: targetFormat)
         }
@@ -195,8 +181,8 @@ private final class MicAudioProcessor: @unchecked Sendable {
         let frameCount = Int(final.frameLength)
         guard frameCount > 0 else { return }
 
-        let threshold = hwAEC ? MicAudioConstants.noiseGateThreshold : MicAudioConstants.noiseGateThresholdWithoutAEC
-        let holdTime = hwAEC ? MicAudioConstants.noiseGateHoldTime : MicAudioConstants.noiseGateHoldTimeWithoutAEC
+        let threshold = MicAudioConstants.noiseGateThreshold
+        let holdTime = MicAudioConstants.noiseGateHoldTime
         let now = Date()
         let rms = rmsLevel(floatData[0], frameCount: frameCount)
         var gated = false

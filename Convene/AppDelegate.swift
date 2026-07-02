@@ -68,6 +68,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             logInfo("CaptureSmokeTest: starting for \(seconds)s at \(baseURL.path)")
             try? await Task.sleep(nanoseconds: 500_000_000)
+            guard await meetingStore.captureCoordinator.requestPermissions() else {
+                logError("CaptureSmokeTest: start failed: \(meetingStore.captureCoordinator.startError ?? "permission required")")
+                NSApp.terminate(nil)
+                return
+            }
             await meetingStore.captureCoordinator.start(debugWAVBaseURL: baseURL)
             if let error = meetingStore.captureCoordinator.startError {
                 logError("CaptureSmokeTest: start failed: \(error)")
