@@ -12,9 +12,14 @@ VERSION := $(shell tag=`git describe --tags --abbrev=0 2>/dev/null`; if [ -n "$$
 
 CODESIGN_IDENTITY ?= Developer ID Application
 TEAM_ID ?= $(APPLE_TEAM_ID)
-LOCAL_CODE_SIGN_IDENTITY ?= Developer ID Application
+# Local dev builds sign ad-hoc by default: no cert, no keychain writes, no prompts, and it
+# works for any contributor. Override with a real identity name to sign with your own cert.
+LOCAL_CODE_SIGN_IDENTITY ?= -
 LOCAL_KEYCHAIN ?= $(HOME)/Library/Keychains/login.keychain-db
-LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM=$(TEAM_ID) ENABLE_DEBUG_DYLIB=NO
+# Hardened runtime is disabled for local builds: an ad-hoc/self-signed app can't satisfy the
+# runtime's library-validation Team-ID match against the bundled Sparkle framework and would
+# crash on launch. Release (archive/export) keeps hardened runtime on via the project setting.
+LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM=$(TEAM_ID) ENABLE_DEBUG_DYLIB=NO ENABLE_HARDENED_RUNTIME=NO
 
 .PHONY: project local-signing-identity build debug install test archive export dmg-background dmg notarize clean
 
@@ -25,7 +30,7 @@ project:
 local-signing-identity:
 	@if [ "$(LOCAL_CODE_SIGN_IDENTITY)" = "-" ]; then \
 		echo "Using ad-hoc local signing."; \
-	elif security find-identity -v -p codesigning -s "$(LOCAL_CODE_SIGN_IDENTITY)" | grep -q "1 valid identities found"; then \
+	elif security find-identity -v -p codesigning | grep -qF "$(LOCAL_CODE_SIGN_IDENTITY)"; then \
 		echo "Using local signing identity: $(LOCAL_CODE_SIGN_IDENTITY)"; \
 	else \
 		tmpdir=$$(mktemp -d); \
