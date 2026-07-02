@@ -17,28 +17,7 @@ final class TranscriptDedupTests: XCTestCase {
     ]
 
     private func loadFixtureMeeting() throws -> Meeting {
-        let url = try XCTUnwrap(
-            Bundle(for: Self.self).url(forResource: "meeting-4ec85721", withExtension: "json"),
-            "Fixture meeting-4ec85721.json missing from test bundle"
-        )
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(Meeting.self, from: Data(contentsOf: url))
-    }
-
-    private func segment(
-        _ speaker: TranscriptSegment.Speaker,
-        startedAt: TimeInterval,
-        endedAt: TimeInterval,
-        text: String
-    ) -> TranscriptSegment {
-        TranscriptSegment(
-            speaker: speaker,
-            startedAt: startedAt,
-            endedAt: endedAt,
-            text: text,
-            isFinal: true
-        )
+        try TestFixtures.meeting("meeting-4ec85721")
     }
 
     private func segments(containing phrase: String, in segments: [TranscriptSegment]) -> [TranscriptSegment] {
@@ -71,9 +50,9 @@ final class TranscriptDedupTests: XCTestCase {
     // MARK: - Dedup behavior
 
     func testLaterOthersCopyReplacesEarlierYouCopy() {
-        let mic = segment(.you, startedAt: 100, endedAt: 105,
+        let mic = makeSegment(.you, start: 100, end: 105,
                           text: "moving away from braids for some all of our marketing emails")
-        let system = segment(.others, startedAt: 103, endedAt: 108,
+        let system = makeSegment(.others, start: 103, end: 108,
                              text: "moving away from Braze for some or all of our marketing emails")
 
         let deduped = [mic, system].removingLikelyEchoDuplicates()
@@ -83,9 +62,9 @@ final class TranscriptDedupTests: XCTestCase {
     }
 
     func testEarlierOthersCopySuppressesLaterYouCopy() {
-        let system = segment(.others, startedAt: 100, endedAt: 105,
+        let system = makeSegment(.others, start: 100, end: 105,
                              text: "moving away from Braze for some or all of our marketing emails")
-        let mic = segment(.you, startedAt: 103, endedAt: 108,
+        let mic = makeSegment(.you, start: 103, end: 108,
                           text: "moving away from braids for some all of our marketing emails")
 
         let deduped = [system, mic].removingLikelyEchoDuplicates()
@@ -95,10 +74,10 @@ final class TranscriptDedupTests: XCTestCase {
 
     func testShortAgreementsOnBothStreamsAreNotDeduped() {
         let input = [
-            segment(.you, startedAt: 10.0, endedAt: 10.5, text: "Yeah"),
-            segment(.others, startedAt: 10.4, endedAt: 11.0, text: "Yeah"),
-            segment(.you, startedAt: 12.0, endedAt: 12.8, text: "Okay cool cool"),
-            segment(.others, startedAt: 12.3, endedAt: 13.0, text: "Okay cool")
+            makeSegment(.you, start: 10.0, end: 10.5, text: "Yeah"),
+            makeSegment(.others, start: 10.4, end: 11.0, text: "Yeah"),
+            makeSegment(.you, start: 12.0, end: 12.8, text: "Okay cool cool"),
+            makeSegment(.others, start: 12.3, end: 13.0, text: "Okay cool")
         ]
         XCTAssertEqual(input.removingLikelyEchoDuplicates().count, input.count)
     }
@@ -106,17 +85,17 @@ final class TranscriptDedupTests: XCTestCase {
     func testSameSpeakerRepeatIsNotDeduped() {
         let line = "I really think we should ship the notification service next week"
         let input = [
-            segment(.you, startedAt: 20, endedAt: 24, text: line),
-            segment(.you, startedAt: 25, endedAt: 29, text: line)
+            makeSegment(.you, start: 20, end: 24, text: line),
+            makeSegment(.you, start: 25, end: 29, text: line)
         ]
         XCTAssertEqual(input.removingLikelyEchoDuplicates().count, 2)
     }
 
     func testDifferentLongSentencesWithinWindowAreNotDeduped() {
         let input = [
-            segment(.you, startedAt: 30, endedAt: 34,
+            makeSegment(.you, start: 30, end: 34,
                     text: "I went to the supermarket yesterday evening to buy vegetables for dinner"),
-            segment(.others, startedAt: 32, endedAt: 36,
+            makeSegment(.others, start: 32, end: 36,
                     text: "Our quarterly revenue numbers exceeded every forecast the finance team modelled")
         ]
         XCTAssertEqual(input.removingLikelyEchoDuplicates().count, 2)
@@ -125,16 +104,16 @@ final class TranscriptDedupTests: XCTestCase {
     // MARK: - Preference rule
 
     func testPreferredCopyPicksOthersForCrossStreamPair() {
-        let mic = segment(.you, startedAt: 100, endedAt: 104, text: "some shared sentence here")
-        let system = segment(.others, startedAt: 102, endedAt: 106, text: "some shared sentence here")
+        let mic = makeSegment(.you, start: 100, end: 104, text: "some shared sentence here")
+        let system = makeSegment(.others, start: 102, end: 106, text: "some shared sentence here")
 
         XCTAssertEqual(TranscriptSegment.preferredCopy(mic, system).id, system.id)
         XCTAssertEqual(TranscriptSegment.preferredCopy(system, mic).id, system.id)
     }
 
     func testPreferredCopyPicksEarlierForSameKindPair() {
-        let first = segment(.you, startedAt: 100, endedAt: 104, text: "some shared sentence here")
-        let second = segment(.you, startedAt: 102, endedAt: 106, text: "some shared sentence here")
+        let first = makeSegment(.you, start: 100, end: 104, text: "some shared sentence here")
+        let second = makeSegment(.you, start: 102, end: 106, text: "some shared sentence here")
 
         XCTAssertEqual(TranscriptSegment.preferredCopy(first, second).id, first.id)
         XCTAssertEqual(TranscriptSegment.preferredCopy(second, first).id, first.id)
@@ -165,9 +144,9 @@ final class TranscriptDedupTests: XCTestCase {
 
     func testCrossStreamAsrVariantsWithinWidenedWindowAreDeduped() {
         // Real-world style pair: same utterance, ~6s commit-clock drift between sessions.
-        let mic = segment(.you, startedAt: 200.0, endedAt: 204.0,
+        let mic = makeSegment(.you, start: 200.0, end: 204.0,
                           text: "we are moving away from braids for all of our marketing emails")
-        let system = segment(.others, startedAt: 206.0, endedAt: 210.0,
+        let system = makeSegment(.others, start: 206.0, end: 210.0,
                              text: "we are moving away from Braze for all of our marketing emails")
 
         XCTAssertTrue(TranscriptSegment.isLikelyEchoDuplicate(system, of: mic))
