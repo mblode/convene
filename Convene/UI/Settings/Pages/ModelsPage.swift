@@ -30,7 +30,7 @@ struct ModelsPage: View {
                         SettingsRow(
                             icon: "key.fill",
                             title: "AssemblyAI API key",
-                            description: meetingStore.hasAssemblyAIKey ? "Saved to Keychain" : "Required for transcription",
+                            description: meetingStore.assemblyAIKeyField.hasKey ? "Saved to Keychain" : "Required for transcription",
                             showsDivider: false
                         ) {
                             Image(systemName: "chevron.right")
@@ -57,7 +57,7 @@ struct ModelsPage: View {
                         SettingsRow(
                             icon: "key.fill",
                             title: "OpenAI API key",
-                            description: meetingStore.hasAPIKey ? "Saved to Keychain" : "Required for OpenAI summaries"
+                            description: meetingStore.openAIKeyField.hasKey ? "Saved to Keychain" : "Required for OpenAI summaries"
                         ) {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 11))
@@ -77,7 +77,7 @@ struct ModelsPage: View {
                         SettingsRow(
                             icon: "key.fill",
                             title: "Anthropic API key",
-                            description: meetingStore.hasClaudeAPIKey ? "Saved to Keychain" : "Required for Claude summaries"
+                            description: meetingStore.claudeKeyField.hasKey ? "Saved to Keychain" : "Required for Claude summaries"
                         ) {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 11))

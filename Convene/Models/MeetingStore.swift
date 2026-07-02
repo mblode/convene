@@ -5,15 +5,9 @@ import Combine
 
 @MainActor
 final class MeetingStore: ObservableObject {
-    @Published var apiKey: String = ""
-    @Published var hasAPIKey: Bool = false
-    @Published private(set) var apiKeyError: String?
-    @Published var claudeAPIKey: String = ""
-    @Published var hasClaudeAPIKey: Bool = false
-    @Published private(set) var claudeAPIKeyError: String?
-    @Published var assemblyAIKey: String = ""
-    @Published var hasAssemblyAIKey: Bool = false
-    @Published private(set) var assemblyAIKeyError: String?
+    @Published var openAIKeyField = APIKeyField(.openAI)
+    @Published var claudeKeyField = APIKeyField(.claude)
+    @Published var assemblyAIKeyField = APIKeyField(.assemblyAI)
     @Published var saveDebugWAVs: Bool = UserDefaults.standard.object(forKey: "saveDebugWAVs") as? Bool ?? false {
         didSet { UserDefaults.standard.set(saveDebugWAVs, forKey: "saveDebugWAVs") }
     }
@@ -99,19 +93,6 @@ final class MeetingStore: ObservableObject {
     var isToggling: Bool { togglePhase != .idle }
 
     init() {
-        if let saved = KeychainManager.loadAPIKey() {
-            apiKey = saved
-            hasAPIKey = !saved.isEmpty
-        }
-        if let saved = KeychainManager.loadClaudeAPIKey() {
-            claudeAPIKey = saved
-            hasClaudeAPIKey = !saved.isEmpty
-        }
-        if let saved = KeychainManager.loadAssemblyAIAPIKey() {
-            assemblyAIKey = saved
-            hasAssemblyAIKey = !saved.isEmpty
-        }
-
         // Wire audio chunks into the transcription coordinator. Note: this fires from the
         // audio capture queue but TranscriptionCoordinator routes through @MainActor so the
         // outbound WebSocket writes happen on the main run loop alongside its segment state.
@@ -199,81 +180,6 @@ final class MeetingStore: ObservableObject {
         let observers = hotkeyObservers
         for observer in observers {
             NotificationCenter.default.removeObserver(observer)
-        }
-    }
-
-    @discardableResult
-    func saveAPIKey() -> Bool {
-        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            guard KeychainManager.deleteAPIKey() else {
-                apiKeyError = "Could not delete the key from Keychain."
-                return false
-            }
-            apiKey = ""
-            hasAPIKey = false
-            apiKeyError = nil
-            return true
-        } else {
-            guard KeychainManager.saveAPIKey(trimmed) else {
-                apiKeyError = "Could not save the key to Keychain."
-                hasAPIKey = false
-                return false
-            }
-            apiKey = trimmed
-            hasAPIKey = true
-            apiKeyError = nil
-            return true
-        }
-    }
-
-    @discardableResult
-    func saveClaudeAPIKey() -> Bool {
-        let trimmed = claudeAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            guard KeychainManager.deleteClaudeAPIKey() else {
-                claudeAPIKeyError = "Could not delete the key from Keychain."
-                return false
-            }
-            claudeAPIKey = ""
-            hasClaudeAPIKey = false
-            claudeAPIKeyError = nil
-            return true
-        } else {
-            guard KeychainManager.saveClaudeAPIKey(trimmed) else {
-                claudeAPIKeyError = "Could not save the key to Keychain."
-                hasClaudeAPIKey = false
-                return false
-            }
-            claudeAPIKey = trimmed
-            hasClaudeAPIKey = true
-            claudeAPIKeyError = nil
-            return true
-        }
-    }
-
-    @discardableResult
-    func saveAssemblyAIKey() -> Bool {
-        let trimmed = assemblyAIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            guard KeychainManager.deleteAssemblyAIAPIKey() else {
-                assemblyAIKeyError = "Could not delete the key from Keychain."
-                return false
-            }
-            assemblyAIKey = ""
-            hasAssemblyAIKey = false
-            assemblyAIKeyError = nil
-            return true
-        } else {
-            guard KeychainManager.saveAssemblyAIAPIKey(trimmed) else {
-                assemblyAIKeyError = "Could not save the key to Keychain."
-                hasAssemblyAIKey = false
-                return false
-            }
-            assemblyAIKey = trimmed
-            hasAssemblyAIKey = true
-            assemblyAIKeyError = nil
-            return true
         }
     }
 
@@ -428,7 +334,7 @@ final class MeetingStore: ObservableObject {
         keyMoments = []
         meetingStartedAt = Date()
 
-        guard hasAssemblyAIKey else {
+        guard assemblyAIKeyField.hasKey else {
             captureStatus = "Add your AssemblyAI API key in Settings to start recording"
             meetingStartedAt = nil
             return
@@ -441,7 +347,7 @@ final class MeetingStore: ObservableObject {
 
         captureStatus = "Connecting to AssemblyAI…"
         await transcriber.start(
-            apiKey: assemblyAIKey,
+            apiKey: assemblyAIKeyField.value,
             speakers: [.you, .others],
             attendeeNames: currentEvent?.attendees ?? [],
             meetingTitle: meetingTitle,
@@ -562,13 +468,13 @@ final class MeetingStore: ObservableObject {
         if summaryProvider == "anthropic" {
             return await claudeSummaryService.generate(
                 meeting: meeting,
-                apiKey: claudeAPIKey,
+                apiKey: claudeKeyField.value,
                 model: claudeSummaryModel
             )
         }
         return await summaryService.generate(
             meeting: meeting,
-            apiKey: apiKey,
+            apiKey: openAIKeyField.value,
             model: summaryModel
         )
     }

@@ -54,7 +54,7 @@ struct SettingsView: View {
                 }
 
                 Section("OpenAI API") {
-                    SecureField("API Key", text: $store.openAIAPIKey)
+                    SecureField("API Key", text: $store.openAIKeyField.value)
                         .textContentType(.password)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
@@ -64,7 +64,7 @@ struct SettingsView: View {
                 }
 
                 Section("Claude API") {
-                    SecureField("API Key", text: $store.claudeAPIKey)
+                    SecureField("API Key", text: $store.claudeKeyField.value)
                         .textContentType(.password)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
