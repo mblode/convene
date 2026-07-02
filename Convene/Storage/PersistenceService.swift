@@ -105,12 +105,9 @@ final class PersistenceService: ObservableObject {
     func save(_ meeting: Meeting) -> URL? {
         lastUsedFallback = false
 
-        let baseName = MarkdownRenderer.filenameStem(for: meeting)
-        let markdown = MarkdownRenderer.renderMarkdown(meeting)
-
-        let jsonData: Data
+        let rendered: MeetingFileWriter.Rendered
         do {
-            jsonData = try MarkdownRenderer.encodeJSON(meeting)
+            rendered = try MeetingFileWriter.render(meeting)
         } catch {
             lastError = "Save failed: \(error.localizedDescription)"
             logError("PersistenceService: meeting encode failed: \(error.localizedDescription)")
@@ -119,12 +116,7 @@ final class PersistenceService: ObservableObject {
 
         if let folder = outputFolderURL {
             do {
-                let url = try writeFiles(
-                    baseName: baseName,
-                    markdown: markdown,
-                    jsonData: jsonData,
-                    folder: folder
-                )
+                let url = try writeFiles(rendered, folder: folder)
                 lastSavedFileURL = url
                 lastError = nil
                 logInfo("PersistenceService: saved \(url.lastPathComponent)")
@@ -137,12 +129,7 @@ final class PersistenceService: ObservableObject {
 
         do {
             let folder = try localFallbackFolder()
-            let url = try writeFiles(
-                baseName: baseName,
-                markdown: markdown,
-                jsonData: jsonData,
-                folder: folder
-            )
+            let url = try writeFiles(rendered, folder: folder)
             lastSavedFileURL = url
             lastUsedFallback = true
             if outputFolderURL == nil {
@@ -156,18 +143,10 @@ final class PersistenceService: ObservableObject {
         }
     }
 
-    private func writeFiles(baseName: String, markdown: String, jsonData: Data, folder: URL) throws -> URL {
+    private func writeFiles(_ rendered: MeetingFileWriter.Rendered, folder: URL) throws -> URL {
         let didStartScope = folder.startAccessingSecurityScopedResource()
         defer { if didStartScope { folder.stopAccessingSecurityScopedResource() } }
-
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-
-        let markdownURL = folder.appendingPathComponent("\(baseName).md")
-        let jsonURL = folder.appendingPathComponent("\(baseName).transcript.json")
-
-        try markdown.write(to: markdownURL, atomically: true, encoding: .utf8)
-        try jsonData.write(to: jsonURL, options: .atomic)
-        return markdownURL
+        return try MeetingFileWriter.write(rendered, to: folder)
     }
 
     private func localFallbackFolder() throws -> URL {

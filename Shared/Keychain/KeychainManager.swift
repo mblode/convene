@@ -4,63 +4,16 @@ import Security
 enum KeychainManager {
     private static let service = "co.blode.convene"
 
-    private enum Account: String {
+    enum Account: String {
         case openAI = "OpenAIAPIKey"
         case claude = "ClaudeAPIKey"
         case assemblyAI = "AssemblyAIAPIKey"
     }
 
-    // MARK: - OpenAI
-
-    @discardableResult
-    static func saveAPIKey(_ key: String) -> Bool {
-        save(key, account: .openAI)
-    }
-
-    static func loadAPIKey() -> String? {
-        load(account: .openAI)
-    }
-
-    @discardableResult
-    static func deleteAPIKey() -> Bool {
-        delete(account: .openAI)
-    }
-
-    // MARK: - Claude
-
-    @discardableResult
-    static func saveClaudeAPIKey(_ key: String) -> Bool {
-        save(key, account: .claude)
-    }
-
-    static func loadClaudeAPIKey() -> String? {
-        load(account: .claude)
-    }
-
-    @discardableResult
-    static func deleteClaudeAPIKey() -> Bool {
-        delete(account: .claude)
-    }
-
-    // MARK: - AssemblyAI
-
-    @discardableResult
-    static func saveAssemblyAIAPIKey(_ key: String) -> Bool {
-        save(key, account: .assemblyAI)
-    }
-
-    static func loadAssemblyAIAPIKey() -> String? {
-        load(account: .assemblyAI)
-    }
-
-    @discardableResult
-    static func deleteAssemblyAIAPIKey() -> Bool {
-        delete(account: .assemblyAI)
-    }
-
     // MARK: - Generic operations
 
-    private static func save(_ key: String, account: Account) -> Bool {
+    @discardableResult
+    static func save(_ key: String, for account: Account) -> Bool {
         guard let data = key.data(using: .utf8) else { return false }
 
         let deleteQuery: [String: Any] = [
@@ -87,7 +40,7 @@ enum KeychainManager {
         return false
     }
 
-    private static func load(account: Account) -> String? {
+    static func load(for account: Account) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -105,7 +58,8 @@ enum KeychainManager {
         return String(data: data, encoding: .utf8)
     }
 
-    private static func delete(account: Account) -> Bool {
+    @discardableResult
+    static func delete(for account: Account) -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

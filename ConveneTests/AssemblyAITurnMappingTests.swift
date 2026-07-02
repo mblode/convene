@@ -8,42 +8,14 @@ final class AssemblyAITurnMappingTests: XCTestCase {
         AssemblyAIRealtimeTranscriber()
     }
 
-    private func word(_ text: String, start: Int, end: Int, speaker: String? = nil) -> AssemblyAIWord {
-        AssemblyAIWord(
-            text: text,
-            start: start,
-            end: end,
-            confidence: 0.95,
-            wordIsFinal: true,
-            speaker: speaker
-        )
-    }
-
-    private func turn(
-        order: Int,
-        endOfTurn: Bool,
-        transcript: String,
-        speakerLabel: String? = nil,
-        words: [AssemblyAIWord] = []
-    ) -> AssemblyAIServerMessage {
-        .turn(AssemblyAITurnMessage(
-            turnOrder: order,
-            endOfTurn: endOfTurn,
-            transcript: transcript,
-            endOfTurnConfidence: endOfTurn ? 0.9 : 0.1,
-            speakerLabel: speakerLabel,
-            words: words
-        ))
-    }
-
     // MARK: - Partial → final replacement
 
     func testPartialGrowsThenFinalizesByReplacingText() {
         let transcriber = makeTranscriber()
 
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: false, transcript: "so the plan",
-                 words: [word("so", start: 1000, end: 1100)]),
+            makeTurn(order: 0, endOfTurn: false, transcript: "so the plan",
+                 words: [makeWord("so", start: 1000, end: 1100)]),
             for: .you
         )
         XCTAssertEqual(transcriber.segments.count, 1)
@@ -52,16 +24,16 @@ final class AssemblyAITurnMappingTests: XCTestCase {
 
         // Partials carry the FULL turn text so far — text must be replaced, not appended.
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: false, transcript: "so the plan for this quarter",
-                 words: [word("so", start: 1000, end: 1100), word("quarter", start: 2000, end: 2400)]),
+            makeTurn(order: 0, endOfTurn: false, transcript: "so the plan for this quarter",
+                 words: [makeWord("so", start: 1000, end: 1100), makeWord("quarter", start: 2000, end: 2400)]),
             for: .you
         )
         XCTAssertEqual(transcriber.segments.count, 1)
         XCTAssertEqual(transcriber.segments[0].text, "so the plan for this quarter")
 
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: "So the plan for this quarter is set.",
-                 words: [word("So", start: 1000, end: 1100), word("set.", start: 3000, end: 3400)]),
+            makeTurn(order: 0, endOfTurn: true, transcript: "So the plan for this quarter is set.",
+                 words: [makeWord("So", start: 1000, end: 1100), makeWord("set.", start: 3000, end: 3400)]),
             for: .you
         )
         XCTAssertEqual(transcriber.segments.count, 1)
@@ -75,13 +47,13 @@ final class AssemblyAITurnMappingTests: XCTestCase {
         transcriber.onSegmentConfirmed = { confirmed.append($0) }
 
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: false, transcript: "hello there"),
+            makeTurn(order: 0, endOfTurn: false, transcript: "hello there"),
             for: .you
         )
         XCTAssertTrue(confirmed.isEmpty, "Partials must not be confirmed")
 
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: "Hello there."),
+            makeTurn(order: 0, endOfTurn: true, transcript: "Hello there."),
             for: .you
         )
         XCTAssertEqual(confirmed.map(\.text), ["Hello there."])
@@ -92,16 +64,16 @@ final class AssemblyAITurnMappingTests: XCTestCase {
     func testTurnsAreKeyedByTurnOrderPerStream() {
         let transcriber = makeTranscriber()
 
-        transcriber.handleServerMessage(turn(order: 0, endOfTurn: false, transcript: "first turn"), for: .you)
-        transcriber.handleServerMessage(turn(order: 1, endOfTurn: false, transcript: "second turn"), for: .you)
+        transcriber.handleServerMessage(makeTurn(order: 0, endOfTurn: false, transcript: "first turn"), for: .you)
+        transcriber.handleServerMessage(makeTurn(order: 1, endOfTurn: false, transcript: "second turn"), for: .you)
         // Same turn_order on the other stream is a distinct segment.
-        transcriber.handleServerMessage(turn(order: 0, endOfTurn: false, transcript: "their first turn"), for: .others)
+        transcriber.handleServerMessage(makeTurn(order: 0, endOfTurn: false, transcript: "their first turn"), for: .others)
 
         XCTAssertEqual(transcriber.segments.count, 3)
         XCTAssertEqual(transcriber.segments.map(\.text), ["first turn", "second turn", "their first turn"])
 
         // Updating you:0 only touches the matching segment.
-        transcriber.handleServerMessage(turn(order: 0, endOfTurn: false, transcript: "first turn updated"), for: .you)
+        transcriber.handleServerMessage(makeTurn(order: 0, endOfTurn: false, transcript: "first turn updated"), for: .you)
         XCTAssertEqual(transcriber.segments.map(\.text), ["first turn updated", "second turn", "their first turn"])
     }
 
@@ -110,8 +82,8 @@ final class AssemblyAITurnMappingTests: XCTestCase {
     func testTimestampsDeriveFromWordTimes() {
         let transcriber = makeTranscriber()
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: "Timed words here.",
-                 words: [word("Timed", start: 1500, end: 1900), word("here.", start: 4200, end: 4750)]),
+            makeTurn(order: 0, endOfTurn: true, transcript: "Timed words here.",
+                 words: [makeWord("Timed", start: 1500, end: 1900), makeWord("here.", start: 4200, end: 4750)]),
             for: .you
         )
         // No Begin processed → connectElapsed is 0, so times are word times in seconds.
@@ -124,7 +96,7 @@ final class AssemblyAITurnMappingTests: XCTestCase {
     func testDiarizedSpeakerIsSetFromSpeakerLabel() {
         let transcriber = makeTranscriber()
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: "Speaker labelled text.", speakerLabel: "B"),
+            makeTurn(order: 0, endOfTurn: true, transcript: "Speaker labelled text.", speakerLabel: "B"),
             for: .others
         )
         XCTAssertEqual(transcriber.segments.first?.diarizedSpeaker, "B")
@@ -133,7 +105,7 @@ final class AssemblyAITurnMappingTests: XCTestCase {
     func testUnknownSpeakerLabelMapsToNil() {
         let transcriber = makeTranscriber()
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: "Unattributed speech here.", speakerLabel: "UNKNOWN"),
+            makeTurn(order: 0, endOfTurn: true, transcript: "Unattributed speech here.", speakerLabel: "UNKNOWN"),
             for: .others
         )
         XCTAssertEqual(transcriber.segments.count, 1)
@@ -143,11 +115,11 @@ final class AssemblyAITurnMappingTests: XCTestCase {
     func testSpeakerRevisionRelabelsTurns() {
         let transcriber = makeTranscriber()
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: "First speaker remarks.", speakerLabel: "A"),
+            makeTurn(order: 0, endOfTurn: true, transcript: "First speaker remarks.", speakerLabel: "A"),
             for: .others
         )
         transcriber.handleServerMessage(
-            turn(order: 1, endOfTurn: true, transcript: "Second speaker replies.", speakerLabel: "A"),
+            makeTurn(order: 1, endOfTurn: true, transcript: "Second speaker replies.", speakerLabel: "A"),
             for: .others
         )
 
@@ -163,7 +135,7 @@ final class AssemblyAITurnMappingTests: XCTestCase {
     func testSpeakerRevisionToUnknownClearsLabel() {
         let transcriber = makeTranscriber()
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: "Some labelled remarks here.", speakerLabel: "A"),
+            makeTurn(order: 0, endOfTurn: true, transcript: "Some labelled remarks here.", speakerLabel: "A"),
             for: .others
         )
         transcriber.handleServerMessage(
@@ -180,15 +152,15 @@ final class AssemblyAITurnMappingTests: XCTestCase {
         let phrase = "We have been offline for like the last month working on this."
 
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: phrase,
-                 words: [word("We", start: 1000, end: 1100), word("this.", start: 4000, end: 4400)]),
+            makeTurn(order: 0, endOfTurn: true, transcript: phrase,
+                 words: [makeWord("We", start: 1000, end: 1100), makeWord("this.", start: 4000, end: 4400)]),
             for: .others
         )
         var confirmedTexts: [String] = []
         transcriber.onSegmentConfirmed = { confirmedTexts.append($0.text) }
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: phrase,
-                 words: [word("We", start: 1200, end: 1300), word("this.", start: 4200, end: 4600)]),
+            makeTurn(order: 0, endOfTurn: true, transcript: phrase,
+                 words: [makeWord("We", start: 1200, end: 1300), makeWord("this.", start: 4200, end: 4600)]),
             for: .you
         )
 
@@ -202,13 +174,13 @@ final class AssemblyAITurnMappingTests: XCTestCase {
         let phrase = "We have been offline for like the last month working on this."
 
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: phrase,
-                 words: [word("We", start: 1000, end: 1100), word("this.", start: 4000, end: 4400)]),
+            makeTurn(order: 0, endOfTurn: true, transcript: phrase,
+                 words: [makeWord("We", start: 1000, end: 1100), makeWord("this.", start: 4000, end: 4400)]),
             for: .you
         )
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: phrase,
-                 words: [word("We", start: 1200, end: 1300), word("this.", start: 4200, end: 4600)]),
+            makeTurn(order: 0, endOfTurn: true, transcript: phrase,
+                 words: [makeWord("We", start: 1200, end: 1300), makeWord("this.", start: 4200, end: 4600)]),
             for: .others
         )
 
@@ -219,13 +191,13 @@ final class AssemblyAITurnMappingTests: XCTestCase {
     func testDistinctSentencesOnBothStreamsAreKept() {
         let transcriber = makeTranscriber()
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: "Let me share my screen with everyone now.",
-                 words: [word("Let", start: 1000, end: 1100)]),
+            makeTurn(order: 0, endOfTurn: true, transcript: "Let me share my screen with everyone now.",
+                 words: [makeWord("Let", start: 1000, end: 1100)]),
             for: .you
         )
         transcriber.handleServerMessage(
-            turn(order: 0, endOfTurn: true, transcript: "The quarterly numbers look very strong indeed.",
-                 words: [word("The", start: 1500, end: 1600)]),
+            makeTurn(order: 0, endOfTurn: true, transcript: "The quarterly numbers look very strong indeed.",
+                 words: [makeWord("The", start: 1500, end: 1600)]),
             for: .others
         )
         XCTAssertEqual(transcriber.segments.count, 2)

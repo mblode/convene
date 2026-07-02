@@ -29,6 +29,24 @@ struct APIKeyPopover: View {
             case .assemblyAI: return "Your AssemblyAI key…"
             }
         }
+
+        /// The settings-row subtitle shown when no key is saved yet.
+        var requiredDescription: String {
+            switch self {
+            case .openAI: return "Required for OpenAI summaries"
+            case .anthropic: return "Required for Claude summaries"
+            case .assemblyAI: return "Required for transcription"
+            }
+        }
+
+        /// The `MeetingStore` field this provider reads and writes.
+        var keyPath: ReferenceWritableKeyPath<MeetingStore, APIKeyField> {
+            switch self {
+            case .openAI: return \.openAIKeyField
+            case .anthropic: return \.claudeKeyField
+            case .assemblyAI: return \.assemblyAIKeyField
+            }
+        }
     }
 
     @EnvironmentObject var meetingStore: MeetingStore
@@ -38,42 +56,14 @@ struct APIKeyPopover: View {
     @State private var draft: String = ""
     @State private var errorMessage: String?
 
-    private var hasKey: Bool {
-        switch provider {
-        case .openAI: return meetingStore.hasAPIKey
-        case .anthropic: return meetingStore.hasClaudeAPIKey
-        case .assemblyAI: return meetingStore.hasAssemblyAIKey
-        }
-    }
-
-    private var storedKey: String {
-        switch provider {
-        case .openAI: return meetingStore.apiKey
-        case .anthropic: return meetingStore.claudeAPIKey
-        case .assemblyAI: return meetingStore.assemblyAIKey
-        }
-    }
-
-    private var storeError: String? {
-        switch provider {
-        case .openAI: return meetingStore.apiKeyError
-        case .anthropic: return meetingStore.claudeAPIKeyError
-        case .assemblyAI: return meetingStore.assemblyAIKeyError
-        }
-    }
+    private var field: APIKeyField { meetingStore[keyPath: provider.keyPath] }
+    private var hasKey: Bool { field.hasKey }
+    private var storedKey: String { field.value }
+    private var storeError: String? { field.error }
 
     private func save(_ value: String) -> Bool {
-        switch provider {
-        case .openAI:
-            meetingStore.apiKey = value
-            return meetingStore.saveAPIKey()
-        case .anthropic:
-            meetingStore.claudeAPIKey = value
-            return meetingStore.saveClaudeAPIKey()
-        case .assemblyAI:
-            meetingStore.assemblyAIKey = value
-            return meetingStore.saveAssemblyAIKey()
-        }
+        meetingStore[keyPath: provider.keyPath].value = value
+        return meetingStore[keyPath: provider.keyPath].save()
     }
 
     var body: some View {

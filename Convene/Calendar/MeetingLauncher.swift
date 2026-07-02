@@ -50,8 +50,8 @@ final class MeetingLauncher {
         return components.url ?? base
     }
 
-    /// Open the event in the system Calendar app (best effort — EventKit has no per-event deep link).
-    func openInCalendar(_ event: MeetingEvent) {
+    /// Open the system Calendar app (best effort — EventKit has no per-event deep link).
+    func openCalendarApp() {
         if let calendarURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.iCal") {
             NSWorkspace.shared.open(calendarURL)
         }

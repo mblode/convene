@@ -12,7 +12,6 @@
   --color-silver-tone: #b5b5b5;
   --color-obsidian-grey: #606060;
   --color-charcoal-black: #3b3b3b;
-  --color-mist-grey: #c2c2c2;
   --color-cerulean-accent: #007eed;
 
   --text-caption: 13px;
@@ -30,10 +29,6 @@
   --text-display: 40px;
   --text-display--line-height: 1.2;
   --text-display--letter-spacing: -0.28px;
-
-  --radius-default: 6px;
-  --radius-large: 10px;
-  --radius-hero: 16px;
 }
 
 :root {

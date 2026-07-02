@@ -10,6 +10,7 @@ final class TranscriptWALService: Sendable {
     }
 
     private let queue = DispatchQueue(label: "co.blode.convene.wal")
+    private let directory: URL
     private let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
@@ -19,9 +20,13 @@ final class TranscriptWALService: Sendable {
     private nonisolated(unsafe) var fileHandle: FileHandle?
     private nonisolated(unsafe) var walURL: URL?
 
+    init(directory: URL = TranscriptWALService.defaultDirectory()) {
+        self.directory = directory
+    }
+
     func beginSession(meetingId: UUID, title: String, attendees: [String], startedAt: Date) {
         queue.sync {
-            let dir = Self.walDirectory()
+            let dir = directory
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
             let url = dir.appendingPathComponent("\(meetingId.uuidString).wal.jsonl")
@@ -89,10 +94,9 @@ final class TranscriptWALService: Sendable {
 
     // MARK: - Recovery
 
-    static func findOrphanedWALs() -> [URL] {
-        let dir = walDirectory()
+    func findOrphanedWALs() -> [URL] {
         guard let contents = try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: nil
+            at: directory, includingPropertiesForKeys: nil
         ) else { return [] }
         return contents.filter { $0.pathExtension == "jsonl" }
     }
@@ -142,7 +146,7 @@ final class TranscriptWALService: Sendable {
         try? FileManager.default.removeItem(at: url)
     }
 
-    private static func walDirectory() -> URL {
+    static func defaultDirectory() -> URL {
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
         ).first!

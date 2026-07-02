@@ -2,21 +2,12 @@ import XCTest
 @testable import Convene
 
 final class MarkdownRendererTests: XCTestCase {
-    private func segment(
-        _ speaker: TranscriptSegment.Speaker,
-        start: TimeInterval,
-        end: TimeInterval,
-        text: String
-    ) -> TranscriptSegment {
-        TranscriptSegment(speaker: speaker, startedAt: start, endedAt: end, text: text, isFinal: true)
-    }
-
     /// Transcript spanning two sections: headers at 00:00 and at 01:30 (90s ≥ 75s interval).
     private func transcript() -> [TranscriptSegment] {
         [
-            segment(.you, start: 0, end: 5, text: "Kick-off and agenda."),
-            segment(.others, start: 90, end: 95, text: "Discussion of the platform."),
-            segment(.you, start: 100, end: 110, text: "Wrap up.")
+            makeSegment(.you, start: 0, end: 5, text: "Kick-off and agenda."),
+            makeSegment(.others, start: 90, end: 95, text: "Discussion of the platform."),
+            makeSegment(.you, start: 100, end: 110, text: "Wrap up.")
         ]
     }
 

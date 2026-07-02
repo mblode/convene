@@ -53,18 +53,8 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("OpenAI API") {
-                    SecureField("API Key", text: $store.openAIAPIKey)
-                        .textContentType(.password)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                    Text("Required for cloud transcription.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
                 Section("Claude API") {
-                    SecureField("API Key", text: $store.claudeAPIKey)
+                    SecureField("API Key", text: $store.claudeKeyField.value)
                         .textContentType(.password)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
@@ -73,7 +63,7 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
-                    LabeledContent("Transcription", value: "OpenAI Realtime")
+                    LabeledContent("Transcription", value: "AssemblyAI Universal-Streaming")
                     LabeledContent("Summarization", value: "Claude Fable 5")
                     LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")
                 }
