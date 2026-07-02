@@ -30,7 +30,7 @@ final class MeetingStore: ObservableObject {
     }
 
     // Live state
-    @Published private(set) var captureStatus: String = "Idle"
+    @Published private(set) var captureStatus: CaptureStatus = .idle
     @Published var meetingTitle: String = "Untitled meeting"
     @Published var meetingNotes: String = ""
     @Published private(set) var lastSavedURL: URL?
@@ -61,17 +61,20 @@ final class MeetingStore: ObservableObject {
     /// the header's pulse + elapsed timer already cover the steady recording state.
     var headerBanner: (text: String, isError: Bool)? {
         if let err = captureCoordinator.startError, !err.isEmpty { return (err, true) }
-        let status = captureStatus
-        if status.hasPrefix("Error") || status.hasPrefix("Transcription error")
-            || status.contains("API key") || status.contains("permission")
-            || status.contains("required") {
-            return (status, true)
+        switch captureStatus {
+        case .error(let message):
+            return (message, true)
+        case .needsAPIKey:
+            return (captureStatus.displayText, true)
+        case .transcriptionWarning(let message):
+            return (message, false)
+        case .connecting, .generatingSummary:
+            return (captureStatus.displayText, false)
+        // .saveFailed shows no banner — faithful to the prior string-matching behavior, where
+        // persistence errors never matched a banner prefix.
+        case .idle, .recording, .busy, .alreadyRecording, .saved, .saveFailed:
+            return nil
         }
-        if status.hasPrefix("Transcription warning") { return (status, false) }
-        if status == "Connecting to AssemblyAI…" || status == "Generating summary…" {
-            return (status, false)
-        }
-        return nil
     }
     /// Identifier of the meeting that's currently the "active" one in the UI. Used to
     /// invalidate stale summary tasks when the user starts a new meeting before the previous
@@ -103,13 +106,13 @@ final class MeetingStore: ObservableObject {
         captureCancellable = captureCoordinator.$isCapturing
             .receive(on: DispatchQueue.main)
             .sink { [weak self] active in
-                self?.captureStatus = active ? "Recording…" : "Idle"
+                self?.captureStatus = active ? .recording : .idle
             }
         errorCancellable = captureCoordinator.$startError
             .receive(on: DispatchQueue.main)
             .sink { [weak self] error in
                 guard let self, let error, !error.isEmpty else { return }
-                self.captureStatus = "Error: \(error)"
+                self.captureStatus = .error("Error: \(error)")
                 if self.transcriber.isRunning {
                     Task { @MainActor [weak self] in
                         await self?.stopAfterCaptureFailure()
@@ -121,7 +124,9 @@ final class MeetingStore: ObservableObject {
             .sink { [weak self] error in
                 guard let self, let error, !error.isEmpty else { return }
                 let isSegmentFailure = error.contains("transcription failed:")
-                self.captureStatus = "\(isSegmentFailure ? "Transcription warning" : "Transcription error"): \(error)"
+                self.captureStatus = isSegmentFailure
+                    ? .transcriptionWarning("Transcription warning: \(error)")
+                    : .error("Transcription error: \(error)")
                 if !isSegmentFailure && self.transcriber.isRunning {
                     Task { @MainActor [weak self] in
                         await self?.stopRecording()
@@ -185,7 +190,7 @@ final class MeetingStore: ObservableObject {
 
     func toggleRecording() {
         guard togglePhase == .idle else {
-            captureStatus = "Busy - wait for previous action to finish"
+            captureStatus = .busy
             return
         }
         if captureCoordinator.isCapturing {
@@ -217,11 +222,11 @@ final class MeetingStore: ObservableObject {
     /// Start recording with metadata prefilled from a calendar event.
     func startRecording(from event: MeetingEvent) {
         guard !captureCoordinator.isCapturing else {
-            captureStatus = "Already recording"
+            captureStatus = .alreadyRecording
             return
         }
         guard togglePhase == .idle else {
-            captureStatus = "Busy - wait for previous action to finish"
+            captureStatus = .busy
             return
         }
         togglePhase = .starting
@@ -261,7 +266,7 @@ final class MeetingStore: ObservableObject {
 
     func quit() {
         guard togglePhase == .idle else {
-            captureStatus = "Busy - wait for previous action to finish"
+            captureStatus = .busy
             return
         }
         let wasCapturing = captureCoordinator.isCapturing
@@ -304,7 +309,7 @@ final class MeetingStore: ObservableObject {
 
         await startRecording()
         guard captureCoordinator.isCapturing else {
-            logError("TranscriptionSmokeTest: capture did not start (\(captureCoordinator.startError ?? captureStatus))")
+            logError("TranscriptionSmokeTest: capture did not start (\(captureCoordinator.startError ?? captureStatus.displayText))")
             saveDebugWAVs = previousDebugWAVs
             generateSummaryAfterMeeting = previousSummary
             return
@@ -335,7 +340,7 @@ final class MeetingStore: ObservableObject {
         meetingStartedAt = Date()
 
         guard assemblyAIKeyField.hasKey else {
-            captureStatus = "Add your AssemblyAI API key in Settings to start recording"
+            captureStatus = .needsAPIKey
             meetingStartedAt = nil
             return
         }
@@ -345,7 +350,7 @@ final class MeetingStore: ObservableObject {
             return
         }
 
-        captureStatus = "Connecting to AssemblyAI…"
+        captureStatus = .connecting
         await transcriber.start(
             apiKey: assemblyAIKeyField.value,
             speakers: [.you, .others],
@@ -354,7 +359,7 @@ final class MeetingStore: ObservableObject {
             expectedSpeakerCount: currentEvent?.attendees.count
         )
         guard transcriber.isRunning else {
-            captureStatus = transcriber.lastError ?? "AssemblyAI transcription failed to start"
+            captureStatus = .error(transcriber.lastError ?? "AssemblyAI transcription failed to start")
             meetingStartedAt = nil
             return
         }
@@ -422,7 +427,7 @@ final class MeetingStore: ObservableObject {
         // Kick off summary generation in the background. When it lands, we re-save and
         // update UI state — but only if the user hasn't started a new meeting in the meantime.
         if generateSummaryAfterMeeting && (!transcript.isEmpty || !trimmedNotes.isEmpty) {
-            captureStatus = "Generating summary…"
+            captureStatus = .generatingSummary
             let meetingId = meeting.id
             Task { [weak self] in
                 guard let self else { return }
@@ -455,7 +460,7 @@ final class MeetingStore: ObservableObject {
                             self?.saveStatus(for: url, action: "Summary saved") ?? "Summary saved to \(url.lastPathComponent)"
                         }
                     } else if let err = self.summaryGenerationError() {
-                        self.captureStatus = err
+                        self.captureStatus = .error(err)
                     }
                 }
             }
@@ -499,7 +504,7 @@ final class MeetingStore: ObservableObject {
                 lastSavedURL = url
             }
             if updateStatus {
-                captureStatus = statusMessage?(url) ?? saveStatus(for: url)
+                captureStatus = .saved(message: statusMessage?(url) ?? saveStatus(for: url))
             }
             return url
         }
@@ -508,7 +513,7 @@ final class MeetingStore: ObservableObject {
             pendingUnsavedMeeting = meeting
         }
         if updateStatus, let err = persistence.lastError {
-            captureStatus = err
+            captureStatus = .saveFailed(message: err)
         }
         return nil
     }
