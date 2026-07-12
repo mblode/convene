@@ -1,11 +1,10 @@
 {
   "name": "convene",
   "private": true,
-  "type": "module",
-  "packageManager": "npm@10.9.3",
   "workspaces": [
     "apps/*"
   ],
+  "type": "module",
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
@@ -19,8 +18,9 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
-    "lefthook": "^1.7.0",
+    "lefthook": "^2.1.10",
     "turbo": "^2",
-    "ultracite": "7.8.3"
-  }
+    "ultracite": "7.9.3"
+  },
+  "packageManager": "npm@10.9.3"
 }
