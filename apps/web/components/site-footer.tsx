@@ -1,4 +1,4 @@
-import { siteConfig } from "@/lib/config"
+import { siteConfig } from "@/lib/config";
 
 export const SiteFooter = () => (
   <footer className="border-t border-charcoal-black bg-twilight-ink">
@@ -11,14 +11,14 @@ export const SiteFooter = () => (
           rel="author noopener noreferrer"
           target="_blank"
         >
-          {/* biome-ignore lint/performance/noImgElement: external avatar hosted on matthewblode.com */}
-          {/* oxlint-disable-next-line nextjs/no-img-element -- external avatar hosted on matthewblode.com */}
+          {/* biome-ignore lint/performance/noImgElement: self-hosted 20px avatar, plain img avoids next/image overhead */}
+          {/* oxlint-disable-next-line nextjs/no-img-element -- self-hosted 20px avatar, plain img avoids next/image overhead */}
           <img
             alt="Avatar of Matthew Blode"
             className="rounded-full"
             height={20}
             loading="lazy"
-            src="https://matthewblode.com/avatar-sm.png"
+            src="/avatar-sm.png"
             width={20}
           />
           Matthew Blode
@@ -36,4 +36,4 @@ export const SiteFooter = () => (
       </div>
     </div>
   </footer>
-)
+);
