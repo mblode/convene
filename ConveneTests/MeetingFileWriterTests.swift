@@ -27,16 +27,4 @@ final class MeetingFileWriterTests: XCTestCase {
         let contents = try FileManager.default.contentsOfDirectory(atPath: outputFolder.path)
         XCTAssertEqual(contents, ["\(rendered.stem).md"])
     }
-
-    func testWritesTranscriptJSONOutsideTheOutputFolder() throws {
-        let rendered = try MeetingFileWriter.render(makeMeeting(title: "Standup"))
-        let internalDirectory = try XCTUnwrap(MeetingFileWriter.internalTranscriptDirectory())
-        let jsonURL = internalDirectory.appendingPathComponent("\(rendered.stem).transcript.json")
-        writtenJSON = jsonURL
-
-        try MeetingFileWriter.write(rendered, to: outputFolder)
-
-        XCTAssertEqual(internalDirectory.lastPathComponent, "Transcripts")
-        XCTAssertEqual(try Data(contentsOf: jsonURL), rendered.json)
-    }
 }

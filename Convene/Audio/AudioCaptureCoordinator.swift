@@ -22,7 +22,7 @@ final class AudioCaptureCoordinator: ObservableObject {
     var onPCM16: ((SpeakerStream, Data) -> Void)?
 
     /// When set before `start()`, both streams are also written to `<base>-you.wav` /
-    /// `<base>-others.wav` for debugging. Set by the store from the "save debug WAVs" setting.
+    /// `<base>-others.wav`. Only the debug-build smoke tests set it; a shipped build never does.
     var debugWAVBaseURL: URL?
 
     /// Optional debug WAV writer. When non-nil, both streams are written to separate WAV files.

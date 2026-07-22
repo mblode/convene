@@ -192,7 +192,7 @@ final class MeetingStore: ObservableObject {
         currentEvent = nil
         // Raw WAVs are a debug-build affordance only, so the smoke test opts in directly rather
         // than through a user-facing setting.
-        captureCoordinator.debugWAVBaseURL = debugWAVBaseURL()
+        captureCoordinator.debugWAVBaseURL = Self.debugWAVBaseURL()
 
         await session.debugStart()
         guard captureCoordinator.isCapturing else {
@@ -211,11 +211,12 @@ final class MeetingStore: ObservableObject {
         generateSummaryAfterMeeting = previousSummary
     }
 
-    private func debugWAVBaseURL() -> URL {
-        let tmp = FileManager.default.temporaryDirectory
+    /// Temp directory for a smoke test's raw WAVs, stamped so successive runs don't collide.
+    static func debugWAVBaseURL() -> URL {
         let stamp = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
-        return tmp.appendingPathComponent("convene-\(stamp)")
+        return FileManager.default.temporaryDirectory
+            .appendingPathComponent("convene-smoke-\(stamp)")
     }
     #endif
 
