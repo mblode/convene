@@ -76,10 +76,6 @@ final class CalendarSettings: ObservableObject {
         dismissedEventIDs.insert(eventID)
     }
 
-    func isDismissed(eventID: String) -> Bool {
-        dismissedEventIDs.contains(eventID)
-    }
-
     /// Resolve the browser app URL for the configured bundle id, falling back to nil (= system default).
     var browserApplicationURL: URL? {
         guard !browserBundleID.isEmpty else { return nil }

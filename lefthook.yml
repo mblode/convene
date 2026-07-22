@@ -2,6 +2,8 @@ pre-commit:
   parallel: true
   jobs:
     - name: ultracite
-      glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
+      # No json/jsonc: oxlint ignores them and exits 1 ("no files found"), which blocked
+      # every commit that touched only package.json or a lockfile.
+      glob: "*.{js,jsx,ts,tsx,css}"
       run: npx ultracite fix {staged_files}
       stage_fixed: true
