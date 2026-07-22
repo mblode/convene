@@ -1,58 +1,58 @@
-import Image from "next/image"
+import Image from "next/image";
 
-import { SiteFooter } from "@/components/site-footer"
+import { SiteFooter } from "@/components/site-footer";
 
 interface GitHubAsset {
-  name: string
-  size: number
-  browser_download_url: string
+  name: string;
+  size: number;
+  browser_download_url: string;
 }
 
 interface GitHubRelease {
-  tag_name: string
-  assets: GitHubAsset[]
+  tag_name: string;
+  assets: GitHubAsset[];
 }
 
 const FEATURES = [
-  "Records both sides of a call — your mic and the other side's audio",
-  "Transcribes live as the meeting happens",
-  "Take notes beside the transcript, get an AI summary when you stop",
-  "Spots Zoom, Teams, Webex, Meet, and BlueJeans when they open",
-  "Links recordings to your calendar — iCloud, Gmail, Fastmail, and more",
-  "Stays on your Mac: notes save to a folder you pick, keys live in the Keychain",
-] as const
+  "Records both sides of a call: your mic and the other side's audio",
+  "Transcribes live while the meeting runs, split by speaker",
+  "Saves a Markdown note when you stop, with an AI summary and the full transcript",
+  "Puts today's calendar in the menu bar. Click an event to join it and start recording",
+  "Notices Zoom, Teams, Webex, Meet, and BlueJeans opening, and offers to record",
+  "Keys stay in your Keychain, notes stay in your folder. There's no Convene server",
+] as const;
 
 const getLatestRelease = async (): Promise<{
-  downloadUrl: string
-  fileSizeMB: string
-  version: string
+  downloadUrl: string;
+  fileSizeMB: string;
+  version: string;
 }> => {
   try {
     const res = await fetch(
       "https://api.github.com/repos/mblode/convene/releases/latest",
-      { next: { revalidate: 3600 } },
-    )
+      { next: { revalidate: 3600 } }
+    );
     if (!res.ok) {
-      throw new Error("Failed to fetch release")
+      throw new Error("Failed to fetch release");
     }
-    const release: GitHubRelease = await res.json()
-    const dmg = release.assets.find((a) => a.name.endsWith(".dmg"))
+    const release: GitHubRelease = await res.json();
+    const dmg = release.assets.find((a) => a.name.endsWith(".dmg"));
     return {
       downloadUrl: dmg?.browser_download_url ?? "#",
       fileSizeMB: dmg ? `${(dmg.size / 1024 / 1024).toFixed(1)} MB` : "",
       version: release.tag_name ?? "v0.1.0",
-    }
+    };
   } catch {
     return {
       downloadUrl: "https://github.com/mblode/convene/releases/latest",
       fileSizeMB: "",
       version: "v0.1.0",
-    }
+    };
   }
-}
+};
 
 export default async function Page() {
-  const { downloadUrl, fileSizeMB, version } = await getLatestRelease()
+  const { downloadUrl, fileSizeMB, version } = await getLatestRelease();
 
   return (
     <div className="flex min-h-dvh flex-col bg-twilight-ink">
@@ -74,12 +74,12 @@ export default async function Page() {
         </h1>
 
         <p className="mt-3 text-polar-white/85 text-subheading">
-          Open-source meeting transcription for macOS.
+          An open-source Granola clone for macOS.
         </p>
 
         <p className="mt-5 max-w-md text-body text-polar-white/75">
-          Records both sides of the call and transcribes live. Bring your own
-          API keys — no subscription, everything stays on your Mac.
+          Records your meetings, transcribes them live, and writes the notes
+          into a folder you own.
         </p>
 
         <div className="mt-7 inline-flex items-center gap-3">
@@ -107,19 +107,12 @@ export default async function Page() {
         <span className="mt-3 text-caption text-white/60">
           {version} · Requires macOS 15
         </span>
-
-        <div className="mt-6 flex items-center gap-2 text-caption text-white/55">
-          <span>or install with Homebrew:</span>
-          <code className="rounded-md bg-black/25 px-2 py-1 font-mono text-[12px] text-white/80">
-            brew install --cask mblode/tap/convene
-          </code>
-        </div>
       </main>
 
       <section className="border-charcoal-black border-t bg-twilight-ink px-6 py-20">
         <div className="mx-auto max-w-2xl">
           <h2 className="text-center text-pewter-mist text-subheading">
-            How it works
+            What it does
           </h2>
           <ul className="mt-8 flex flex-col gap-4">
             {FEATURES.map((feature) => (
@@ -140,5 +133,5 @@ export default async function Page() {
 
       <SiteFooter />
     </div>
-  )
+  );
 }
