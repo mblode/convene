@@ -1,8 +1,9 @@
-import type { Metadata } from "next"
-import { GoogleAnalytics } from "@next/third-parties/google"
-import localFont from "next/font/local"
-import { Agentation } from "agentation"
-import "./globals.css"
+import { GoogleAnalytics } from "@next/third-parties/google";
+import { Agentation } from "agentation";
+import type { Metadata } from "next";
+import localFont from "next/font/local";
+
+import "./globals.css";
 
 const glide = localFont({
   display: "swap",
@@ -12,18 +13,18 @@ const glide = localFont({
   ],
   variable: "--font-glide",
   weight: "400 900",
-})
+});
 
 export const metadata: Metadata = {
   appleWebApp: {
     title: "Convene",
   },
   description:
-    "Open-source meeting transcription for macOS. Records both sides of the call and transcribes live — bring your own API keys, no subscription.",
+    "An open-source Granola clone for macOS. Records your meetings, transcribes them live, and writes the notes into a folder you own.",
   metadataBase: new URL("https://convene.blode.co"),
   openGraph: {
     description:
-      "Open-source meeting transcription for macOS. Records both sides of the call and transcribes live — bring your own API keys, no subscription.",
+      "An open-source Granola clone for macOS. Records your meetings, transcribes them live, and writes the notes into a folder you own.",
     siteName: "Convene",
     title: "Convene",
   },
@@ -31,12 +32,12 @@ export const metadata: Metadata = {
   verification: {
     google: "mFwyBIbXTaKK4uF_NA0MzVWFyY40hPgBjFObg3rje04",
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en" className={glide.variable}>
@@ -46,5 +47,5 @@ export default function RootLayout({
       </body>
       <GoogleAnalytics gaId="G-NPZHV88NWJ" />
     </html>
-  )
+  );
 }
