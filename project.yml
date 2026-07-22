@@ -12,7 +12,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    MARKETING_VERSION: "0.1.1"
+    MARKETING_VERSION: "0.1.7"
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: "84FUKET6NJ"
     CODE_SIGN_STYLE: Automatic
