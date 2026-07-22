@@ -5,18 +5,18 @@
 <h1 align="center">Convene</h1>
 
 <p align="center">
-  Open-source meeting transcription for macOS. Bring your own API keys.
+  An open-source Granola clone for macOS. Records your meetings, transcribes them live, and writes the notes into a folder you own.
 </p>
 
-## How it works
+## What it does
 
 - Records both sides of a call: your mic and the other side's audio
-- Transcribes live as the meeting happens
-- Take notes next to the transcript, get an AI summary when you stop
-- Spots Zoom, Teams, Webex, Meet, BlueJeans, and Slack when they open
-- Links recordings to your calendar (iCloud, Gmail, Fastmail, and more)
-- Stays on your Mac. Notes save to a folder you pick, keys live in the Keychain
-- `Option + Shift + R` to record, `Option + Shift + ,` for Settings
+- Transcribes live while the meeting runs, split by speaker
+- Saves a Markdown note when you stop, with an AI summary and the full transcript
+- Puts today's calendar in the menu bar. Click an event to join it and start recording
+- Notices Zoom, Teams, Webex, Meet, and BlueJeans opening, and offers to record
+- `⌥⇧R` records from anywhere, `⌥⇧K` flags a key moment mid-meeting
+- Keys stay in your Keychain, notes stay in your folder. There's no Convene server
 
 ## Install
 
@@ -29,32 +29,18 @@ brew tap mblode/tap
 brew install --cask convene
 ```
 
-Add two keys in Settings. They're stored in your Keychain.
+First launch asks for Microphone, Screen Recording (audio only, no video), Calendar, and Notifications. Convene updates itself from there.
 
-- **[AssemblyAI](https://www.assemblyai.com/)** for transcription. Get a key from the [dashboard](https://www.assemblyai.com/dashboard/api-keys).
-- **[OpenAI](https://platform.openai.com/api-keys) or [Anthropic](https://console.anthropic.com/settings/keys)** for summaries. Optional. Claude works best.
+## Keys
 
-On first launch Convene asks for Microphone, Screen Recording (audio only, no video), Calendar, and Notifications.
+Add these in Settings. They're stored in your Keychain.
 
-## Updates
+- **[AssemblyAI](https://www.assemblyai.com/dashboard/api-keys)** for transcription. Required.
+- **[Anthropic](https://console.anthropic.com/settings/keys) or [OpenAI](https://platform.openai.com/api-keys)** for summaries. Optional, and Claude writes the better ones.
 
-Convene updates itself through Sparkle. Use **Check for Updates...** from the menu bar or Settings, or run `brew upgrade --cask convene`.
+## Your notes
 
-## Troubleshooting
-
-Can't see the menu bar icon? Press `Option + Shift + ,` to open Settings.
-
-No transcript? Make sure Screen Recording is on in **System Settings > Privacy & Security > Screen Recording**, then relaunch.
-
-## Building from source
-
-```bash
-brew install xcodegen   # one-time
-xcodegen generate       # refreshes Convene.xcodeproj
-make install            # build and launch
-```
-
-Re-run `xcodegen generate` after adding a Swift file. See the [Makefile](Makefile) for more targets.
+Pick a save folder and every meeting lands there as `2026-07-22 103128 - Standup - a1b2c3d4.md`: YAML frontmatter, the summary, your notes, key moments, then the timestamped transcript. Point it at an Obsidian vault and meetings show up there on their own.
 
 ## License
 
