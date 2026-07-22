@@ -60,10 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               seconds > 0 else { return }
         didRunCaptureSmokeTest = true
 
-        let stamp = ISO8601DateFormatter().string(from: Date())
-            .replacingOccurrences(of: ":", with: "-")
-        let baseURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("convene-smoke-\(stamp)")
+        let baseURL = MeetingStore.debugWAVBaseURL()
 
         Task { @MainActor in
             logInfo("CaptureSmokeTest: starting for \(seconds)s at \(baseURL.path)")

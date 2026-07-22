@@ -30,7 +30,6 @@ final class MeetingDetector: ObservableObject {
     @Published var autoStopOnMeetingEnd: Bool = UserDefaults.standard.object(forKey: "autoStopOnMeetingEnd") as? Bool ?? true {
         didSet { UserDefaults.standard.set(autoStopOnMeetingEnd, forKey: "autoStopOnMeetingEnd") }
     }
-    @Published private(set) var lastDetectedApp: String?
     @Published private(set) var notificationStatus: UNAuthorizationStatus = .notDetermined
 
     private var launchObserver: NSObjectProtocol?
@@ -129,7 +128,6 @@ final class MeetingDetector: ObservableObject {
 
         guard let match = Self.trackedApps.first(where: { $0.bundleID == bundleID }) else { return }
         runningTrackedBundleIDs.insert(bundleID)
-        lastDetectedApp = match.displayName
         Task { await postDetectionNotification(appName: match.displayName) }
     }
 
