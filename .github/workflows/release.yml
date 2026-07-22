@@ -215,6 +215,11 @@ jobs:
             "/tmp/convene-build/export/Convene.app" \
           || test -f "/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg"
 
+      - name: Sign DMG
+        run: |
+          codesign --sign "Developer ID Application" --timestamp \
+            "/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg"
+
       - name: Notarize DMG
         run: |
           xcrun notarytool submit "/tmp/convene-build/Convene-${{ steps.version.outputs.VERSION }}.dmg" \
