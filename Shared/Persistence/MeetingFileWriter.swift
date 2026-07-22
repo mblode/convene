@@ -2,10 +2,9 @@ import Foundation
 
 /// Renders a meeting to its on-disk representation and writes it out. The user-facing markdown
 /// (`<stem>.md`) goes to the chosen output folder; the structured `<stem>.transcript.json` is an
-/// app-internal artifact kept out of the vault (see `internalTranscriptDirectory`). Shared by the
-/// macOS and iOS persistence services, which keep their own bookmark resolution, folder pickers,
-/// fallback choice, and security-scoped access — this owns only the format-and-write step they had
-/// in common.
+/// app-internal artifact kept out of the vault (see `internalTranscriptDirectory`). The
+/// persistence service keeps bookmark resolution, the folder picker, fallback choice, and
+/// security-scoped access; this owns only the format-and-write step.
 enum MeetingFileWriter {
     struct Rendered {
         let stem: String

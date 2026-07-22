@@ -1,12 +1,12 @@
 import Combine
 import Foundation
 
-/// The recording lifecycle shared by the macOS and iOS apps: start/stop orchestration, the
-/// transcriber, the write-ahead log, persistence, and background summary generation. Platform
-/// variance is injected — a `RecordingAudioSource`, a `MeetingPersisting`, and a few closures
-/// (`makeContext` for per-meeting metadata, `transcriptionKey`, and the summary hooks). The
-/// platform stores keep the UI-facing knobs (keys, settings, calendar, hotkeys) and expose thin
-/// passthroughs to this session.
+/// The recording lifecycle: start/stop orchestration, the transcriber, the write-ahead log,
+/// persistence, and background summary generation. Everything app-specific is injected — a
+/// `RecordingAudioSource`, a `MeetingPersisting`, and a few closures (`makeContext` for
+/// per-meeting metadata, `transcriptionKey`, and the summary hooks). `MeetingStore` keeps the
+/// UI-facing knobs (keys, settings, calendar, hotkeys) and exposes thin passthroughs to this
+/// session.
 @MainActor
 final class RecordingSession: ObservableObject {
     /// Per-meeting metadata resolved by the platform at the moment recording starts.

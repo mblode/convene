@@ -3,7 +3,6 @@ options:
   bundleIdPrefix: co.blode
   deploymentTarget:
     macOS: "15.0"
-    iOS: "17.0"
   createIntermediateGroups: true
   defaultConfig: Debug
   generateEmptyDirectories: true
@@ -69,25 +68,6 @@ targets:
     dependencies:
       - target: Convene
 
-  ConveneMobile:
-    type: application
-    platform: iOS
-    deploymentTarget: "17.0"
-    sources:
-      - path: Shared
-      - path: ConveneMobile
-        excludes:
-          - "Info.plist"
-          - "ConveneMobile.entitlements"
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene.mobile
-        INFOPLIST_FILE: ConveneMobile/Info.plist
-        CODE_SIGN_ENTITLEMENTS: ConveneMobile/ConveneMobile.entitlements
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
-    dependencies: []
-
 schemes:
   Convene:
     build:
@@ -99,14 +79,5 @@ schemes:
       config: Debug
       targets:
         - ConveneTests
-    archive:
-      config: Release
-
-  ConveneMobile:
-    build:
-      targets:
-        ConveneMobile: all
-    run:
-      config: Debug
     archive:
       config: Release

@@ -48,9 +48,4 @@ class HotkeyManager: ObservableObject {
         guard let shortcut = KeyboardShortcuts.getShortcut(for: name) else { return "Not set" }
         return shortcut.description
     }
-
-    /// The shortcut's symbol string (e.g. "⌥⇧K"), or empty when unset — for inline hints.
-    static func displayString(for name: KeyboardShortcuts.Name) -> String {
-        KeyboardShortcuts.getShortcut(for: name)?.description ?? ""
-    }
 }

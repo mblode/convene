@@ -6,7 +6,6 @@ extension Color {
     static let cardBackground        = dynamic(light: 0xFAFAFA, dark: 0x141416)
     static let cardBorder            = dynamic(light: 0xE5E5E5, dark: 0x262626)
     static let iconBadgeBackground   = dynamic(light: 0xF1F1F1, dark: 0x1F1F1F)
-    static let menuBackground        = dynamic(light: 0xFFFFFF, dark: 0x0F0F0F)
     static let hoverBackground       = dynamic(light: 0xF1F1F1, dark: 0x1F1F1F)
     static let sidebarBackground     = dynamic(light: 0xF7F7F7, dark: 0x000000)
     static let textPrimary           = dynamic(light: 0x0A0A0A, dark: 0xFFFFFF)
