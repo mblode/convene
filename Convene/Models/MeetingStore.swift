@@ -8,9 +8,6 @@ final class MeetingStore: ObservableObject {
     @Published var openAIKeyField = APIKeyField(.openAI)
     @Published var claudeKeyField = APIKeyField(.claude)
     @Published var assemblyAIKeyField = APIKeyField(.assemblyAI)
-    @Published var saveDebugWAVs: Bool = UserDefaults.standard.object(forKey: "saveDebugWAVs") as? Bool ?? false {
-        didSet { UserDefaults.standard.set(saveDebugWAVs, forKey: "saveDebugWAVs") }
-    }
     /// Which provider generates summaries: "anthropic" (default, best model) or "openai".
     @Published var summaryProvider: String = UserDefaults.standard.string(forKey: "summaryProvider") ?? "anthropic" {
         didSet { UserDefaults.standard.set(summaryProvider, forKey: "summaryProvider") }
@@ -190,16 +187,17 @@ final class MeetingStore: ObservableObject {
     #if DEBUG
     func runTranscriptionSmokeTest(seconds: Double) async {
         guard seconds > 0 else { return }
-        let previousDebugWAVs = saveDebugWAVs
         let previousSummary = generateSummaryAfterMeeting
-        saveDebugWAVs = true
         generateSummaryAfterMeeting = false
         currentEvent = nil
+        // Raw WAVs are a debug-build affordance only, so the smoke test opts in directly rather
+        // than through a user-facing setting.
+        captureCoordinator.debugWAVBaseURL = debugWAVBaseURL()
 
         await session.debugStart()
         guard captureCoordinator.isCapturing else {
             logError("TranscriptionSmokeTest: capture did not start (\(captureCoordinator.startError ?? captureStatus.displayText))")
-            saveDebugWAVs = previousDebugWAVs
+            captureCoordinator.debugWAVBaseURL = nil
             generateSummaryAfterMeeting = previousSummary
             return
         }
@@ -209,8 +207,15 @@ final class MeetingStore: ObservableObject {
         await session.debugStop()
         logInfo("TranscriptionSmokeTest: finished")
 
-        saveDebugWAVs = previousDebugWAVs
+        captureCoordinator.debugWAVBaseURL = nil
         generateSummaryAfterMeeting = previousSummary
+    }
+
+    private func debugWAVBaseURL() -> URL {
+        let tmp = FileManager.default.temporaryDirectory
+        let stamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        return tmp.appendingPathComponent("convene-\(stamp)")
     }
     #endif
 
@@ -224,8 +229,6 @@ final class MeetingStore: ObservableObject {
         pendingEventOverride = nil
         currentEvent = event
 
-        // Debug WAVs are macOS-only; configure the coordinator before the session starts capture.
-        captureCoordinator.debugWAVBaseURL = saveDebugWAVs ? debugWAVBaseURL() : nil
         let title = event?.title ?? defaultTitle()
         meetingTitle = title
         meetingNotes = ""
@@ -284,12 +287,5 @@ final class MeetingStore: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMM d 'at' h:mm a"
         return "Meeting on \(formatter.string(from: Date()))"
-    }
-
-    private func debugWAVBaseURL() -> URL {
-        let tmp = FileManager.default.temporaryDirectory
-        let stamp = ISO8601DateFormatter().string(from: Date())
-            .replacingOccurrences(of: ":", with: "-")
-        return tmp.appendingPathComponent("convene-\(stamp)")
     }
 }

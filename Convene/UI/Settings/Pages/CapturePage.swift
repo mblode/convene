@@ -28,7 +28,7 @@ struct CapturePage: View {
                         icon: "stop.circle",
                         title: "Auto-stop when meeting ends",
                         description: "Stops recording once you quit the last open meeting app",
-                        showsDivider: shouldShowLastDetected
+                        showsDivider: false
                     ) {
                         Toggle("", isOn: Binding(
                             get: { meetingStore.meetingDetector.autoStopOnMeetingEnd },
@@ -37,14 +37,6 @@ struct CapturePage: View {
                         .toggleStyle(OliveToggleStyle())
                         .labelsHidden()
                         .disabled(!meetingStore.meetingDetector.enabled)
-                    }
-                    if shouldShowLastDetected {
-                        SettingsRow(
-                            icon: "clock.arrow.circlepath",
-                            title: "Last detected",
-                            description: meetingStore.meetingDetector.lastDetectedApp ?? "None yet",
-                            showsDivider: false
-                        ) {}
                     }
                 }
                 Text("Browser-based meetings (Meet/Zoom Web) aren't detected yet.")
@@ -68,27 +60,7 @@ struct CapturePage: View {
                     }
                 }
             }
-
-            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                SectionLabel("Debug")
-                SettingsCard {
-                    SettingsRow(
-                        icon: "ant",
-                        title: "Save raw audio (WAV)",
-                        description: "Writes mic and system-audio captures to the app's temporary folder",
-                        showsDivider: false
-                    ) {
-                        Toggle("", isOn: $meetingStore.saveDebugWAVs)
-                            .toggleStyle(OliveToggleStyle())
-                            .labelsHidden()
-                    }
-                }
-            }
         }
         .padding(.top, Theme.Spacing.xl)
-    }
-
-    private var shouldShowLastDetected: Bool {
-        meetingStore.meetingDetector.enabled && meetingStore.meetingDetector.lastDetectedApp != nil
     }
 }
