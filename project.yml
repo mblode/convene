@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: co.blode
   deploymentTarget:
     macOS: "15.0"
+    iOS: "17.0"
   createIntermediateGroups: true
   defaultConfig: Debug
   generateEmptyDirectories: true
@@ -68,6 +69,31 @@ targets:
     dependencies:
       - target: Convene
 
+  # The iPhone app. Records the room through the mic (iOS can't tap other apps' audio), so it
+  # runs a single diarized stream instead of the Mac's mic + system-audio pair. Everything below
+  # the capture layer — session, transcriber, WAL, markdown — comes from Shared.
+  ConveneMobile:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Shared
+      - path: ConveneMobile
+        excludes:
+          - "Info.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene.mobile
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # Launch screen and orientation live in Info.plist rather than INFOPLIST_KEY_* settings,
+        # which Xcode only injects for generated plists.
+        INFOPLIST_FILE: ConveneMobile/Info.plist
+        # iPhone only: the layouts are single-column and the recorder assumes a phone on a table.
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_HARDENED_RUNTIME: NO
+    dependencies: []
+
 schemes:
   Convene:
     build:
@@ -79,5 +105,14 @@ schemes:
       config: Debug
       targets:
         - ConveneTests
+    archive:
+      config: Release
+
+  ConveneMobile:
+    build:
+      targets:
+        ConveneMobile: all
+    run:
+      config: Debug
     archive:
       config: Release
