@@ -2,7 +2,7 @@
 
 Marketing landing page for [Convene](https://github.com/mblode/convene), the macOS meeting-transcription app. A single page that fetches the latest GitHub release server-side and surfaces a `.dmg` download.
 
-Deployed at [convene.blode.co](https://convene.blode.co).
+Deployed at [convene.blode.co](https://blode.co/convene).
 
 ## Develop
 

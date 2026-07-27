@@ -15,7 +15,7 @@
     "check-types": "turbo check-types",
     "check": "ultracite check",
     "fix": "ultracite fix",
-    "prepare": "lefthook install"
+    "prepare": "if [ -z \"$VERCEL\" ]; then lefthook install; fi"
   },
   "devDependencies": {
     "lefthook": "^2.1.10",
