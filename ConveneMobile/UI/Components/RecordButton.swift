@@ -45,7 +45,36 @@ struct RecordButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
+        // The halo sits *outside* the glass rather than behind it. Glass refracts whatever is
+        // behind it, and the halo redraws at the audio rate (~45Hz) — putting a saturated,
+        // continuously-resizing circle in the glass's backdrop made it resample every frame and
+        // smear into colour artefacts. Drawn as a sibling underneath, it composites normally.
+        ZStack {
+            if isRecording {
+                Circle()
+                    .fill(tint.opacity(haloOpacity))
+                    .frame(width: diameter, height: diameter)
+                    .scaleEffect(reduceMotion ? haloBaseline : haloScale)
+                    // No animation modifier on purpose: the meter's own attack/release envelope is
+                    // the smoothing. A spring here would lag the room by its own settle time and
+                    // turn a live reading into an echo of one.
+                    .accessibilityHidden(true)
+            }
+
+            glassButton
+        }
+        .disabled(isBusy)
+        .animation(reduceMotion ? nil : MobileTheme.Motion.standard, value: isRecording)
+        .accessibilityLabel(isRecording ? "Stop recording" : "Start recording")
+    }
+
+    /// Wrapped in a `GlassEffectContainer` because that is how custom glass is meant to be used:
+    /// the container is what gives the effect a defined region to sample and blend within. Bare
+    /// `glassEffect` outside one renders, which is why this was missed, but leaves the sampling
+    /// unbounded.
+    @ViewBuilder
+    private var glassButton: some View {
+        let button = Button(action: action) {
             ZStack {
                 if isBusy {
                     ProgressView()
@@ -60,21 +89,12 @@ struct RecordButton: View {
             .controlGlass(tint: tint, in: .circle)
         }
         .buttonStyle(RecordButtonPressStyle())
-        .background {
-            if isRecording {
-                Circle()
-                    .fill(tint.opacity(haloOpacity))
-                    .frame(width: diameter, height: diameter)
-                    .scaleEffect(reduceMotion ? haloBaseline : haloScale)
-                    // No animation modifier on purpose: the meter's own attack/release envelope is
-                    // the smoothing. A spring here would lag the room by its own settle time and
-                    // turn a live reading into an echo of one.
-                    .accessibilityHidden(true)
-            }
+
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer { button }
+        } else {
+            button
         }
-        .disabled(isBusy)
-        .animation(reduceMotion ? nil : MobileTheme.Motion.standard, value: isRecording)
-        .accessibilityLabel(isRecording ? "Stop recording" : "Start recording")
     }
 }
 
