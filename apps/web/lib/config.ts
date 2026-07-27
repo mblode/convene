@@ -1,6 +1,6 @@
 export const siteConfig = {
   links: {
-    author: "https://matthewblode.com",
+    author: "https://blode.co",
     github: "https://github.com/mblode/convene",
   },
-} as const
+} as const;

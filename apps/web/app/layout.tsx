@@ -1,4 +1,3 @@
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { Agentation } from "agentation";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
@@ -14,19 +13,24 @@ const glide = localFont({
   variable: "--font-glide",
   weight: "400 900",
 });
+const siteUrl = "https://blode.co/convene";
 
 export const metadata: Metadata = {
+  alternates: {
+    canonical: siteUrl,
+  },
   appleWebApp: {
     title: "Convene",
   },
   description:
     "An open-source Granola clone for macOS. Records your meetings, transcribes them live, and writes the notes into a folder you own.",
-  metadataBase: new URL("https://convene.blode.co"),
+  metadataBase: new URL("https://blode.co"),
   openGraph: {
     description:
       "An open-source Granola clone for macOS. Records your meetings, transcribes them live, and writes the notes into a folder you own.",
     siteName: "Convene",
     title: "Convene",
+    url: siteUrl,
   },
   title: "Convene",
   verification: {
@@ -41,11 +45,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={glide.variable}>
+      <head>
+        <link href="https://us.i.posthog.com" rel="preconnect" />
+        <link href="https://us-assets.i.posthog.com" rel="dns-prefetch" />
+      </head>
       <body className="antialiased">
         {children}
         {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
-      <GoogleAnalytics gaId="G-NPZHV88NWJ" />
     </html>
   );
 }

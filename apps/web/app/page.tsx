@@ -65,7 +65,7 @@ export default async function Page() {
           className="rounded-[22%] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)]"
           height={80}
           priority
-          src="/app-icon.png"
+          src="/convene/app-icon.png"
           width={80}
         />
 
