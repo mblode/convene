@@ -14,6 +14,9 @@ const glide = localFont({
   weight: "400 900",
 });
 const siteUrl = "https://blode.co/convene";
+const siteTitle = "Convene - Open-Source AI Meeting Notes for macOS";
+const siteDescription =
+  "An open-source Granola clone for macOS. Records your meetings, transcribes them live, and writes the notes into a folder you own.";
 
 export const metadata: Metadata = {
   alternates: {
@@ -22,17 +25,21 @@ export const metadata: Metadata = {
   appleWebApp: {
     title: "Convene",
   },
-  description:
-    "An open-source Granola clone for macOS. Records your meetings, transcribes them live, and writes the notes into a folder you own.",
+  description: siteDescription,
   metadataBase: new URL("https://blode.co"),
   openGraph: {
-    description:
-      "An open-source Granola clone for macOS. Records your meetings, transcribes them live, and writes the notes into a folder you own.",
+    description: siteDescription,
     siteName: "Convene",
-    title: "Convene",
+    title: siteTitle,
+    type: "website",
     url: siteUrl,
   },
-  title: "Convene",
+  title: siteTitle,
+  twitter: {
+    card: "summary_large_image",
+    description: siteDescription,
+    title: siteTitle,
+  },
   verification: {
     google: "mFwyBIbXTaKK4uF_NA0MzVWFyY40hPgBjFObg3rje04",
   },
