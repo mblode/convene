@@ -68,6 +68,65 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
+  ios-build:
+    name: iOS Build
+    # macos-26, not macos-15: the Liquid Glass APIs in ConveneMobile/UI/Theme/LiquidGlass.swift
+    # need the iOS 26 SDK to compile. `if #available(iOS 26.0, *)` gates them at *runtime*; the
+    # symbols still have to exist at compile time, and macos-15 ships Xcode 16 / the iOS 18 SDK.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (iOS Simulator, Debug, no signing)
+        run: |
+          xcodebuild \
+            -scheme ConveneMobile \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath /tmp/convene-ios \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+  swift-format:
+    name: Swift Format
+    # Matches the swift-format that ships with Xcode 26 locally; an older runner's copy can
+    # disagree on rule behaviour and fail a file that is clean on a developer's machine.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Only the Swift files this push/PR touches are linted. The pre-existing
+      # ~10k lines predate .swift-format and do not satisfy it; the pre-commit
+      # hook reformats each file the first time it is staged, so the compliant
+      # set grows one touched file at a time instead of via a repo-wide rewrite.
+      - name: Lint changed Swift files
+        run: |
+          if [[ -n "${{ github.event.pull_request.base.sha }}" ]]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
+          fi
+
+          # macos runners ship bash 3.2, so no mapfile; NUL-delimit for safe paths.
+          git diff --name-only --diff-filter=ACMR "$base" HEAD -- '*.swift' > /tmp/swift-changed.txt
+
+          if [[ ! -s /tmp/swift-changed.txt ]]; then
+            echo "No Swift files changed"
+            exit 0
+          fi
+
+          cat /tmp/swift-changed.txt
+          tr '\n' '\0' < /tmp/swift-changed.txt | xargs -0 xcrun swift-format lint --strict --parallel
+
   web:
     name: Web
     runs-on: ubuntu-latest

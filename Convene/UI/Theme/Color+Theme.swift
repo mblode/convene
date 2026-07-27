@@ -1,3 +1,6 @@
+// swift-format-ignore-file
+// The palette and permission tables are hand-aligned on `=` so they read as columns.
+// swift-format collapses that alignment and it is not configurable, so this file opts out.
 import AppKit
 import SwiftUI
 
