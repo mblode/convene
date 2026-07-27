@@ -26,7 +26,9 @@ export const metadata: Metadata = {
     title: "Convene",
   },
   description: siteDescription,
-  metadataBase: new URL("https://blode.co"),
+  // Includes the basePath: Next does not prefix it onto generated image
+  // routes, so a bare origin here resolves og:image to a 404.
+  metadataBase: new URL(siteUrl),
   openGraph: {
     description: siteDescription,
     siteName: "Convene",
