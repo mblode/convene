@@ -14,3 +14,11 @@ pre-commit:
       glob: "*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}"
       run: npx oxlint --fix {staged_files}
       stage_fixed: true
+    # Same shape as the two above, for the same reason: the glob means lefthook
+    # skips this job entirely when nothing Swift is staged, so swift-format is
+    # never invoked with an empty file list (which would exit 1 on usage).
+    # {staged_files} is already filtered to ACMR, so deleted paths never reach it.
+    - name: swift-format
+      glob: "*.swift"
+      run: xcrun swift-format format --in-place --parallel {staged_files}
+      stage_fixed: true
