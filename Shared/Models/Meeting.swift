@@ -1,6 +1,16 @@
 import Foundation
 
 struct Meeting: Identifiable, Codable, Equatable {
+    /// The name a meeting gets when it starts, before the user renames it or a calendar event
+    /// supplies one. Lives here rather than on either app's store because both produced it with an
+    /// identical formatter, and a title format that drifts between platforms shows up in the
+    /// user's own notes folder.
+    static func defaultTitle(startingAt date: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d 'at' h:mm a"
+        return "Meeting on \(formatter.string(from: date))"
+    }
+
     let id: UUID
     var title: String
     var attendees: [String]
