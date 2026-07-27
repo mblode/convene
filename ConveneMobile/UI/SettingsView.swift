@@ -148,20 +148,28 @@ struct SettingsView: View {
 
     // MARK: - Microphone
 
+    /// Resolved outside the view builder on purpose.
+    ///
+    /// A `switch` returning `Label`s inside `LabeledContent`'s value slot renders the row correctly
+    /// but leaves the Form section several times taller than its content — an empty block under the
+    /// row that reads as a blank setting. Handing `LabeledContent` a plain `HStack` of resolved
+    /// values avoids it.
+    private var microphoneAccess: (title: String, icon: String, tint: Color) {
+        switch store.recorder.permissionState {
+        case .granted: ("Allowed", "checkmark.circle.fill", .green)
+        case .denied: ("Off", "xmark.circle.fill", .recordingRed)
+        case .undetermined: ("Not yet asked", "questionmark.circle", .secondary)
+        }
+    }
+
     private var microphoneSection: some View {
         Section("Microphone") {
             LabeledContent("Access") {
-                switch store.recorder.permissionState {
-                case .granted:
-                    Label("Allowed", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                case .denied:
-                    Label("Off", systemImage: "xmark.circle.fill")
-                        .foregroundStyle(Color.recordingRed)
-                case .undetermined:
-                    Text("Asked when you first record")
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: microphoneAccess.icon)
+                    Text(microphoneAccess.title)
                 }
+                .foregroundStyle(microphoneAccess.tint)
             }
 
             if store.recorder.permissionState == .denied,
