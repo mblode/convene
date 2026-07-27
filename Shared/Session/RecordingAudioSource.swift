@@ -1,8 +1,9 @@
 import Foundation
 
-/// A capture backend the recording session drives, currently the dual-stream
-/// `AudioCaptureCoordinator` (mic = .you, system audio = .others). The session owns the
-/// transcriber and feeds it the labeled PCM16 chunks this source emits.
+/// A capture backend the recording session drives. macOS uses the dual-stream
+/// `AudioCaptureCoordinator` (mic = .you, system audio = .others); iOS uses the single-stream
+/// `MicRecorder`, which labels the whole room .others so diarization separates it. The session
+/// owns the transcriber and feeds it the labeled PCM16 chunks this source emits.
 @MainActor
 protocol RecordingAudioSource: AnyObject {
     var isCapturing: Bool { get }

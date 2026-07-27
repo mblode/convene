@@ -8,6 +8,9 @@ DMG_PATH = $(DERIVED_DATA)/$(APP_NAME)-$(VERSION).dmg
 DMG_BG_SCRIPT = installer/make-dmg-bg.swift
 DMG_BG = installer/dmg-background.png
 BUNDLE_ID = co.blode.convene
+IOS_SCHEME = ConveneMobile
+IOS_DERIVED_DATA = /tmp/convene-ios
+IOS_SIMULATOR ?= iPhone 17 Pro
 VERSION := $(shell tag=`git describe --tags --abbrev=0 2>/dev/null`; if [ -n "$$tag" ]; then printf "%s" "$$tag" | sed 's/^v//'; else printf "0.0.0"; fi)
 
 CODESIGN_IDENTITY ?= Developer ID Application
@@ -21,7 +24,7 @@ LOCAL_KEYCHAIN ?= $(HOME)/Library/Keychains/login.keychain-db
 # crash on launch. Release (archive/export) keeps hardened runtime on via the project setting.
 LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM=$(TEAM_ID) ENABLE_DEBUG_DYLIB=NO ENABLE_HARDENED_RUNTIME=NO
 
-.PHONY: project local-signing-identity build debug install test archive export dmg-background dmg notarize clean
+.PHONY: project local-signing-identity build debug install test ios ios-run archive export dmg-background dmg notarize clean
 
 # Regenerate Convene.xcodeproj from project.yml. Required after adding Swift files.
 project:
@@ -88,6 +91,32 @@ test: project
 		-destination 'platform=macOS' \
 		-derivedDataPath $(DERIVED_DATA)
 
+# Build the iPhone app for the simulator. No signing, so it works without a provisioning profile.
+ios: project
+	xcodebuild -scheme $(IOS_SCHEME) \
+		-configuration Debug \
+		-destination 'generic/platform=iOS Simulator' \
+		-derivedDataPath $(IOS_DERIVED_DATA) \
+		CODE_SIGNING_ALLOWED=NO \
+		CODE_SIGNING_REQUIRED=NO \
+		build
+
+# Build, install, and launch on a booted simulator. Override the device with
+# `make ios-run IOS_SIMULATOR="iPhone 17"`. Recording needs a real device — the simulator has no
+# microphone input worth transcribing — but everything else is exercisable here.
+ios-run: project
+	xcodebuild -scheme $(IOS_SCHEME) \
+		-configuration Debug \
+		-destination 'platform=iOS Simulator,name=$(IOS_SIMULATOR)' \
+		-derivedDataPath $(IOS_DERIVED_DATA) \
+		CODE_SIGNING_ALLOWED=NO \
+		CODE_SIGNING_REQUIRED=NO \
+		build
+	xcrun simctl boot "$(IOS_SIMULATOR)" || true
+	open -a Simulator
+	xcrun simctl install booted $(IOS_DERIVED_DATA)/Build/Products/Debug-iphonesimulator/$(IOS_SCHEME).app
+	xcrun simctl launch booted co.blode.convene.mobile
+
 archive:
 	xcodebuild -scheme $(SCHEME) \
 		-configuration $(CONFIGURATION) \
@@ -150,4 +179,4 @@ notarize: dmg
 	@echo "Notarized: $(DMG_PATH)"
 
 clean:
-	rm -rf $(DERIVED_DATA)
+	rm -rf $(DERIVED_DATA) $(IOS_DERIVED_DATA)
