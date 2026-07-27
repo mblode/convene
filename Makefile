@@ -1,6 +1,11 @@
 SCHEME = Convene
 CONFIGURATION = Release
 DERIVED_DATA = /tmp/convene-build
+IOS_SCHEME = ConveneMobile
+# The iOS target is ConveneMobile but its PRODUCT_NAME is Convene, so the bundle is Convene.app.
+IOS_APP_NAME = Convene
+IOS_DERIVED_DATA = /tmp/convene-ios
+IOS_SIMULATOR ?= iPhone 17
 ARCHIVE_PATH = $(DERIVED_DATA)/Convene.xcarchive
 EXPORT_PATH = $(DERIVED_DATA)/export
 APP_NAME = Convene
@@ -21,7 +26,18 @@ LOCAL_KEYCHAIN ?= $(HOME)/Library/Keychains/login.keychain-db
 # crash on launch. Release (archive/export) keeps hardened runtime on via the project setting.
 LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM=$(TEAM_ID) ENABLE_DEBUG_DYLIB=NO ENABLE_HARDENED_RUNTIME=NO
 
-.PHONY: project local-signing-identity build debug install test archive export dmg-background dmg notarize clean
+.PHONY: project local-signing-identity build debug install test archive export dmg-background dmg notarize ios-icon ios-build ios-run ios-archive format format-check clean
+
+SWIFT_SOURCES = Convene Shared ConveneMobile ConveneTests
+
+# Apply .swift-format to every Swift source. The pre-commit hook does this per
+# staged file; run this only when you intend to reformat whole directories.
+format:
+	xcrun swift-format format --in-place --parallel --recursive $(SWIFT_SOURCES)
+
+# Non-mutating check, same rule CI runs (CI scopes it to changed files).
+format-check:
+	xcrun swift-format lint --strict --parallel --recursive $(SWIFT_SOURCES)
 
 # Regenerate Convene.xcodeproj from project.yml. Required after adding Swift files.
 project:
@@ -149,5 +165,37 @@ notarize: dmg
 	xcrun stapler staple $(DMG_PATH)
 	@echo "Notarized: $(DMG_PATH)"
 
+# Rebuild the iOS app icon from the exported artwork. Only needed when the artwork changes.
+ios-icon:
+	swift installer/make-ios-icon.swift
+
+ios-build: project
+	xcodebuild -scheme $(IOS_SCHEME) \
+		-configuration Debug \
+		-destination 'generic/platform=iOS Simulator' \
+		-derivedDataPath $(IOS_DERIVED_DATA) \
+		CODE_SIGNING_ALLOWED=NO \
+		CODE_SIGNING_REQUIRED=NO \
+		build
+
+# Build, install, and launch the iPhone app on a booted simulator.
+ios-run: project
+	xcodebuild -scheme $(IOS_SCHEME) \
+		-configuration Debug \
+		-destination 'platform=iOS Simulator,name=$(IOS_SIMULATOR)' \
+		-derivedDataPath $(IOS_DERIVED_DATA) \
+		CODE_SIGNING_ALLOWED=NO \
+		CODE_SIGNING_REQUIRED=NO \
+		build
+	xcrun simctl boot "$(IOS_SIMULATOR)" 2>/dev/null || true
+	open -a Simulator
+	xcrun simctl install booted $(IOS_DERIVED_DATA)/Build/Products/Debug-iphonesimulator/$(IOS_APP_NAME).app
+	xcrun simctl launch --terminate-running-process booted co.blode.convene.mobile
+
+# Fresh Release archive for TestFlight. Pass BUMP=1 to increment the build number first.
+# Upload from Xcode Organizer afterwards — see installer/release-archive.sh.
+ios-archive:
+	installer/release-archive.sh $(if $(BUMP),--bump,)
+
 clean:
-	rm -rf $(DERIVED_DATA)
+	rm -rf $(DERIVED_DATA) $(IOS_DERIVED_DATA)

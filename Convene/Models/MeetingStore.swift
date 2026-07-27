@@ -1,25 +1,33 @@
-import Foundation
-import SwiftUI
 import AppKit
 import Combine
+import Foundation
+import SwiftUI
 
 @MainActor
 final class MeetingStore: ObservableObject {
     @Published var openAIKeyField = APIKeyField(.openAI)
     @Published var claudeKeyField = APIKeyField(.claude)
     @Published var assemblyAIKeyField = APIKeyField(.assemblyAI)
-    /// Which provider generates summaries: "anthropic" (default, best model) or "openai".
-    @Published var summaryProvider: String = UserDefaults.standard.string(forKey: "summaryProvider") ?? "anthropic" {
-        didSet { UserDefaults.standard.set(summaryProvider, forKey: "summaryProvider") }
+    /// Summary settings and provider routing, shared with the iPhone app. The passthroughs below
+    /// keep `$meetingStore.summaryProvider`-style bindings working from Settings without each view
+    /// having to observe the coordinator itself.
+    let summary = SummaryCoordinator()
+
+    var summaryProvider: String {
+        get { summary.provider }
+        set { summary.provider = newValue }
     }
-    @Published var summaryModel: String = UserDefaults.standard.string(forKey: "summaryModel") ?? "gpt-5.4-mini" {
-        didSet { UserDefaults.standard.set(summaryModel, forKey: "summaryModel") }
+    var summaryModel: String {
+        get { summary.openAIModel }
+        set { summary.openAIModel = newValue }
     }
-    @Published var claudeSummaryModel: String = UserDefaults.standard.string(forKey: "claudeSummaryModel") ?? "claude-fable-5" {
-        didSet { UserDefaults.standard.set(claudeSummaryModel, forKey: "claudeSummaryModel") }
+    var claudeSummaryModel: String {
+        get { summary.claudeModel }
+        set { summary.claudeModel = newValue }
     }
-    @Published var generateSummaryAfterMeeting: Bool = UserDefaults.standard.object(forKey: "generateSummaryAfterMeeting") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(generateSummaryAfterMeeting, forKey: "generateSummaryAfterMeeting") }
+    var generateSummaryAfterMeeting: Bool {
+        get { summary.isEnabled }
+        set { summary.isEnabled = newValue }
     }
     /// The name used to label your side of the transcript ("Your name" in Settings).
     @Published var userName: String = UserDefaults.standard.string(forKey: "userName") ?? "" {
@@ -33,8 +41,6 @@ final class MeetingStore: ObservableObject {
 
     let captureCoordinator = AudioCaptureCoordinator()
     let persistence = PersistenceService()
-    let summaryService = SummaryService()
-    let claudeSummaryService = ClaudeSummaryService()
     let calendarService = CalendarService()
     let meetingDetector = MeetingDetector()
 
@@ -95,7 +101,7 @@ final class MeetingStore: ObservableObject {
             transcriptionKey: { [weak self] in self?.assemblyAIKeyField.value ?? "" },
             shouldSummarize: { [weak self] in self?.generateSummaryAfterMeeting ?? false },
             summarize: { [weak self] meeting in await self?.generateSummary(for: meeting) ?? nil },
-            summaryError: { [weak self] in self?.summaryGenerationError() ?? nil }
+            summaryError: { [weak self] in self?.summary.lastError }
         )
 
         // Capture dropping mid-recording surfaces through the coordinator's startError; hand it to
@@ -110,24 +116,29 @@ final class MeetingStore: ObservableObject {
         forwardObjectWillChange(from: session, into: &nestedObjectCancellables)
         forwardObjectWillChange(from: captureCoordinator, into: &nestedObjectCancellables)
         forwardObjectWillChange(from: persistence, into: &nestedObjectCancellables)
-        forwardObjectWillChange(from: summaryService, into: &nestedObjectCancellables)
-        forwardObjectWillChange(from: claudeSummaryService, into: &nestedObjectCancellables)
+        forwardObjectWillChange(from: summary, into: &nestedObjectCancellables)
         forwardObjectWillChange(from: calendarService, into: &nestedObjectCancellables)
         forwardObjectWillChange(from: meetingDetector, into: &nestedObjectCancellables)
 
         let center = NotificationCenter.default
         hotkeyObservers.append(
-            center.addObserver(forName: NSNotification.Name("ConveneToggleRecording"), object: nil, queue: .main) { [weak self] _ in
+            center.addObserver(
+                forName: NSNotification.Name("ConveneToggleRecording"), object: nil, queue: .main
+            ) { [weak self] _ in
                 Task { @MainActor in self?.toggleRecording() }
             }
         )
         hotkeyObservers.append(
-            center.addObserver(forName: NSNotification.Name("ConveneStartRecordingIfIdle"), object: nil, queue: .main) { [weak self] _ in
+            center.addObserver(
+                forName: NSNotification.Name("ConveneStartRecordingIfIdle"), object: nil, queue: .main
+            ) { [weak self] _ in
                 Task { @MainActor in self?.startRecordingIfIdle() }
             }
         )
         hotkeyObservers.append(
-            center.addObserver(forName: NSNotification.Name("ConveneMeetingAppsEnded"), object: nil, queue: .main) { [weak self] _ in
+            center.addObserver(
+                forName: NSNotification.Name("ConveneMeetingAppsEnded"), object: nil, queue: .main
+            ) { [weak self] _ in
                 Task { @MainActor in self?.stopRecordingIfActive() }
             }
         )
@@ -196,7 +207,9 @@ final class MeetingStore: ObservableObject {
 
         await session.debugStart()
         guard captureCoordinator.isCapturing else {
-            logError("TranscriptionSmokeTest: capture did not start (\(captureCoordinator.startError ?? captureStatus.displayText))")
+            logError(
+                "TranscriptionSmokeTest: capture did not start (\(captureCoordinator.startError ?? captureStatus.displayText))"
+            )
             captureCoordinator.debugWAVBaseURL = nil
             generateSummaryAfterMeeting = previousSummary
             return
@@ -230,7 +243,7 @@ final class MeetingStore: ObservableObject {
         pendingEventOverride = nil
         currentEvent = event
 
-        let title = event?.title ?? defaultTitle()
+        let title = event?.title ?? Meeting.defaultTitle()
         meetingTitle = title
         meetingNotes = ""
         return RecordingSession.Context(
@@ -246,22 +259,11 @@ final class MeetingStore: ObservableObject {
     /// Routes summary generation by the configured provider. Anthropic (Claude Fable 5) is the
     /// default; OpenAI remains available as a fallback choice in Settings.
     private func generateSummary(for meeting: Meeting) async -> MeetingSummary? {
-        if summaryProvider == "anthropic" {
-            return await claudeSummaryService.generate(
-                meeting: meeting,
-                apiKey: claudeKeyField.value,
-                model: claudeSummaryModel
-            )
-        }
-        return await summaryService.generate(
-            meeting: meeting,
-            apiKey: openAIKeyField.value,
-            model: summaryModel
+        await summary.generate(
+            for: meeting,
+            openAIKey: openAIKeyField.value,
+            claudeKey: claudeKeyField.value
         )
-    }
-
-    private func summaryGenerationError() -> String? {
-        summaryProvider == "anthropic" ? claudeSummaryService.lastError : summaryService.lastError
     }
 
     /// Name for `.you` transcript segments: the Settings "Your name" value, falling back to the
@@ -284,9 +286,4 @@ final class MeetingStore: ObservableObject {
         return name.isEmpty ? nil : name
     }
 
-    private func defaultTitle() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMM d 'at' h:mm a"
-        return "Meeting on \(formatter.string(from: Date()))"
-    }
 }

@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: co.blode
   deploymentTarget:
     macOS: "15.0"
+    iOS: "17.0"
   createIntermediateGroups: true
   defaultConfig: Debug
   generateEmptyDirectories: true
@@ -68,6 +69,37 @@ targets:
     dependencies:
       - target: Convene
 
+  # The iPhone app. iOS can't tap another app's audio, so this records the room through the mic as
+  # a single diarized stream rather than the Mac's mic + system-audio pair. Everything below the
+  # capture layer — session, transcriber, WAL, markdown — is the same Shared code.
+  ConveneMobile:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Shared
+      - path: ConveneMobile
+        excludes:
+          - "Info.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene.mobile
+        # The target stays ConveneMobile to keep the scheme, CI job, and docs stable, but the
+        # product is just Convene — so the built bundle and Xcode Organizer match the display
+        # name users already see. Different platform to the Mac target, so the name isn't a clash.
+        PRODUCT_NAME: Convene
+        # Its own build number, not the shared one: TestFlight rejects a build number it has already
+        # seen, so this has to climb on every upload — and it shouldn't drag the Mac app's version
+        # along with it each time.
+        CURRENT_PROJECT_VERSION: "2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_FILE: ConveneMobile/Info.plist
+        # iPhone only: the layouts are single-column and the whole thing assumes a phone on a table.
+        TARGETED_DEVICE_FAMILY: "1"
+        # Hardened runtime is a macOS notarization setting; the shared base turns it on for the Mac app.
+        ENABLE_HARDENED_RUNTIME: NO
+
 schemes:
   Convene:
     build:
@@ -79,5 +111,14 @@ schemes:
       config: Debug
       targets:
         - ConveneTests
+    archive:
+      config: Release
+
+  ConveneMobile:
+    build:
+      targets:
+        ConveneMobile: all
+    run:
+      config: Debug
     archive:
       config: Release

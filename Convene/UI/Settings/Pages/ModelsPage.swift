@@ -63,10 +63,9 @@ struct ModelsPage: View {
                     ) {
                         if usesAnthropic {
                             Picker("", selection: $meetingStore.claudeSummaryModel) {
-                                Text("claude-fable-5").tag("claude-fable-5")
-                                Text("claude-opus-4-8").tag("claude-opus-4-8")
-                                Text("claude-sonnet-4-6").tag("claude-sonnet-4-6")
-                                Text("claude-haiku-4-5").tag("claude-haiku-4-5")
+                                ForEach(SummaryModelCatalog.anthropic, id: \.self) { model in
+                                    Text(model).tag(model)
+                                }
                             }
                             .labelsHidden()
                             .pickerStyle(.menu)
@@ -74,13 +73,9 @@ struct ModelsPage: View {
                             .disabled(!meetingStore.generateSummaryAfterMeeting)
                         } else {
                             Picker("", selection: $meetingStore.summaryModel) {
-                                Text("gpt-5.5").tag("gpt-5.5")
-                                Text("gpt-5.4-mini").tag("gpt-5.4-mini")
-                                Text("gpt-5.4-nano").tag("gpt-5.4-nano")
-                                Text("gpt-4o-mini").tag("gpt-4o-mini")
-                                Text("gpt-4o").tag("gpt-4o")
-                                Text("gpt-4.1-mini").tag("gpt-4.1-mini")
-                                Text("gpt-4.1").tag("gpt-4.1")
+                                ForEach(SummaryModelCatalog.openAI, id: \.self) { model in
+                                    Text(model).tag(model)
+                                }
                             }
                             .labelsHidden()
                             .pickerStyle(.menu)

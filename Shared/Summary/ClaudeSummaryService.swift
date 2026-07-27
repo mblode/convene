@@ -7,7 +7,11 @@ final class ClaudeSummaryService: ObservableObject {
 
     private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
 
-    func generate(meeting: Meeting, apiKey: String, model: String = "claude-fable-5") async -> MeetingSummary? {
+    func generate(
+        meeting: Meeting,
+        apiKey: String,
+        model: String = SummaryModelCatalog.defaultAnthropic
+    ) async -> MeetingSummary? {
         guard !apiKey.isEmpty else {
             lastError = "Claude API key required"
             return nil
@@ -54,15 +58,20 @@ final class ClaudeSummaryService: ObservableObject {
         }
     }
 
-    /// Transport-only request body. Note: `claude-fable-5` and `claude-opus-4-8` reject
-    /// `temperature`/`top_p`/`top_k` and any `thinking` parameter — never add them here.
+    /// Transport-only request body. The models offered reject `temperature`/`top_p`/`top_k` and a
+    /// `budget_tokens` thinking config — never add them here.
+    ///
+    /// `max_tokens` is deliberately generous. On Claude Opus 5 thinking is on by default, and
+    /// `max_tokens` caps thinking *and* the reply together — the old 8192 was sized for a
+    /// reply-only budget on a model that didn't think unless asked. Since the reply has to parse as
+    /// JSON, a truncated one isn't a shorter summary, it's no summary at all.
     private func requestBody(meeting: Meeting, model: String) -> [String: Any] {
         let userPrompt = SummaryPrompt.userPrompt(meeting: meeting) + "\n\n" + SummaryPrompt.claudeUserSuffix
         let systemPrompt = SummaryPrompt.systemPrompt + "\n" + SummaryPrompt.claudeSystemSuffix
 
         return [
             "model": model,
-            "max_tokens": 8192,
+            "max_tokens": 16000,
             "system": systemPrompt,
             "messages": [
                 ["role": "user", "content": userPrompt]
@@ -72,8 +81,9 @@ final class ClaudeSummaryService: ObservableObject {
 
     private func parseServerError(data: Data) -> String? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let error = json["error"] as? [String: Any],
-              let message = error["message"] as? String else { return nil }
+            let error = json["error"] as? [String: Any],
+            let message = error["message"] as? String
+        else { return nil }
         return "Claude summary failed: \(message)"
     }
 
@@ -90,14 +100,16 @@ final class ClaudeSummaryService: ObservableObject {
 
     private func parseSummary(data: Data) -> MeetingSummary? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = json["content"] as? [[String: Any]],
-              let first = content.first,
-              let text = first["text"] as? String else {
+            let content = json["content"] as? [[String: Any]],
+            let first = content.first,
+            let text = first["text"] as? String
+        else {
             lastError = "Could not parse Claude response"
             return nil
         }
         guard let textData = text.data(using: .utf8),
-              let parsed = try? JSONDecoder().decode(SummaryPayload.self, from: textData) else {
+            let parsed = try? JSONDecoder().decode(SummaryPayload.self, from: textData)
+        else {
             lastError = "Claude response was not valid JSON"
             return nil
         }
