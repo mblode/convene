@@ -72,6 +72,12 @@ final class RecordingSession: ObservableObject {
     private var transcriptionErrorCancellable: AnyCancellable?
     private var nestedObjectCancellables = Set<AnyCancellable>()
 
+    /// Polls the live title and notes into the WAL while a meeting runs. See `mirrorMetadataToWAL`.
+    private var metadataMirrorTask: Task<Void, Never>?
+
+    /// The last pair written, so an unchanged poll costs nothing.
+    private var lastMirroredMetadata: (title: String, notes: String)?
+
     init(
         audioSource: RecordingAudioSource,
         persistence: MeetingPersisting,
@@ -98,7 +104,8 @@ final class RecordingSession: ObservableObject {
             .sink { [weak self] error in
                 guard let self, let error, !error.isEmpty else { return }
                 let isSegmentFailure = error.contains("transcription failed:")
-                self.captureStatus = isSegmentFailure
+                self.captureStatus =
+                    isSegmentFailure
                     ? .transcriptionWarning("Transcription warning: \(error)")
                     : .error("Transcription error: \(error)")
                 if !isSegmentFailure && self.transcriber.isRunning {
@@ -149,6 +156,7 @@ final class RecordingSession: ObservableObject {
     func cancelRecording() {
         guard audioSource.isCapturing else { return }
         run(.stopping, reportBusy: false) {
+            self.stopMirroringMetadata()
             await self.audioSource.stop()
             await self.transcriber.stop()
             self.transcriber.onSegmentConfirmed = nil
@@ -285,6 +293,7 @@ final class RecordingSession: ObservableObject {
         transcriber.onSegmentConfirmed = { [walService] segment in
             walService.appendSegment(segment)
         }
+        startMirroringMetadata()
 
         do {
             try await audioSource.start { [weak self] speaker, data in
@@ -295,6 +304,7 @@ final class RecordingSession: ObservableObject {
         }
 
         if !audioSource.isCapturing {
+            stopMirroringMetadata()
             await transcriber.stop()
             transcriber.onSegmentConfirmed = nil
             walService.endSession()
@@ -309,6 +319,50 @@ final class RecordingSession: ObservableObject {
     /// Context captured at start, read back at persist time so attribution matches the meeting.
     private var pendingContext: Context?
 
+    // MARK: - Metadata mirroring
+
+    /// Keeps the WAL's copy of the title and notes current while a meeting runs.
+    ///
+    /// Segments and key moments reach the log as they happen, but the title and the notes are
+    /// typed, and nothing published an edit anywhere the session could see it — so a crash or a
+    /// jetsam kill took the whole lot and recovery rebuilt the meeting with empty notes. An app
+    /// that holds the microphone open in the background is a prime candidate for being killed, so
+    /// this is the likeliest way to lose work in the product.
+    ///
+    /// A poll rather than an observer because `meetingMetadata` is a closure over whatever the
+    /// platform keeps its fields in — `@Published` strings on both stores today, but the session
+    /// deliberately doesn't know that. Two seconds bounds the loss at a sentence or so, and the
+    /// unchanged case costs a string compare.
+    private func startMirroringMetadata() {
+        metadataMirrorTask?.cancel()
+        lastMirroredMetadata = nil
+        metadataMirrorTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                self?.mirrorMetadataToWAL()
+            }
+        }
+    }
+
+    /// Writes the current title and notes to the WAL if either has changed since the last write.
+    private func mirrorMetadataToWAL() {
+        let current = meetingMetadata()
+        guard
+            current.title != lastMirroredMetadata?.title
+                || current.notes != lastMirroredMetadata?.notes
+        else { return }
+        lastMirroredMetadata = current
+        walService.appendMetadata(title: current.title, notes: current.notes)
+    }
+
+    /// Stops the poll. Safe to call when it was never started.
+    private func stopMirroringMetadata() {
+        metadataMirrorTask?.cancel()
+        metadataMirrorTask = nil
+        lastMirroredMetadata = nil
+    }
+
     private func stopRecording() async {
         await audioSource.stop()
         await Task.yield()
@@ -322,6 +376,7 @@ final class RecordingSession: ObservableObject {
     /// Shared tail of a normal stop and a capture-failure stop: drain the transcriber, persist
     /// the meeting, and close out the WAL.
     private func finalizeMeeting() async {
+        stopMirroringMetadata()
         await transcriber.stop()
         transcriber.onSegmentConfirmed = nil
         persistCurrentMeeting()
