@@ -101,7 +101,10 @@ struct RecordingSheet: View {
             recording ? .start : .stop
         }
         .sensoryFeedback(.success, trigger: store.keyMoments.count)
-        .sensoryFeedback(.error, trigger: store.banner?.isError == true)
+        // Only on the way into an error — the bare `trigger:` form buzzes when one clears too.
+        .sensoryFeedback(trigger: store.banner?.isError == true) { _, isError in
+            isError ? .error : nil
+        }
         .confirmationDialog(
             "Discard this recording?",
             isPresented: $isConfirmingDiscard,

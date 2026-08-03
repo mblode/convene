@@ -141,7 +141,7 @@ struct MeetingsView: View {
         NavigationLink(value: meeting.id) {
             MeetingCard(meeting: meeting)
         }
-        .buttonStyle(MeetingCardButtonStyle())
+        .buttonStyle(PressableStyle(RoundedRectangle(cornerRadius: MobileTheme.Radius.card)))
         // Without `List` there is nothing to swipe, so the destructive action lives in the long
         // press. Matching the preview shape to the card keeps the lift from tearing off a
         // rectangle with the card's own corners inside it.

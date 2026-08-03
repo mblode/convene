@@ -46,7 +46,7 @@ struct SaveFailureBanner: View {
                 .foregroundStyle(Color.textPrimary)
                 .padding(.horizontal, MobileTheme.Spacing.lg)
                 .frame(maxWidth: .infinity, minHeight: 44)
-                .background(Color.chipBackground, in: Capsule())
+                .background(Color.iconBadgeBackground, in: Capsule())
                 .buttonStyle(PressableStyle())
         }
         .padding(MobileTheme.Spacing.lg)

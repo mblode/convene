@@ -151,7 +151,7 @@ private struct SetupRow: View {
     var body: some View {
         if let action {
             Button(action: action) { content }
-                .buttonStyle(RowPressStyle())
+                .buttonStyle(PressableStyle(Rectangle()))
                 .accessibilityValue(accessibilityValue)
                 .accessibilityAddTraits(status == .done ? .isSelected : [])
         } else {
@@ -236,21 +236,6 @@ private struct SetupRow: View {
         case .waiting: "Not done"
         case .blocked: "Needs attention"
         }
-    }
-}
-
-/// Press feedback shaped to a full-width row.
-///
-/// `PressableStyle` is the app's standard, but its overlay is a `Capsule` — right for the chips and
-/// the FAB it was built for, wrong across a row this wide, where the rounded ends would cut into
-/// text. Same colour, same timing, rectangular.
-private struct RowPressStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(configuration.isPressed ? Color.pressedOverlay : Color.clear)
-            .animation(reduceMotion ? nil : MobileTheme.Motion.quiet, value: configuration.isPressed)
     }
 }
 

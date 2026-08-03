@@ -42,21 +42,9 @@ extension Color {
 
     // MARK: - Touch additions
 
-    // The Mac palette was built for a menu-bar app driven by a cursor. These four are what a touch
-    // app needs on top of it, each derived from a token above rather than introducing a new colour.
-
-    /// Pill/chip fill behind metadata. One step off the canvas, matching the Mac's badge surface.
-    static let chipBackground = dynamic(light: 0xF1F1F1, dark: 0x1F1F1F)
-
-    /// Overlaid on a control while the finger is down. There is no hover on a phone, so the Mac's
-    /// `hoverBackground` becomes a press state instead.
+    /// Overlaid on a control while the finger is down. The Mac palette has a `hoverBackground` for
+    /// the same job, and a phone has no hover — this is where that idea lands instead.
     static let pressedOverlay = Color.textPrimary.opacity(0.08)
-
-    /// Dims the root list behind the recording sheet.
-    static let sheetScrim = Color.black.opacity(0.28)
-
-    /// Foreground for a control that is present but unavailable.
-    static let disabledForeground = Color.textTertiary.opacity(0.55)
 
     // MARK: - Resolution
 

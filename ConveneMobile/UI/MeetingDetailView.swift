@@ -12,6 +12,13 @@ struct MeetingDetailView: View {
 
     @State private var isShowingTranscript = false
 
+    /// The shareable markdown, rendered once.
+    ///
+    /// `ShareLink`'s item is evaluated with the view body, so building it inline re-rendered the
+    /// whole meeting — transcript included — on every redraw, to produce a string the user only
+    /// wants when they tap Share.
+    @State private var markdown = ""
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: MobileTheme.Spacing.xxl) {
@@ -69,14 +76,16 @@ struct MeetingDetailView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(
-                    item: MarkdownRenderer.renderMarkdown(meeting),
-                    preview: SharePreview(meeting.title)
-                )
+                ShareLink(item: markdown, preview: SharePreview(meeting.title))
             }
         }
         .sheet(isPresented: $isShowingTranscript) {
             TranscriptSheet(meeting: meeting)
+        }
+        // Re-rendered when the summary lands, which is the one thing that changes under an open
+        // detail view.
+        .task(id: meeting) {
+            markdown = MarkdownRenderer.renderMarkdown(meeting)
         }
     }
 

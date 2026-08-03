@@ -26,17 +26,6 @@ extension View {
             self.background(tint.opacity(fallbackOpacity), in: shape)
         }
     }
-
-    /// The soft scroll edge effect, so transcript text dissolves under the navigation bar instead
-    /// of colliding with a hard edge.
-    @ViewBuilder
-    func softScrollEdges() -> some View {
-        if #available(iOS 26.0, *) {
-            self.scrollEdgeEffectStyle(.soft, for: .top)
-        } else {
-            self
-        }
-    }
 }
 
 /// A bordered button that becomes a glass button on iOS 26.
