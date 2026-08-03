@@ -136,7 +136,7 @@ struct BannerView: View {
         .padding(MobileTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            isError ? Color.recordingRed.opacity(0.1) : Color.chipBackground,
+            isError ? Color.recordingRed.opacity(0.1) : Color.iconBadgeBackground,
             in: RoundedRectangle(cornerRadius: MobileTheme.Radius.card)
         )
         .accessibilityElement(children: .combine)

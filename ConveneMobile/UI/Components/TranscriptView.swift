@@ -7,13 +7,21 @@ struct TranscriptView: View {
     var selfName: String?
     var othersName: String?
 
-    private var blocks: [TranscriptFormatter.Block] {
-        TranscriptFormatter.mergedBlocks(segments)
-    }
+    /// Merged once per change of `segments`, not once per render.
+    ///
+    /// As a computed property this re-walked the entire transcript inside `body` — and the
+    /// recording sheet re-renders on every keystroke in the notes field, because the notes and the
+    /// segments live on the same `ObservableObject`. Typing during a long meeting meant re-merging
+    /// the whole transcript per character, on the main thread.
+    @State private var blocks: [TranscriptFormatter.Block] = []
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: MobileTheme.Spacing.lg) {
-            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+            // Keyed by start time, not by position. A block's `startedAt` is fixed when its first
+            // segment lands and survives the revisions that follow, where the array index shifts
+            // every time a partial turn merges into the block above it — which invalidated every
+            // row below the change on each transcript update.
+            ForEach(blocks, id: \.startedAt) { block in
                 VStack(alignment: .leading, spacing: MobileTheme.Spacing.xs) {
                     HStack(spacing: MobileTheme.Spacing.sm) {
                         Text(
@@ -45,6 +53,9 @@ struct TranscriptView: View {
                 // paragraph, which is unusable at the length these run to.
                 .accessibilityElement(children: .combine)
             }
+        }
+        .onChange(of: segments, initial: true) { _, latest in
+            blocks = TranscriptFormatter.mergedBlocks(latest)
         }
     }
 }

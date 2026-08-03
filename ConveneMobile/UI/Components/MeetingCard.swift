@@ -91,22 +91,3 @@ struct MeetingCard: View {
         return parts.joined(separator: ", ")
     }
 }
-
-/// Press feedback for a whole card.
-///
-/// The same tint `PressableStyle` uses, in the card's shape: that style fills a `Capsule`, which
-/// leaves the tint spilling past the fill at a card's corners.
-struct MeetingCardButtonStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .overlay {
-                if configuration.isPressed {
-                    RoundedRectangle(cornerRadius: MobileTheme.Radius.card)
-                        .fill(Color.pressedOverlay)
-                }
-            }
-            .animation(reduceMotion ? nil : MobileTheme.Motion.quiet, value: configuration.isPressed)
-    }
-}

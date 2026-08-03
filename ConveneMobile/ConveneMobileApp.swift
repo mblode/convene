@@ -55,7 +55,11 @@ struct RootView: View {
             recording ? .start : .stop
         }
         .sensoryFeedback(.success, trigger: store.keyMoments.count)
-        .sensoryFeedback(.error, trigger: store.banner?.isError == true)
+        // Only on the way into an error. The bare `trigger:` form fires on every change of the
+        // value, so an error *clearing* buzzed exactly like one arriving.
+        .sensoryFeedback(trigger: store.banner?.isError == true) { _, isError in
+            isError ? .error : nil
+        }
     }
 
     private var recordControl: some View {
