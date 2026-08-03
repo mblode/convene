@@ -149,8 +149,12 @@ final class TranscriptWALService: Sendable {
         var metadata: Metadata?
         for line in lines.dropFirst() {
             guard let data = line.data(using: .utf8) else { continue }
-            // The three record types have disjoint required keys, so a successful decode is an
-            // identification. `Metadata` is tried last because it is the newest and rarest.
+            // A successful decode is an identification, which holds only while the three record
+            // types keep disjoint *required* keys — segments need `speaker`/`isFinal`, moments need
+            // `offset`/`createdAt`, metadata needs `title`/`notes`. Adding a field to one that the
+            // others already carry, or making one's fields optional, would let it swallow another's
+            // lines and quietly drop them from a recovered meeting. Pinned by
+            // `testRecordTypesDoNotDecodeAsEachOther`.
             if let segment = try? decoder.decode(TranscriptSegment.self, from: data) {
                 segments.append(segment)
             } else if let moment = try? decoder.decode(KeyMoment.self, from: data) {

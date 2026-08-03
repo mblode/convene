@@ -106,6 +106,37 @@ final class TranscriptWALServiceTests: XCTestCase {
         XCTAssertEqual(meeting.notes, "kept", "A blank title doesn't discard the notes beside it")
     }
 
+    /// Recovery identifies a record by which type decodes it, and `Metadata` is tried last — so it
+    /// is the branch an unrecognised line falls into if its fields ever stop being required.
+    ///
+    /// The failure this prevents: someone makes `Metadata.title`/`.notes` optional, or adds a
+    /// record type whose keys overlap. `Metadata` then decodes any leftover JSON object, the last
+    /// such line wins, and a recovered meeting comes back with the user's typed notes replaced by
+    /// nothing. The other tests can't catch it — they write only lines the parser already knows,
+    /// and the first two branches match those regardless.
+    func testUnknownRecordDoesNotOverwriteMetadata() throws {
+        let start = Date(timeIntervalSince1970: 1_750_000_000)
+        let writer = TranscriptWALService(directory: tempDir)
+        writer.beginSession(meetingId: UUID(), title: "Standup", attendees: [], startedAt: start)
+        writer.appendSegment(makeSegment(.you, start: 1, end: 3, text: "Spoken"))
+        writer.appendKeyMoment(KeyMoment(offset: 2, text: "Flagged"))
+        writer.appendMetadata(title: "Typed title", notes: "Typed notes")
+        let url = try XCTUnwrap(writer.endSession())
+
+        // Valid JSON, no known record type — a line from a future version, or a partial write that
+        // happened to land on a closing brace.
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.seekToEnd()
+        handle.write(Data("{\"unrelated\":true}\n".utf8))
+        try handle.close()
+
+        let meeting = try TranscriptWALService.recoverMeeting(from: url)
+        XCTAssertEqual(meeting.title, "[Recovered] Typed title", "An unknown line doesn't clear the title")
+        XCTAssertEqual(meeting.notes, "Typed notes", "An unknown line doesn't clear the notes")
+        XCTAssertEqual(meeting.transcript.map(\.text), ["Spoken"])
+        XCTAssertEqual(meeting.keyMoments.map(\.text), ["Flagged"])
+    }
+
     func testRecoverMeetingThrowsOnEmptyFile() throws {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let url = tempDir.appendingPathComponent("empty.wal.jsonl")
