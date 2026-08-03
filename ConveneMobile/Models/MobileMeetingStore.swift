@@ -62,6 +62,18 @@ final class MobileMeetingStore: ObservableObject {
 
     func toggleRecording() { session.toggleRecording() }
     func cancelRecording() { session.cancelRecording() }
+    func retryPendingSave() { session.retryPendingSave() }
+
+    /// The message from a save that failed, or nil.
+    ///
+    /// A failed save is the one error in the app that holds something irreplaceable: the meeting is
+    /// over, the transcript exists only in memory and the WAL, and the folder it was headed for
+    /// refused it. `RecordingSession` keeps that meeting on hand for `retryPendingSave()`, so the
+    /// only thing missing was a way for the user to ask — which is what this feeds.
+    var pendingSaveError: String? {
+        guard case .saveFailed(let message) = captureStatus else { return nil }
+        return message
+    }
 
     @discardableResult
     func flagKeyMoment(text: String = "") -> KeyMoment? { session.flagKeyMoment(text: text) }
@@ -81,6 +93,9 @@ final class MobileMeetingStore: ObservableObject {
             return (message, false)
         case .connecting, .generatingSummary:
             return (captureStatus.displayText, false)
+        // `.saved` deliberately stays silent here. The recording sheet is already dismissing by the
+        // time it lands, so a banner would flash and go; the meeting arriving at the top of the
+        // list is the confirmation, and it is the one the user is looking at.
         case .idle, .recording, .busy, .alreadyRecording, .cancelled, .saved:
             return nil
         }

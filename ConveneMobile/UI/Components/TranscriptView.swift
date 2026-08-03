@@ -24,20 +24,26 @@ struct TranscriptView: View {
                                 diarizedSpeaker: block.diarizedSpeaker
                             )
                         )
-                        .font(.subheadline.weight(.semibold))
+                        .typeStyle(.section)
+                        .foregroundStyle(Color.textPrimary)
 
                         Text(TranscriptFormatter.timestampString(block.startedAt))
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                            .typeStyle(.mono)
+                            .foregroundStyle(Color.textSecondary)
                     }
 
                     Text(block.text)
+                        .typeStyle(.body)
                         // Partial turns are still being revised by the transcriber. Dimming them
                         // keeps a rewrite from reading as text being deleted.
-                        .foregroundStyle(block.isPartial ? .secondary : .primary)
+                        .foregroundStyle(block.isPartial ? Color.textSecondary : Color.textPrimary)
                         .textSelection(.enabled)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // One turn, one element. Read segment by segment, a transcript makes VoiceOver
+                // announce the speaker's name and the timestamp as two separate stops before every
+                // paragraph, which is unusable at the length these run to.
+                .accessibilityElement(children: .combine)
             }
         }
     }
