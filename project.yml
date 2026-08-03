@@ -91,7 +91,7 @@ targets:
         # Its own build number, not the shared one: TestFlight rejects a build number it has already
         # seen, so this has to climb on every upload — and it shouldn't drag the Mac app's version
         # along with it each time.
-        CURRENT_PROJECT_VERSION: "5"
+        CURRENT_PROJECT_VERSION: "6"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_FILE: ConveneMobile/Info.plist
