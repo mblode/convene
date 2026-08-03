@@ -27,17 +27,6 @@ extension View {
         }
     }
 
-    /// Minimises the tab bar as the user scrolls down, handing the screen to the content.
-    /// Applied to the transcript, which is the only view here long enough to read.
-    @ViewBuilder
-    func minimizingTabBar() -> some View {
-        if #available(iOS 26.0, *) {
-            self.tabBarMinimizeBehavior(.onScrollDown)
-        } else {
-            self
-        }
-    }
-
     /// The soft scroll edge effect, so transcript text dissolves under the navigation bar instead
     /// of colliding with a hard edge.
     @ViewBuilder

@@ -20,20 +20,74 @@ struct ConveneMobileApp: App {
     }
 }
 
+/// The whole app: one list, one floating control, and the sheets they raise.
+///
+/// There is no tab bar. The previous three tabs put a screen that was one button beside a list of
+/// what that button produced, which asked the user to hold "recording" and "recordings" apart as
+/// separate places when they are the same subject. Collapsing them leaves a single root whose
+/// primary action is always under the thumb, and makes "open the app and record" two taps instead
+/// of three.
 struct RootView: View {
+    @EnvironmentObject private var store: MobileMeetingStore
+
+    @AppStorage(OnboardingDefaults.hasSeenWelcomeKey) private var hasSeenWelcome = false
+
+    /// Whether the recording sheet is on screen. Presentation only, and deliberately nothing more:
+    /// the meeting's life belongs to `RecordingSession`, so dismissing this leaves it running.
+    @State private var isShowingRecordingSheet = false
+
+    /// Raised when someone taps Record before there is a key to record with.
+    @State private var isShowingKeySheet = false
+
     var body: some View {
-        TabView {
-            RecordingView()
-                .tabItem { Label("Record", systemImage: "mic.fill") }
-
+        NavigationStack {
             MeetingsView()
-                .tabItem { Label("Meetings", systemImage: "list.bullet") }
-
-            SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .overlay(alignment: .bottom) { recordControl }
         }
-        // The transcript is the one view long enough to read for minutes at a time, so let the tab
-        // bar shrink out of the way while scrolling down and come back on the way up.
-        .minimizingTabBar()
+        .sheet(isPresented: $isShowingRecordingSheet) { RecordingSheet() }
+        .sheet(isPresented: $isShowingKeySheet) { APIKeySheet() }
+        .fullScreenCover(isPresented: .constant(!hasSeenWelcome)) {
+            WelcomeView { hasSeenWelcome = true }
+        }
+        // Starting and stopping are the two commitments worth confirming through the hand, since
+        // the phone is usually face down on the table by then.
+        .sensoryFeedback(trigger: store.isRecording) { _, recording in
+            recording ? .start : .stop
+        }
+        .sensoryFeedback(.success, trigger: store.keyMoments.count)
+        .sensoryFeedback(.error, trigger: store.banner?.isError == true)
+    }
+
+    private var recordControl: some View {
+        RecordFAB(
+            isRecording: store.isRecording,
+            isBusy: store.isToggling,
+            isInterrupted: store.isInterrupted,
+            startedAt: store.meetingStartedAt,
+            levelMeter: store.recorder.levelMeter,
+            action: recordTapped
+        )
+        .padding(.bottom, MobileTheme.Spacing.xl)
+    }
+
+    /// The one button, doing a different thing depending on what is in the way.
+    ///
+    /// Note what it deliberately does *not* do: stop a running meeting. While recording it is a way
+    /// back into the sheet and nothing else. Stopping lives on the Stop button inside, where it is
+    /// a considered tap rather than a second press of the thing that started it — otherwise someone
+    /// who dismissed the sheet to check something in the list would end their meeting trying to get
+    /// back to it.
+    private func recordTapped() {
+        guard SetupState(store: store).canRecord else {
+            // A banner saying a key is missing leaves the user to go and find Settings. The sheet
+            // that fixes it is one tap closer, and says the same thing by existing.
+            isShowingKeySheet = true
+            return
+        }
+
+        if !store.isRecording {
+            store.toggleRecording()
+        }
+        isShowingRecordingSheet = true
     }
 }

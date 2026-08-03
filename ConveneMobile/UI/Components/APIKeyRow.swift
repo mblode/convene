@@ -18,7 +18,7 @@ struct APIKeyRow: View {
                 Spacer()
                 if field.hasKey {
                     Label("Saved", systemImage: "checkmark.circle.fill")
-                        .font(.caption)
+                        .typeStyle(.caption)
                         .foregroundStyle(.green)
                 }
             }
@@ -43,18 +43,19 @@ struct APIKeyRow: View {
                     Image(systemName: isRevealed ? "eye.slash" : "eye")
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
+                .frame(minWidth: 44, minHeight: 44)
                 .accessibilityLabel(isRevealed ? "Hide key" : "Show key")
             }
 
             if let error = field.error {
                 Text(error)
-                    .font(.caption)
+                    .typeStyle(.caption)
                     .foregroundStyle(Color.recordingRed)
             } else {
                 Text(footnote)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .typeStyle(.caption)
+                    .foregroundStyle(Color.textSecondary)
             }
         }
         .onChange(of: isFocused) { _, focused in
