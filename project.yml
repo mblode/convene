@@ -91,7 +91,7 @@ targets:
         # Its own build number, not the shared one: TestFlight rejects a build number it has already
         # seen, so this has to climb on every upload — and it shouldn't drag the Mac app's version
         # along with it each time.
-        CURRENT_PROJECT_VERSION: "7"
+        CURRENT_PROJECT_VERSION: "8"
         # Same reasoning one level up: the two apps ship on their own cadences. The App Store record
         # is 1.0 and a build only attaches to a version string that matches it, so the iPhone app
         # goes to 1.0 here rather than in settings.base, which would drag the Mac app off 0.1.9.
