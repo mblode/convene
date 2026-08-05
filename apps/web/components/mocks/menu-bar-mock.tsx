@@ -185,10 +185,16 @@ export const MenuBarMock = ({ className }: { className?: string }) => {
             {/* The Convene status item, highlighted the way macOS marks an open popover. */}
             <div
               className={cn(
-                "flex items-center gap-1.5 rounded-[5px] bg-white/95 px-1.5 py-0.5 text-[11px]",
+                "relative flex items-center gap-1.5 rounded-[5px] bg-white/95 px-1.5 py-0.5 text-[11px]",
                 isRecording ? "text-[#ff3b30]" : "text-[#1d1d1f]"
               )}
             >
+              {/* The tail, anchored here rather than to the popover: it has to
+                  point at this item, and the glyphs beside it change width. */}
+              <span
+                aria-hidden="true"
+                className="-translate-x-1/2 absolute top-full left-1/2 mt-[-2px] size-0 border-[6px] border-transparent border-b-[#ececed]"
+              />
               <svg
                 aria-hidden="true"
                 fill="none"
@@ -214,14 +220,6 @@ export const MenuBarMock = ({ className }: { className?: string }) => {
           {/* The popover. 360pt wide in the app, hanging from the status item. */}
           <div className="mt-1.5 flex justify-end">
             <div className="w-full max-w-[330px] sm:max-w-[360px]">
-              {/* The tail that points back at the status item. */}
-              <div className="flex justify-start pl-5">
-                <span
-                  aria-hidden="true"
-                  className="block size-0 border-[7px] border-transparent border-b-[#ececed]"
-                />
-              </div>
-
               <div className="overflow-hidden rounded-[12px] bg-[#ececed]/95 shadow-2xl ring-1 ring-black/10 backdrop-blur-2xl">
                 {/* Header: status on the left, action on the right */}
                 <div className="flex items-center justify-between px-4 pt-3 pb-1">

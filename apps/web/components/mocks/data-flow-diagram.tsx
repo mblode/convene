@@ -1,26 +1,12 @@
 import { cn } from "@/lib/utils";
 
+/** Four hops, a label each. The elaboration that used to sit under every card
+ * said what the label already says, and the FAQ answers the rest. */
 const HOPS = [
-  {
-    body: "Audio is captured and mixed locally. Your keys sit in the Keychain.",
-    note: "on your Mac",
-    title: "Convene",
-  },
-  {
-    body: "Audio streams here for transcription, over your own key. Required.",
-    note: "your key, billed to you",
-    title: "AssemblyAI",
-  },
-  {
-    body: "The transcript goes here for the summary. Skip it and you still get the transcript.",
-    note: "your key · optional",
-    title: "Anthropic or OpenAI",
-  },
-  {
-    body: "The finished note is written into the folder you picked.",
-    note: "on your Mac",
-    title: "Your folder",
-  },
+  { note: "on your Mac", title: "Convene" },
+  { note: "your key · required", title: "AssemblyAI" },
+  { note: "your key · optional", title: "Anthropic or OpenAI" },
+  { note: "on your Mac", title: "Your folder" },
 ] as const;
 
 export const DataFlowDiagram = ({ className }: { className?: string }) => (
@@ -35,38 +21,29 @@ export const DataFlowDiagram = ({ className }: { className?: string }) => (
     </figcaption>
 
     <ol aria-hidden="true" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {HOPS.map((hop, index) => (
-        <li
-          className="relative flex flex-col rounded-xl bg-card p-4 lg:p-5"
-          key={hop.title}
-        >
-          <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-          <span className="mt-2 font-medium text-base">{hop.title}</span>
-          <span
+      {HOPS.map((hop) => (
+        <li className="rounded-xl bg-card p-4" key={hop.title}>
+          <p className="font-medium">{hop.title}</p>
+          <p
             className={cn(
-              "mt-1 w-fit rounded-full px-2 py-0.5 text-[11px]",
-              hop.note.startsWith("on your Mac")
+              "mt-1.5 w-fit rounded-full px-2 py-0.5 text-[11px]",
+              hop.note === "on your Mac"
                 ? "bg-cerulean/10 text-link"
                 : "bg-secondary text-muted-foreground"
             )}
           >
             {hop.note}
-          </span>
-          <span className="mt-3 text-muted-foreground text-sm leading-relaxed">
-            {hop.body}
-          </span>
+          </p>
         </li>
       ))}
     </ol>
 
     <p
-      className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-center text-muted-foreground text-sm"
       aria-hidden="true"
+      className="mt-3 rounded-xl border border-dashed px-4 py-3 text-center text-muted-foreground text-sm"
     >
-      <span className="line-through decoration-2">Convene server</span>
-      <span>does not exist, so nothing can route through it</span>
+      <span className="line-through decoration-2">Convene server</span> does not
+      exist, so nothing can route through it
     </p>
   </figure>
 );
