@@ -26,7 +26,7 @@ LOCAL_KEYCHAIN ?= $(HOME)/Library/Keychains/login.keychain-db
 # crash on launch. Release (archive/export) keeps hardened runtime on via the project setting.
 LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM=$(TEAM_ID) ENABLE_DEBUG_DYLIB=NO ENABLE_HARDENED_RUNTIME=NO
 
-.PHONY: project local-signing-identity build debug install test archive export dmg-background dmg notarize ios-icon ios-build ios-run ios-archive format format-check clean
+.PHONY: project local-signing-identity build debug install test archive export dmg-background dmg notarize ios-icon ios-build ios-run ios-archive screenshots format format-check clean
 
 SWIFT_SOURCES = Convene Shared ConveneMobile ConveneTests
 
@@ -191,6 +191,12 @@ ios-run: project
 	open -a Simulator
 	xcrun simctl install booted $(IOS_DERIVED_DATA)/Build/Products/Debug-iphonesimulator/$(IOS_APP_NAME).app
 	xcrun simctl launch --terminate-running-process booted co.blode.convene.mobile
+
+# App Store screenshots: capture the seeded screens from a 6.9" simulator, then frame them.
+# Output lands in screenshots/out (gitignored). See screenshots/README.md.
+screenshots: project
+	screenshots/capture.sh
+	node screenshots/compose.mjs
 
 # Fresh Release archive for TestFlight. Pass BUMP=1 to increment the build number first.
 # Upload from Xcode Organizer afterwards — see installer/release-archive.sh.

@@ -495,5 +495,19 @@ final class RecordingSession: ObservableObject {
     /// Awaitable start/stop for the DEBUG transcription smoke test, bypassing the toggle guard.
     func debugStart() async { await startRecording() }
     func debugStop() async { await stopRecording() }
+
+    /// Dress the session as a meeting already in progress, for the App Store screenshot fixture
+    /// (`ScreenshotFixture`). Nothing is captured, no socket opens and no WAL session begins — the
+    /// audio source is faked separately, and there is no meeting here to persist or discard.
+    func debugPoseAsRunningMeeting(
+        startedAt: Date,
+        transcript: [TranscriptSegment],
+        keyMoments: [KeyMoment]
+    ) {
+        meetingStartedAt = startedAt
+        self.keyMoments = keyMoments
+        captureStatus = .recording
+        transcriber.debugReplaceSegments(transcript)
+    }
     #endif
 }

@@ -90,7 +90,7 @@ final class StatusItemController {
 
     private func updateMenuBarTitle() {
         guard let button = statusItem?.button, let meetingStore else { return }
-        button.contentTintColor = nil // colour is baked into the image below
+        button.contentTintColor = nil  // colour is baked into the image below
         let recording = isRecording
         let lead = CalendarSettings.shared.leadTimeMinutes
 
@@ -104,6 +104,24 @@ final class StatusItemController {
             // No imminent event: show the icon (persistent click target). Red while recording.
             button.image = recording ? Self.tinted(iconImage, color: .systemRed) : iconImage
             button.toolTip = nil
+        }
+        reanchorPopoverIfShown()
+    }
+
+    /// Re-anchor an open popover after the status item's width changes.
+    ///
+    /// The item is `variableLength`, so swapping the event pill for the icon — which is what
+    /// dismissing the upcoming event from inside the popover does — resizes it and shifts every
+    /// item to its left. `NSPopover` positions itself once at `show(relativeTo:)` and does not
+    /// follow, leaving the panel stranded beside the item with its arrow detached. Re-assigning
+    /// `positioningRect` makes it recompute against the button's new frame.
+    private func reanchorPopoverIfShown() {
+        guard let popover, popover.isShown, let button = statusItem?.button else { return }
+        // The status item lays out its new width on the next pass; re-anchoring before that would
+        // just reposition against the stale frame.
+        DispatchQueue.main.async {
+            guard popover.isShown else { return }
+            popover.positioningRect = button.bounds
         }
     }
 
@@ -176,10 +194,46 @@ final class StatusItemController {
         self.popover = popover
 
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        // Activate so the popover's hosting view is in an active context — otherwise SwiftUI
-        // throttles updates and the popup wouldn't reflect live state changes (e.g. the Record
-        // button flipping to Stop) until it's reopened.
-        NSApp.activate(ignoringOtherApps: true)
+
+        // Focus, in the two steps it actually takes.
+        //
+        // Convene is an accessory app (`LSUIElement`), so before `show` there is no window for
+        // activation to bring forward and the request is dropped — activation has to come after.
+        // Activation alone is still not enough: clicking a status item does not confer key status
+        // on the popover's window, and a non-key window renders its material in the dimmed inactive
+        // state and takes no keyboard focus, even while frontmost. `makeKey` is what closes that
+        // gap. It also keeps the hosting view in an active context, so SwiftUI doesn't throttle
+        // updates and the Record button flips to Stop live rather than only on reopen.
+        NSApp.activate()
+        popover.contentViewController?.view.window?.makeKey()
+
+        brightenBackdrop(of: popover)
+        // AppKit builds the chrome as part of the show animation, so a single pass at show time can
+        // land before the effect view exists. Re-apply once the animation has settled.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            guard let self, let popover = self.popover, popover.isShown else { return }
+            self.brightenBackdrop(of: popover)
+        }
+    }
+
+    /// Render the popover's material at full brightness instead of the dimmed inactive state.
+    ///
+    /// Deliberately independent of the activation above. `NSVisualEffectView` defaults to
+    /// `state == .followsWindowActiveState`, which is the right default for a document window — a
+    /// background window *should* recede. A menu bar panel is the opposite: it is only ever on
+    /// screen because the user just clicked it, so it should always read as focused. Making the
+    /// window key earns that honestly; pinning `.active` makes it unconditional, so the panel does
+    /// not dim mid-animation or if activation loses a race with another app.
+    ///
+    /// The walk is recursive and starts at the window's frame view because the effect view's depth
+    /// in the popover's private hierarchy is not contractual.
+    private func brightenBackdrop(of popover: NSPopover) {
+        guard let window = popover.contentViewController?.view.window else { return }
+        func brighten(_ view: NSView) {
+            if let effectView = view as? NSVisualEffectView { effectView.state = .active }
+            view.subviews.forEach(brighten)
+        }
+        if let root = window.contentView?.superview ?? window.contentView { brighten(root) }
     }
 
     /// Named `hidePanel` for the call sites in `MenuBarView` that dismiss the popup before opening

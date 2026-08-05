@@ -63,15 +63,33 @@ PROJECT_YML="project.yml"
 # Unlike a checked-in .xcodeproj, the version lives in project.yml and xcodegen writes it into the
 # generated project — so the bump edits the source of truth, not the build output.
 #
-# Reads the ConveneMobile target's own build number, not the shared one near the top of the file —
-# hence the flag rather than an awk range: `  ConveneMobile:` matches a range's start and end
-# pattern equally, which collapses it to a single line and finds nothing.
-ios_build_number() {
-  awk '/^  ConveneMobile:/ { inTarget = 1 }
-       inTarget && $1 == "CURRENT_PROJECT_VERSION:" { gsub(/"/, "", $2); print $2; exit }' "$PROJECT_YML"
+# Reads a setting from under the ConveneMobile target, not the shared settings.base near the top of
+# the file — hence the flag rather than an awk range: `  ConveneMobile:` matches a range's start and
+# end pattern equally, which collapses it to a single line and finds nothing.
+ios_setting() {
+  awk -v key="$1:" '/^  ConveneMobile:/ { inTarget = 1 }
+                    inTarget && $1 == key { gsub(/"/, "", $2); print $2; exit }' "$PROJECT_YML"
 }
+
+# The first match in the file, which is settings.base — it is declared above the targets.
+base_setting() {
+  awk -v key="$1:" '$1 == key { gsub(/"/, "", $2); print $2; exit }' "$PROJECT_YML"
+}
+
+# Deliberately no fallback: the build number must be the target's own, and --bump below rejects a
+# project.yml where it is missing rather than silently climbing the shared one.
+ios_build_number() {
+  ios_setting CURRENT_PROJECT_VERSION
+}
+
+# The marketing version does fall back, since the target only overrides it while the two apps are on
+# different numbers. Reading the base value unconditionally is what made this print the Mac app's
+# version while stamping the iPhone app's into the binary.
 marketing_version() {
-  awk '$1 == "MARKETING_VERSION:" { gsub(/"/, "", $2); print $2; exit }' "$PROJECT_YML"
+  local version
+  version="$(ios_setting MARKETING_VERSION)"
+  [[ -n "$version" ]] || version="$(base_setting MARKETING_VERSION)"
+  printf '%s' "$version"
 }
 
 if $bump; then

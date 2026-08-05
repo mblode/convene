@@ -150,6 +150,11 @@ final class MobileMeetingStore: ObservableObject {
         recorder.refreshPermission()
         session.recoverOrphanedMeetings()
         library.reload()
+        #if DEBUG
+        // No-op unless `screenshots/capture.sh` passed its launch argument, and absent entirely
+        // from a Release build.
+        ScreenshotFixture.seed(into: self)
+        #endif
     }
 
     func deleteMeeting(_ meeting: Meeting) {

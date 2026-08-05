@@ -13,10 +13,15 @@ extension Color {
     static let sidebarBackground     = dynamic(light: 0xF7F7F7, dark: 0x000000)
     static let textPrimary           = dynamic(light: 0x0A0A0A, dark: 0xFFFFFF)
     static let textSecondary         = dynamic(light: 0x606060, dark: 0xB5B5B5)
-    static let textTertiary          = dynamic(light: 0x919191, dark: 0x919191)
+    // 0x919191 clears 4.5:1 on the dark background but reaches only 3.2:1 on white, so the light
+    // value is darkened to the 4.5:1 point rather than shared across both appearances.
+    static let textTertiary          = dynamic(light: 0x767676, dark: 0x919191)
     static let dividerWarm           = dynamic(light: 0xE5E5E5, dark: 0x3B3B3B)
     static let accent           = dynamic(light: 0x007EED, dark: 0x007EED)
     static let accentSoft       = dynamic(light: 0xE6F2FE, dark: 0x00253F)
+    /// Label colour for text sitting on `accentSoft`. `accent` itself manages only 3.7:1 there, and
+    /// the pills using the pair ("in 10m", the Granted badge) are small semibold text.
+    static let accentOnSoft     = dynamic(light: 0x0069CC, dark: 0x4DA6FF)
     static let toggleOffBackground   = dynamic(light: 0xD0D0D0, dark: 0x606060)
     static let recordingRed          = dynamic(light: 0xC9342B, dark: 0xE8554A)
 

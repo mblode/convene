@@ -11,11 +11,11 @@ enum PermissionState {
 
     var label: String {
         switch self {
-        case .granted:       return "Granted"
-        case .denied:        return "Denied"
+        case .granted: return "Granted"
+        case .denied: return "Denied"
         case .notDetermined: return "Not requested"
-        case .restricted:    return "Restricted"
-        case .provisional:   return "Provisional"
+        case .restricted: return "Restricted"
+        case .provisional: return "Provisional"
         case .requiresSettings: return "Needs setup"
         case .requiresRestart: return "Restart"
         }
@@ -23,11 +23,11 @@ enum PermissionState {
 
     var fill: Color {
         switch self {
-        case .granted:       return Color.accentSoft
-        case .denied:        return Color.iconBadgeBackground
+        case .granted: return Color.accentSoft
+        case .denied: return Color.iconBadgeBackground
         case .notDetermined: return Color.iconBadgeBackground
-        case .restricted:    return Color.iconBadgeBackground
-        case .provisional:   return Color.iconBadgeBackground
+        case .restricted: return Color.iconBadgeBackground
+        case .provisional: return Color.iconBadgeBackground
         case .requiresSettings: return Color.iconBadgeBackground
         case .requiresRestart: return Color.iconBadgeBackground
         }
@@ -35,8 +35,8 @@ enum PermissionState {
 
     var foreground: Color {
         switch self {
-        case .granted:       return Color.accent
-        default:             return Color.textSecondary
+        case .granted: return Color.accentOnSoft
+        default: return Color.textSecondary
         }
     }
 }

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Convene App Store slide</title>
+    <style>
+      /* Brand tokens, from apps/web/app/globals.css and ConveneMobile/UI/Theme/Palette.swift.
+         `--cerulean` is the app's own accent (#007EED in Palette.swift); `--paper` and
+         `--ink` are the marketing site's --background and --foreground. */
+      :root {
+        --cerulean: #007eed;
+        --cerulean-tint: #d6e9fd;
+        --paper: #f7f7f4;
+        --paper-warm: #f2f1ed;
+        --ink: #26251e;
+        --chrome: #1c1c1e;
+        --chrome-raised: #2a2a2d;
+        --chrome-foreground: #f2f2f5;
+      }
+
+      @font-face {
+        font-family: "Glide";
+        src: url("glide-variable.woff2") format("woff2-variations");
+        font-weight: 100 900;
+        font-display: block;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1320px;
+        height: 2868px;
+        overflow: hidden;
+      }
+
+      body {
+        font-family:
+          "Glide",
+          -apple-system,
+          system-ui,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        /* A soft vertical wash keeps the app's white UI from dissolving into the background while
+           staying quiet enough to read at thumbnail size. The app is pure white in light mode, so
+           the slide sits on the site's warmer paper rather than on white. */
+        background:
+          radial-gradient(
+            120% 70% at 50% 0%,
+            var(--cerulean-tint) 0%,
+            rgb(255 255 255 / 0) 62%
+          ),
+          linear-gradient(180deg, #eef4fb 0%, var(--paper) 52%, var(--paper-warm) 100%);
+      }
+
+      /* The app is pure black in dark mode, so the slide has to be lighter than the screens it
+         holds — the site's macOS-chrome greys, not another black. */
+      body[data-theme="dark"] {
+        background:
+          radial-gradient(
+            120% 70% at 50% 0%,
+            rgb(0 126 237 / 0.42) 0%,
+            rgb(10 10 11 / 0) 62%
+          ),
+          linear-gradient(180deg, #16222e 0%, var(--chrome) 55%, #131315 100%);
+      }
+
+      /* Devices sit above the caption; the pair is tilted as one unit so the two phones share a
+         vanishing point instead of skewing independently. */
+      .stage {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        perspective: 2600px;
+      }
+
+      .pair {
+        position: relative;
+        width: 1200px;
+        height: 1720px;
+        transform-style: preserve-3d;
+      }
+
+      .device {
+        position: absolute;
+        width: 780px;
+        border-radius: 84px;
+        background: var(--ink);
+        padding: 13px;
+        box-shadow:
+          0 4px 12px rgb(38 37 30 / 0.18),
+          0 48px 90px -20px rgb(38 37 30 / 0.42);
+      }
+
+      body[data-theme="dark"] .device {
+        background: var(--chrome-raised);
+        box-shadow:
+          0 4px 12px rgb(0 0 0 / 0.5),
+          0 48px 90px -20px rgb(0 0 0 / 0.7);
+      }
+
+      .device img {
+        display: block;
+        width: 100%;
+        border-radius: 74px;
+        /* Each capture is 1320x2868 with an empty lower stretch; showing the top slice puts real
+           content at the size a store thumbnail can read. */
+        object-fit: cover;
+        object-position: top center;
+        aspect-ratio: 1320 / 2600;
+      }
+
+      /* Depth comes from translateZ, not z-index: inside a preserve-3d parent the rotated planes
+         are sorted by their z position, so z-index alone lets the back device paint over the front
+         one. */
+      .device.back {
+        left: 0;
+        top: 150px;
+        transform: translateZ(-140px) rotateY(16deg) rotateZ(-3deg);
+      }
+
+      .device.front {
+        right: 0;
+        top: 0;
+        transform: translateZ(60px) rotateY(-12deg) rotateZ(3deg);
+      }
+
+      .caption {
+        width: 100%;
+        padding: 0 100px 150px;
+        text-align: center;
+        font-size: 96px;
+        line-height: 1.12;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: var(--ink);
+        text-wrap: balance;
+      }
+
+      body[data-theme="dark"] .caption {
+        color: var(--chrome-foreground);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="pair">
+        <div class="device back"><img id="shot-back" alt="" /></div>
+        <div class="device front"><img id="shot-front" alt="" /></div>
+      </div>
+    </div>
+    <p class="caption" id="caption"></p>
+  </body>
+</html>
