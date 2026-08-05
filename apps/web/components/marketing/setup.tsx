@@ -73,15 +73,10 @@ export const Setup = () => (
           ))}
 
           {/* The line that turns "I need three accounts" into "I need one". */}
-          <Reveal as="li" delay={0.24}>
-            <div className="rounded-xl bg-card p-5">
-              <p className="font-medium text-sm">Summaries are optional</p>
-              <p className="mt-1.5 text-muted-foreground text-sm leading-relaxed">
-                Add an Anthropic or OpenAI key if you want them. Without one you
-                still get the full transcript, your key moments, and the note in
-                your folder.
-              </p>
-            </div>
+          <Reveal as="li" className="text-muted-foreground" delay={0.24}>
+            Summaries are optional. Without an Anthropic or OpenAI key you still
+            get the full transcript, your key moments, and the note in your
+            folder.
           </Reveal>
         </ol>
       </div>

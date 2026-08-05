@@ -1,7 +1,6 @@
 import { ClosingCta } from "@/components/marketing/closing-cta";
 import { DataFlow } from "@/components/marketing/data-flow";
 import { FaqSection } from "@/components/marketing/faq-section";
-import { Features } from "@/components/marketing/features";
 import { Hero } from "@/components/marketing/hero";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { Iphone } from "@/components/marketing/iphone";
@@ -35,7 +34,6 @@ export default async function Page() {
         <TrustStrip />
         <Promises />
         <HowItWorks />
-        <Features />
         <DataFlow />
         <Setup />
         <Iphone />

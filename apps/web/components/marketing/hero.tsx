@@ -1,8 +1,6 @@
 import { DownloadButton } from "@/components/shared/download-button";
-import { CopyButton } from "@/components/ui/copy-button";
 import { Reveal } from "@/components/ui/reveal";
 import { Container } from "@/components/ui/section";
-import { siteConfig } from "@/lib/config";
 import type { Release } from "@/lib/release";
 
 import { MenuBarMock } from "../mocks/menu-bar-mock";
@@ -29,33 +27,11 @@ export const Hero = ({ release }: { release: Release }) => (
           </p>
         </Reveal>
 
-        <Reveal delay={0.16}>
-          <div className="mt-9 flex flex-wrap items-center gap-x-4 gap-y-3">
-            <DownloadButton href={release.downloadUrl} placement="hero" />
-            {release.fileSize ? (
-              <span className="text-muted-foreground text-sm tabular-nums">
-                {release.fileSize}
-              </span>
-            ) : null}
-          </div>
-
-          <p className="mt-3.5 text-muted-foreground text-sm">
-            {release.version} · {siteConfig.requirements.macos} · MIT
-            {release.publishedRelative ? ` · ${release.publishedRelative}` : ""}
-          </p>
-
-          {/* Homebrew stays small text with a copy affordance, never a second
-              button: the page has exactly one primary action. */}
-          <div className="mt-5 flex items-center gap-1 text-muted-foreground text-sm">
-            <span>Or</span>
-            <code className="ml-1 rounded-md bg-secondary px-2 py-1 font-mono text-[0.8125rem] text-foreground">
-              {siteConfig.brewCommand}
-            </code>
-            <CopyButton
-              content={siteConfig.brewCommand}
-              label="the Homebrew command"
-            />
-          </div>
+        {/* One action, nothing beside it. Version, requirements and the Homebrew
+            command live at the closing CTA and in the FAQ, where someone is
+            deciding rather than reading. */}
+        <Reveal className="mt-9" delay={0.16}>
+          <DownloadButton href={release.downloadUrl} placement="hero" />
         </Reveal>
       </div>
 

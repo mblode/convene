@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 
 import { MarkdownNoteMock } from "../mocks/markdown-note-mock";
 import { MenuBarMock } from "../mocks/menu-bar-mock";
-import { ObsidianMock } from "../mocks/obsidian-mock";
 import { TranscriptMock } from "../mocks/transcript-mock";
 
 const STEPS = [
@@ -31,13 +30,6 @@ const STEPS = [
     mock: MarkdownNoteMock,
     tab: "After",
     title: "A Markdown file, straight away",
-  },
-  {
-    body: "Point Convene at your vault and the notes appear in it. Every timestamp the summary cites is a wikilink, so “decided at 00:38” is one click away.",
-    id: "vault",
-    mock: ObsidianMock,
-    tab: "In your vault",
-    title: "It lands where you already work",
   },
 ] as const;
 
