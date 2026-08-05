@@ -5,108 +5,189 @@ import { cn } from "@/lib/utils";
 
 import { useMockClock } from "./use-mock-clock";
 
-/** Level-meter bar heights, cycled so the meter reads as live audio. */
-const LEVELS = [
-  [30, 62, 44, 78, 52, 36, 68, 46, 24, 58, 40, 72],
-  [48, 34, 70, 46, 84, 40, 30, 62, 52, 38, 66, 44],
-  [62, 78, 36, 54, 32, 70, 46, 38, 74, 50, 30, 60],
-  [38, 46, 58, 88, 42, 52, 34, 76, 44, 66, 36, 50],
-] as const;
+/** How many of the twelve meter bars are lit at each tick. The real meter
+ * saturates from the left and fades to pale pink, so only colour changes:
+ * every bar keeps its height and nothing relayouts. */
+const LEVELS = [2, 5, 3, 7, 4, 2, 6, 9, 3, 5, 8, 4] as const;
+const BARS = 12;
+const TOTAL_STEPS = LEVELS.length;
+
+const elapsed = (step: number) => `00:${String(step + 4).padStart(2, "0")}`;
 
 export const IphoneMock = ({ className }: { className?: string }) => {
   const { ref, step } = useMockClock({
     intervalMs: 420,
-    reducedStep: 0,
-    steps: LEVELS.length,
+    reducedStep: 3,
+    steps: TOTAL_STEPS,
   });
-  const levels = LEVELS[step] ?? LEVELS[0];
+  const lit = LEVELS[step] ?? LEVELS[0];
 
   return (
-    <figure className={cn("mx-auto w-full max-w-[268px]", className)}>
+    <figure className={cn("mx-auto w-full max-w-[292px]", className)}>
       <figcaption className="sr-only">
-        The Convene iPhone app mid-recording. A sheet shows the meeting title
-        “Roadmap workshop”, a running timer at 12 minutes 04 seconds, a live
-        input level meter, a notes field the user has typed into, the transcript
-        separated into Speaker A and Speaker B by diarization, a Key moment
-        button, and a Stop button.
+        The Convene iPhone app while a meeting records. A sheet shows the
+        meeting title, a large timer reading six seconds, a red input level
+        meter, a field to write your own notes into, and the transcript so far,
+        where Speaker A says “Hey, this is a test” at one second. A blue Key
+        moment button and a Stop button sit at the bottom.
       </figcaption>
 
       <div
         aria-hidden="true"
-        className="relative overflow-hidden rounded-[2.4rem] bg-chrome p-2 shadow-lifted ring-1 ring-foreground/10"
+        className="overflow-hidden rounded-[2.5rem] bg-[#1c1c1e] p-[3px] shadow-lifted ring-1 ring-foreground/10"
         ref={ref}
       >
-        <div className="relative overflow-hidden rounded-[1.9rem] bg-[#0d0d0f]">
-          {/* Status bar + Dynamic Island */}
-          <div className="relative flex items-center justify-between px-5 pt-3 pb-1">
-            <span className="font-semibold text-[11px] text-chrome-foreground tabular-nums">
-              9:41
+        <div className="flex flex-col overflow-hidden rounded-[2.3rem] bg-[#d3d3d3]">
+          {/* Status bar, with the recording indicator lit in the Dynamic Island */}
+          <div className="relative flex h-8 shrink-0 items-center justify-between px-5">
+            <span className="font-semibold text-[#1c1c1e] text-[11px] tabular-nums">
+              12:09
             </span>
-            <span className="-translate-x-1/2 absolute top-2.5 left-1/2 h-[22px] w-[70px] rounded-full bg-black" />
-            <span className="text-[10px] text-chrome-muted">▮▮ ▲</span>
+            <span className="-translate-x-1/2 absolute top-1.5 left-1/2 flex h-5 w-[64px] items-center justify-end rounded-full bg-black pr-2">
+              <span className="size-[5px] rounded-full bg-[#ff9500]" />
+            </span>
+            <span className="flex items-center gap-[3px] text-[#1c1c1e]">
+              <svg
+                aria-hidden="true"
+                fill="currentColor"
+                height="8"
+                viewBox="0 0 16 10"
+                width="12"
+              >
+                <rect height="3" rx="1" width="2.4" x="0" y="7" />
+                <rect height="5" rx="1" width="2.4" x="3.4" y="5" />
+                <rect height="7" rx="1" width="2.4" x="6.8" y="3" />
+                <rect
+                  height="10"
+                  opacity="0.3"
+                  rx="1"
+                  width="2.4"
+                  x="10.2"
+                  y="0"
+                />
+              </svg>
+              <svg
+                aria-hidden="true"
+                fill="currentColor"
+                height="8"
+                viewBox="0 0 16 12"
+                width="11"
+              >
+                <path d="M8 10.4 6.1 8.2a2.9 2.9 0 0 1 3.8 0L8 10.4Z" />
+                <path d="M8 3.1c2 0 3.9.8 5.3 2.1l1.2-1.4A9.3 9.3 0 0 0 8 1.2a9.3 9.3 0 0 0-6.5 2.6l1.2 1.4A7.6 7.6 0 0 1 8 3.1Z" />
+                <path d="M8 6c1.2 0 2.3.5 3.1 1.2l1.2-1.4A6.4 6.4 0 0 0 8 4.2c-1.6 0-3.1.6-4.3 1.6l1.2 1.4A4.5 4.5 0 0 1 8 6Z" />
+              </svg>
+              <svg
+                aria-hidden="true"
+                fill="none"
+                height="9"
+                viewBox="0 0 26 12"
+                width="15"
+              >
+                <rect
+                  height="11"
+                  opacity="0.35"
+                  rx="3"
+                  stroke="currentColor"
+                  width="22"
+                  x="0.5"
+                  y="0.5"
+                />
+                <rect
+                  fill="currentColor"
+                  height="7"
+                  rx="1.5"
+                  width="14"
+                  x="2"
+                  y="2.5"
+                />
+                <path
+                  d="M24 4v4a2 2 0 0 0 0-4z"
+                  fill="currentColor"
+                  opacity="0.35"
+                />
+              </svg>
+            </span>
           </div>
 
-          {/* Recording sheet */}
-          <div className="mt-2 rounded-t-[1.4rem] bg-chrome-raised px-4 pt-3 pb-4">
-            <span className="mx-auto mb-3 block h-1 w-9 rounded-full bg-white/20" />
+          {/* The recording sheet */}
+          <div className="flex flex-1 flex-col rounded-t-[14px] bg-white pt-1.5">
+            <span className="mx-auto mb-2 block h-[3px] w-9 rounded-full bg-black/20" />
 
-            <div className="flex items-baseline justify-between">
-              <span className="truncate font-semibold text-[14px] text-chrome-foreground">
-                Roadmap workshop
+            <div className="flex items-start justify-between gap-2 px-3.5">
+              <span className="truncate font-semibold text-[#000] text-[11.5px]">
+                Meeting on Wednesday, Aug 5 at 12:09 pm
               </span>
-              <span className="ml-2 shrink-0 font-mono text-[13px] text-record tabular-nums">
-                12:04
+              <span className="shrink-0 pt-0.5 font-bold text-[#000] text-[12px] leading-none tracking-[0.06em]">
+                ···
               </span>
             </div>
 
-            {/* Live level meter. Bars scale rather than resize: animating
-                height would relayout twelve elements every 420ms, forever. */}
-            <div className="mt-3 flex h-8 items-end gap-[3px]">
-              {levels.map((height, index) => (
+            {/* Timer, the loudest thing on the screen */}
+            <span className="mt-4 text-center font-light text-[#000] text-[46px] leading-none tracking-[-0.04em] tabular-nums">
+              {elapsed(step)}
+            </span>
+
+            {/* Level meter: colour only, so nothing relayouts on each tick */}
+            <div className="mt-3 flex items-center justify-center gap-[5px]">
+              {Array.from({ length: BARS }, (_, index) => (
                 <span
-                  className="h-full flex-1 origin-bottom rounded-full bg-cerulean/70 transition-transform duration-300 ease-out"
+                  className="h-[18px] w-[5px] rounded-full transition-colors duration-200 ease-out"
                   key={`${index}-bar`}
-                  style={{ transform: `scaleY(${height / 100})` }}
+                  style={{
+                    backgroundColor:
+                      index < lit
+                        ? `rgba(201,55,44,${1 - index * 0.08})`
+                        : "rgba(201,55,44,0.13)",
+                  }}
                 />
               ))}
             </div>
 
-            {/* Notes the user typed during the meeting — iPhone-only surface */}
-            <div className="mt-3 rounded-lg bg-black/30 px-3 py-2">
-              <span className="text-[10px] text-chrome-muted">Your notes</span>
-              <p className="mt-0.5 text-[12px] text-chrome-foreground/85 leading-snug">
-                Push the pricing page to Q4 — check with Priya first
+            <p className="mt-4 px-3.5 text-[#adadb2] text-[12px]">
+              Write your notes here...
+            </p>
+
+            <div className="mt-4 h-px bg-black/8" />
+
+            <div className="px-3.5 pt-3">
+              <p className="flex items-baseline gap-1.5">
+                <span className="font-semibold text-[#000] text-[12px]">
+                  Speaker A
+                </span>
+                <span className="font-mono text-[#8e8e93] text-[9px] tabular-nums">
+                  00:01
+                </span>
+              </p>
+              <p className="mt-0.5 text-[#000] text-[12px]">
+                Hey, this is a test.
               </p>
             </div>
 
-            {/* Diarized transcript: one mic, speakers split by the model */}
-            <div className="mt-3 space-y-2">
-              {[
-                {
-                  speaker: "Speaker A",
-                  text: "Can we get the pricing page out before the offsite?",
-                },
-                {
-                  speaker: "Speaker B",
-                  text: "Only if design lands Tuesday. Otherwise it's Q4.",
-                },
-              ].map((line) => (
-                <div className="flex gap-2" key={line.speaker}>
-                  <span className="w-[52px] shrink-0 font-medium text-[10px] text-[#c7b8a1]">
-                    {line.speaker}
-                  </span>
-                  <span className="text-[11px] text-chrome-foreground/75 leading-snug">
-                    {line.text}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <div className="min-h-[52px] flex-1" />
 
-            <div className="mt-4 flex gap-2">
-              <span className="flex-1 rounded-full bg-white/10 py-2 text-center font-medium text-[12px] text-chrome-foreground">
-                ★ Key moment
+            {/* Action bar */}
+            <div className="flex items-center gap-2 bg-[#f2f2f7] px-3 py-3">
+              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#007aff] py-2 font-medium text-[12px] text-white">
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="11"
+                  viewBox="0 0 12 14"
+                  width="10"
+                >
+                  <path
+                    d="M1.6 1.2v11.4M1.6 1.9h7.2l-1.5 2.6 1.5 2.6H1.6"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.4"
+                  />
+                </svg>
+                Key moment
               </span>
-              <span className="rounded-full bg-record px-5 py-2 text-center font-medium text-[12px] text-white">
+              <span className="flex items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2 font-medium text-[#d70015] text-[12px] shadow-sm ring-1 ring-black/5">
+                <span className="size-2.5 rounded-[2px] bg-[#d70015]" />
                 Stop
               </span>
             </div>

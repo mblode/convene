@@ -25,7 +25,7 @@ export const siteConfig = {
     releases: "https://github.com/mblode/convene/releases",
     /** Set to the public TestFlight URL once Beta App Review has passed. The
      * iPhone section renders a "not yet open" variant while this is null. */
-    testflight: null as string | null,
+    testflight: "https://testflight.apple.com/join/ZphcgfD7" as string | null,
     walSource:
       "https://github.com/mblode/convene/blob/main/Shared/Persistence/TranscriptWALService.swift",
   },

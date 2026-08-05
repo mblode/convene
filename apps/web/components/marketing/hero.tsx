@@ -35,10 +35,12 @@ export const Hero = ({ release }: { release: Release }) => (
         </Reveal>
       </div>
 
-      {/* Capped narrower than the text column: the popover hangs off the right
-          of the menu bar, and a full-width frame leaves empty desktop beside it. */}
-      <Reveal className="mt-14 sm:mt-20" delay={0.24}>
-        <MenuBarMock className="mx-auto max-w-3xl" />
+      {/* Left edge aligns with the headline rather than centring: a centred
+          frame under left-aligned text reads as a misalignment. Capped at 2xl
+          so the popover fills a fair share of the frame instead of floating in
+          empty desktop. */}
+      <Reveal className="mt-12 sm:mt-16" delay={0.24}>
+        <MenuBarMock className="max-w-2xl" />
       </Reveal>
     </Container>
   </section>

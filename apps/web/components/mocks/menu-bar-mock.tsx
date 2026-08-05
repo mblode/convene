@@ -179,7 +179,7 @@ export const MenuBarMock = ({ className }: { className?: string }) => {
     >
       <div className="select-none" ref={ref}>
         {/* Desktop backdrop, so the menu bar reads as sitting on a screen. */}
-        <div className="bg-[linear-gradient(150deg,#2f3a49_0%,#46505f_45%,#6d727b_100%)] px-3 pb-8 sm:px-6 sm:pb-12">
+        <div className="bg-[linear-gradient(150deg,#2f3a49_0%,#46505f_45%,#6d727b_100%)] px-3 pb-6 sm:px-5 sm:pb-8">
           {/* The menu bar itself */}
           <div className="-mx-3 sm:-mx-6 flex h-7 items-center justify-end gap-2 bg-black/30 px-3 backdrop-blur-md sm:gap-3 sm:px-4">
             {/* The Convene status item, highlighted the way macOS marks an open popover. */}
