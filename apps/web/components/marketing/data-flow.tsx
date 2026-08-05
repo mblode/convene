@@ -7,10 +7,7 @@ import { DataFlowDiagram } from "../mocks/data-flow-diagram";
 export const DataFlow = () => (
   <Section className="border-border/60 border-t" id="data">
     <Container>
-      <SectionHeading
-        eyebrow="Where your data goes"
-        lede="Most tools here ask you to trust a policy. Here is the whole path, including the part that is not local."
-      >
+      <SectionHeading eyebrow="Where your data goes">
         No badges. Just the actual route.
       </SectionHeading>
 
@@ -18,21 +15,20 @@ export const DataFlow = () => (
         <DataFlowDiagram />
       </Reveal>
 
-      <Reveal className="mt-10 max-w-[62ch]" delay={0.08}>
+      <Reveal className="mt-8 max-w-[58ch]" delay={0.08}>
         <p className="text-muted-foreground leading-relaxed">
-          Convene is not on-device transcription: audio streams to AssemblyAI,
-          and summaries to Anthropic or OpenAI, over keys you create and pay
-          for. What is true is that there is no Convene server in the middle. We
-          never receive any of it, because nothing is addressed to us.
+          Audio does leave your Mac, to providers you pay directly. What never
+          happens is a stop at a Convene server, because there is not one.{" "}
+          <a
+            className="rounded text-link underline decoration-link/30 underline-offset-4 transition-colors hover:decoration-link focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            href={siteConfig.links.keychainSource}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Read the code
+          </a>
+          .
         </p>
-        <a
-          className="mt-4 inline-block rounded text-link text-sm underline decoration-link/30 underline-offset-4 transition-colors hover:decoration-link focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-          href={siteConfig.links.keychainSource}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          Read the code that stores your keys
-        </a>
       </Reveal>
     </Container>
   </Section>
