@@ -6,41 +6,47 @@ import { cn } from "@/lib/utils";
 import { ProductFrame } from "./product-frame";
 import { useMockClock } from "./use-mock-clock";
 
+/** Drawn to match the real popover in the light appearance: a translucent
+ * panel, a status circle tinted with the event's calendar colour, the time
+ * range as quiet metadata ahead of the title, and either a countdown pill or
+ * an attendee count trailing. Layout mirrors Convene/UI/Components/EventRow.swift. */
 interface ScheduleEvent {
-  done: boolean;
-  live: boolean;
-  service: string | null;
+  attendees?: number;
+  /** The calendar's own colour, as EventKit hands it over. */
+  color: string;
+  pill?: string;
+  status: "past" | "upcoming";
   time: string;
   title: string;
 }
 
 const SCHEDULE: ScheduleEvent[] = [
   {
-    done: true,
-    live: false,
-    service: "Zoom",
-    time: "9:00",
+    attendees: 3,
+    color: "#0a84ff",
+    status: "past",
+    time: "9:00 am – 9:30 am",
     title: "Design review",
   },
   {
-    done: false,
-    live: true,
-    service: "Google Meet",
-    time: "10:30",
+    color: "#0a84ff",
+    pill: "in 7m",
+    status: "upcoming",
+    time: "10:30 am – 11:00 am",
     title: "Standup",
   },
   {
-    done: false,
-    live: false,
-    service: "Teams",
-    time: "14:00",
-    title: "Pricing sync — Acme",
+    attendees: 4,
+    color: "#ff9f0a",
+    status: "upcoming",
+    time: "2:00 pm – 2:30 pm",
+    title: "Pricing sync with Acme",
   },
   {
-    done: false,
-    live: false,
-    service: null,
-    time: "16:30",
+    attendees: 1,
+    color: "#30d158",
+    status: "upcoming",
+    time: "4:30 pm – 5:00 pm",
     title: "1:1 with Sarah",
   },
 ];
@@ -57,15 +63,69 @@ const elapsedLabel = (seconds: number) => {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 };
 
+const StatusCircle = ({
+  color,
+  status,
+}: {
+  color: string;
+  status: ScheduleEvent["status"];
+}) => {
+  if (status === "past") {
+    return (
+      <span
+        className="flex size-3.5 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: `${color}2e` }}
+      >
+        <svg
+          aria-hidden="true"
+          fill="none"
+          height="7"
+          viewBox="0 0 10 8"
+          width="8"
+        >
+          <path
+            d="M1 4.2 3.4 6.6 9 1"
+            stroke={color}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      </span>
+    );
+  }
+  return (
+    <span
+      className="size-3.5 shrink-0 rounded-full border-[1.5px]"
+      style={{ borderColor: color }}
+    />
+  );
+};
+
+const AttendeeCount = ({ count }: { count: number }) => (
+  <span className="flex shrink-0 items-center gap-[3px] text-[#6e6e73]">
+    <svg
+      aria-hidden="true"
+      fill="currentColor"
+      height="10"
+      viewBox="0 0 12 13"
+      width="9"
+    >
+      <circle cx="6" cy="3.4" r="2.9" />
+      <path d="M6 7.2c-3 0-5 1.8-5 4 0 .8.6 1.3 1.4 1.3h7.2c.8 0 1.4-.5 1.4-1.3 0-2.2-2-4-5-4Z" />
+    </svg>
+    <span className="tabular-nums">{count}</span>
+  </span>
+);
+
 const MenuBarGlyphs = () => (
-  <div className="flex items-center gap-3 text-chrome-muted">
-    {/* Battery */}
+  <div className="flex items-center gap-3 text-white/85">
     <svg
       aria-hidden="true"
       fill="none"
       height="11"
       viewBox="0 0 26 12"
-      width="26"
+      width="24"
     >
       <rect
         height="11"
@@ -79,13 +139,12 @@ const MenuBarGlyphs = () => (
       <rect fill="currentColor" height="7" rx="1.5" width="15" x="2" y="2.5" />
       <path d="M24 4v4a2 2 0 0 0 0-4z" fill="currentColor" opacity="0.5" />
     </svg>
-    {/* Wi-Fi */}
     <svg
       aria-hidden="true"
       fill="currentColor"
-      height="12"
+      height="11"
       viewBox="0 0 16 12"
-      width="16"
+      width="15"
     >
       <path d="M8 10.5 6 8.2a3 3 0 0 1 4 0l-2 2.3Z" />
       <path
@@ -97,8 +156,8 @@ const MenuBarGlyphs = () => (
         opacity="0.75"
       />
     </svg>
-    <span className="font-medium text-[12px] text-chrome-foreground tabular-nums">
-      Tue 10:23
+    <span className="whitespace-nowrap font-medium text-[12px] text-white tabular-nums">
+      Wed 5 Aug 10:23
     </span>
   </div>
 );
@@ -116,256 +175,197 @@ export const MenuBarMock = ({ className }: { className?: string }) => {
   return (
     <ProductFrame
       className={className}
-      description="The Convene menu bar item on macOS, showing a countdown pill that reads “Standup, in 7 minutes”. Its popover lists today's schedule: Design review at 9:00, Standup at 10:30, Pricing sync with Acme at 14:00, and a 1:1 with Sarah at 16:30. There is a Record button, and actions to join and record the current meeting, join it without recording, or open it in Calendar. While recording, the header shows a red dot and a running timer."
+      description="The Convene menu bar item on macOS. Its status item shows a countdown reading “Standup, in 7 minutes”, and the popover below lists today's schedule: Design review from 9:00 to 9:30 with 3 people and already finished, Standup from 10:30 to 11:00 starting in 7 minutes, Pricing sync with Acme from 2:00 to 2:30 with 4 people, and a 1:1 with Sarah from 4:30 to 5:00. Each row carries a circle tinted with its calendar colour. A Record button sits in the header, and while recording it becomes a red Stop button beside a running timer."
     >
       <div className="select-none" ref={ref}>
         {/* Desktop backdrop, so the menu bar reads as sitting on a screen. */}
-        <div className="bg-[linear-gradient(150deg,#3d4a5c_0%,#55606f_45%,#7d8189_100%)] px-3 pb-10 pt-0 sm:px-6 sm:pb-16">
+        <div className="bg-[linear-gradient(150deg,#2f3a49_0%,#46505f_45%,#6d727b_100%)] px-3 pb-8 sm:px-6 sm:pb-12">
           {/* The menu bar itself */}
-          <div className="-mx-3 sm:-mx-6 flex h-7 items-center justify-between bg-black/25 px-3 backdrop-blur-md sm:px-4">
-            <div className="flex items-center gap-3">
+          <div className="-mx-3 sm:-mx-6 flex h-7 items-center justify-end gap-2 bg-black/30 px-3 backdrop-blur-md sm:gap-3 sm:px-4">
+            {/* The Convene status item, highlighted the way macOS marks an open popover. */}
+            <div
+              className={cn(
+                "flex items-center gap-1.5 rounded-[5px] bg-white/95 px-1.5 py-0.5 text-[11px]",
+                isRecording ? "text-[#ff3b30]" : "text-[#1d1d1f]"
+              )}
+            >
               <svg
                 aria-hidden="true"
-                className="text-chrome-foreground"
-                fill="currentColor"
-                height="12"
-                viewBox="0 0 814 1000"
-                width="10"
+                fill="none"
+                height="11"
+                viewBox="0 0 14 14"
+                width="11"
               >
-                <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57.8-155.5-127.4c-58.3-81.8-105.3-209.2-105.3-330.3 0-194.3 126.4-297.5 250.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8.6 15.7 1.3 18.2 2.6.6 6.4 1.3 10.2 1.3 45.4 0 103.5-30.4 139.5-71.4z" />
+                <g
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeWidth="1.4"
+                >
+                  <path d="M2 6v2M5 4v6M8 2.5v9M11 5v4" />
+                </g>
               </svg>
-              <span className="hidden font-semibold text-[12px] text-chrome-foreground sm:inline">
-                Calendar
+              <span className="whitespace-nowrap font-medium tabular-nums">
+                {isRecording ? elapsed : "Standup · in 7m"}
               </span>
             </div>
-
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* The Convene status item: a countdown pill, red while capturing. */}
-              <div
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] transition-colors duration-300",
-                  isRecording
-                    ? "bg-record/20 text-record"
-                    : "bg-white/10 text-chrome-foreground"
-                )}
-              >
-                <svg
-                  aria-hidden="true"
-                  fill="none"
-                  height="11"
-                  viewBox="0 0 14 14"
-                  width="11"
-                >
-                  <g
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeWidth="1.4"
-                  >
-                    <path d="M2 6v2M5 4v6M8 2.5v9M11 5v4" />
-                  </g>
-                </svg>
-                <span className="whitespace-nowrap font-medium tabular-nums">
-                  {isRecording ? elapsed : "Standup · in 7m"}
-                </span>
-              </div>
-              <MenuBarGlyphs />
-            </div>
+            <MenuBarGlyphs />
           </div>
 
-          {/* The popover. 360pt wide in the app; it scales down on narrow screens. */}
-          <div className="mt-2 flex justify-end">
-            <div className="w-full max-w-[320px] origin-top-right overflow-hidden rounded-xl bg-chrome/95 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl sm:max-w-[360px]">
-              {/* Header: status on the left, action on the right */}
-              <div className="flex items-center justify-between px-4 py-2.5">
-                {isRecording ? (
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex size-2">
-                      {active ? (
-                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-record opacity-70" />
-                      ) : null}
-                      <span className="relative inline-flex size-2 rounded-full bg-record" />
-                    </span>
-                    <span className="font-medium text-[12px] text-chrome-muted tabular-nums">
-                      {elapsed}
-                    </span>
-                  </div>
-                ) : (
-                  <span className="font-semibold text-[13px] text-chrome-foreground">
-                    Convene
-                  </span>
-                )}
-
-                <div
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium text-[13px] text-white transition-colors duration-300",
-                    isRecording ? "bg-record" : "bg-cerulean"
-                  )}
-                >
-                  {isRecording ? (
-                    <svg
-                      aria-hidden="true"
-                      fill="currentColor"
-                      height="9"
-                      viewBox="0 0 10 10"
-                      width="9"
-                    >
-                      <rect height="10" rx="1.5" width="10" />
-                    </svg>
-                  ) : (
-                    <svg
-                      aria-hidden="true"
-                      fill="currentColor"
-                      height="10"
-                      viewBox="0 0 10 10"
-                      width="10"
-                    >
-                      <circle cx="5" cy="5" r="5" />
-                    </svg>
-                  )}
-                  {isRecording ? "Stop" : "Record"}
-                </div>
+          {/* The popover. 360pt wide in the app, hanging from the status item. */}
+          <div className="mt-1.5 flex justify-end">
+            <div className="w-full max-w-[330px] sm:max-w-[360px]">
+              {/* The tail that points back at the status item. */}
+              <div className="flex justify-start pl-5">
+                <span
+                  aria-hidden="true"
+                  className="block size-0 border-[7px] border-transparent border-b-[#ececed]"
+                />
               </div>
 
-              {/* Contextual actions for the imminent event */}
-              <div className="space-y-px px-1.5 pb-1">
-                {(isRecording
-                  ? [
-                      {
-                        accent: false,
-                        icon: "video",
-                        label: "Join Google Meet",
-                      },
-                    ]
-                  : [
-                      {
-                        accent: true,
-                        icon: "record",
-                        label: "Join and Record",
-                      },
-                      {
-                        accent: false,
-                        icon: "video",
-                        label: "Join Google Meet",
-                      },
-                    ]
-                ).map((action) => (
+              <div className="overflow-hidden rounded-[12px] bg-[#ececed]/95 shadow-2xl ring-1 ring-black/10 backdrop-blur-2xl">
+                {/* Header: status on the left, action on the right */}
+                <div className="flex items-center justify-between px-4 pt-3 pb-1">
+                  {isRecording ? (
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex size-2">
+                        {active ? (
+                          <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#ff3b30] opacity-70" />
+                        ) : null}
+                        <span className="relative inline-flex size-2 rounded-full bg-[#ff3b30]" />
+                      </span>
+                      <span className="font-medium text-[#6e6e73] text-[12px] tabular-nums">
+                        {elapsed}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-semibold text-[#1d1d1f] text-[13px]">
+                      Convene
+                    </span>
+                  )}
+
                   <div
                     className={cn(
-                      "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px]",
-                      action.accent
-                        ? "bg-cerulean/12 text-cerulean"
-                        : "text-chrome-foreground/90"
+                      "flex items-center gap-1.5 rounded-[7px] px-2.5 py-1 font-medium text-[13px] text-white transition-colors duration-300",
+                      isRecording ? "bg-[#ff3b30]" : "bg-[#007aff]"
                     )}
-                    key={action.label}
                   >
-                    {action.icon === "record" ? (
+                    {isRecording ? (
                       <svg
                         aria-hidden="true"
-                        fill="none"
-                        height="13"
-                        viewBox="0 0 14 14"
-                        width="13"
+                        fill="currentColor"
+                        height="9"
+                        viewBox="0 0 10 10"
+                        width="9"
                       >
-                        <circle
-                          cx="7"
-                          cy="7"
-                          r="5.6"
-                          stroke="currentColor"
-                          strokeWidth="1.3"
-                        />
-                        <circle cx="7" cy="7" fill="currentColor" r="2.6" />
+                        <rect height="10" rx="2" width="10" />
                       </svg>
                     ) : (
                       <svg
                         aria-hidden="true"
-                        fill="currentColor"
-                        height="13"
-                        viewBox="0 0 16 12"
-                        width="13"
+                        fill="none"
+                        height="11"
+                        viewBox="0 0 14 14"
+                        width="11"
                       >
-                        <rect height="10" rx="2" width="11" y="1" />
-                        <path d="M12.5 5.2 16 3v6l-3.5-2.2v-1.6Z" />
+                        <circle
+                          cx="7"
+                          cy="7"
+                          r="6"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                        />
+                        <circle cx="7" cy="7" fill="currentColor" r="3" />
                       </svg>
                     )}
-                    {action.label}
+                    {isRecording ? "Stop" : "Record"}
                   </div>
-                ))}
-                <div className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] text-chrome-foreground/90">
+                </div>
+
+                {/* Day header */}
+                <div className="px-4 pt-2 pb-1">
+                  <span className="font-medium text-[#6e6e73] text-[11px]">
+                    Today, 5 August
+                  </span>
+                </div>
+
+                {/* Today's schedule */}
+                <div className="space-y-px px-1.5 pb-1.5">
+                  {SCHEDULE.map((event) => (
+                    <div
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-[7px] px-2.5 py-1.5",
+                        event.status === "past" && "opacity-65"
+                      )}
+                      key={event.title}
+                    >
+                      <StatusCircle color={event.color} status={event.status} />
+                      <span className="shrink-0 text-[#6e6e73] text-[11px] tabular-nums">
+                        {event.time}
+                      </span>
+                      <span
+                        className={cn(
+                          "min-w-0 flex-1 truncate font-medium text-[13px]",
+                          event.status === "past"
+                            ? "text-[#6e6e73]"
+                            : "text-[#1d1d1f]"
+                        )}
+                      >
+                        {event.title}
+                      </span>
+                      {event.pill ? (
+                        <span className="shrink-0 rounded-full bg-[#007aff]/12 px-[7px] py-[2px] font-semibold text-[#0060df] text-[10px]">
+                          {event.pill}
+                        </span>
+                      ) : null}
+                      {event.attendees ? (
+                        <AttendeeCount count={event.attendees} />
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer: settings and the overflow menu, nothing else. */}
+                <div className="flex items-center justify-between border-black/10 border-t px-2.5 py-1.5 text-[#6e6e73]">
                   <svg
                     aria-hidden="true"
                     fill="none"
-                    height="13"
-                    viewBox="0 0 14 14"
-                    width="13"
+                    height="15"
+                    viewBox="0 0 16 16"
+                    width="15"
                   >
-                    <rect
-                      height="10.5"
-                      rx="2"
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="2.4"
                       stroke="currentColor"
                       strokeWidth="1.3"
-                      width="12"
-                      x="1"
-                      y="2.5"
                     />
                     <path
-                      d="M1 6h12M4.5 1v3M9.5 1v3"
+                      d="M8 1.6v1.6M8 12.8v1.6M14.4 8h-1.6M3.2 8H1.6M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1M12.5 12.5l-1.1-1.1M4.6 4.6 3.5 3.5"
                       stroke="currentColor"
+                      strokeLinecap="round"
                       strokeWidth="1.3"
                     />
                   </svg>
-                  Open in Calendar
-                </div>
-              </div>
-
-              <div className="mx-3 h-px bg-white/8" />
-
-              {/* Today's schedule */}
-              <div className="px-4 pt-3 pb-1">
-                <span className="font-medium text-[11px] text-chrome-muted uppercase tracking-wider">
-                  Today, 9 June
-                </span>
-              </div>
-              <div className="space-y-px px-1.5 pb-2">
-                {SCHEDULE.map((event) => (
-                  <div
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-2.5 py-1.5",
-                      event.live && "bg-white/6"
-                    )}
-                    key={event.title}
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="15"
+                    viewBox="0 0 16 16"
+                    width="15"
                   >
-                    <span
-                      className={cn(
-                        "w-9 shrink-0 font-medium text-[12px] tabular-nums",
-                        event.done
-                          ? "text-chrome-muted/50"
-                          : "text-chrome-muted"
-                      )}
-                    >
-                      {event.time}
-                    </span>
-                    <span
-                      className={cn(
-                        "min-w-0 flex-1 truncate text-[13px]",
-                        event.done
-                          ? "text-chrome-muted/50 line-through"
-                          : "text-chrome-foreground/90"
-                      )}
-                    >
-                      {event.title}
-                    </span>
-                    {event.service ? (
-                      <span className="shrink-0 rounded bg-white/8 px-1.5 py-0.5 text-[10px] text-chrome-muted">
-                        {event.service}
-                      </span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between border-white/8 border-t px-3.5 py-2 text-[11px] text-chrome-muted">
-                <span>Settings</span>
-                <span aria-hidden="true">···</span>
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6.4"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                    />
+                    <circle cx="5.2" cy="8" fill="currentColor" r="0.9" />
+                    <circle cx="8" cy="8" fill="currentColor" r="0.9" />
+                    <circle cx="10.8" cy="8" fill="currentColor" r="0.9" />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>

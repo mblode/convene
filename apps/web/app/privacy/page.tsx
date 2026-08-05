@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description,
   openGraph: {
     description,
-    title: "Privacy — Convene",
+    title: "Privacy",
     type: "article",
   },
   title: "Privacy",

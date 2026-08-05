@@ -18,7 +18,7 @@ const glide = localFont({
 
 const siteUrl = "https://blode.co/convene";
 const siteTitle =
-  "Convene — Open-source AI meeting notes for Mac that save to Markdown";
+  "Convene: open-source AI meeting notes for Mac, saved as Markdown";
 const siteDescription =
   "Convene records both sides of your call, transcribes it live, and writes the note into a folder you own. No meeting bot joins. There is no Convene server. Open source, macOS and iPhone.";
 
