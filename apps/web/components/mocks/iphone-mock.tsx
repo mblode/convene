@@ -23,27 +23,30 @@ export const IphoneMock = ({ className }: { className?: string }) => {
   const lit = LEVELS[step] ?? LEVELS[0];
 
   return (
-    <figure className={cn("mx-auto w-full max-w-[292px]", className)}>
+    <figure className={cn("mx-auto w-full max-w-[264px]", className)}>
       <figcaption className="sr-only">
         The Convene iPhone app while a meeting records. A sheet shows the
-        meeting title, a large timer reading six seconds, a red input level
+        meeting title, a large timer reading seven seconds, a red input level
         meter, a field to write your own notes into, and the transcript so far,
         where Speaker A says “Hey, this is a test” at one second. A blue Key
         moment button and a Stop button sit at the bottom.
       </figcaption>
 
+      {/* Device proportions are the real ones: a 393x852pt screen inside a
+          bezel scaled from the same reference, so the frame reads as a phone
+          rather than a rounded rectangle. */}
       <div
         aria-hidden="true"
-        className="overflow-hidden rounded-[2.5rem] bg-[#1c1c1e] p-[3px] shadow-lifted ring-1 ring-foreground/10"
+        className="overflow-hidden rounded-[2.9rem] bg-[#1c1c1e] p-[7px] shadow-lifted ring-1 ring-foreground/10"
         ref={ref}
       >
-        <div className="flex flex-col overflow-hidden rounded-[2.3rem] bg-[#d3d3d3]">
+        <div className="flex aspect-[393/852] flex-col overflow-hidden rounded-[2.4rem] bg-[#d3d3d3]">
           {/* Status bar, with the recording indicator lit in the Dynamic Island */}
-          <div className="relative flex h-8 shrink-0 items-center justify-between px-5">
+          <div className="relative flex h-9 shrink-0 items-center justify-between px-4">
             <span className="font-semibold text-[#1c1c1e] text-[11px] tabular-nums">
               12:09
             </span>
-            <span className="-translate-x-1/2 absolute top-1.5 left-1/2 flex h-5 w-[64px] items-center justify-end rounded-full bg-black pr-2">
+            <span className="-translate-x-1/2 absolute top-1.5 left-1/2 flex h-[22px] w-[74px] items-center justify-end rounded-full bg-black pr-2.5">
               <span className="size-[5px] rounded-full bg-[#ff9500]" />
             </span>
             <span className="flex items-center gap-[3px] text-[#1c1c1e]">
@@ -112,27 +115,27 @@ export const IphoneMock = ({ className }: { className?: string }) => {
 
           {/* The recording sheet */}
           <div className="flex flex-1 flex-col rounded-t-[14px] bg-white pt-1.5">
-            <span className="mx-auto mb-2 block h-[3px] w-9 rounded-full bg-black/20" />
+            <span className="mx-auto mb-2.5 block h-[3px] w-9 rounded-full bg-black/20" />
 
-            <div className="flex items-start justify-between gap-2 px-3.5">
-              <span className="truncate font-semibold text-[#000] text-[11.5px]">
+            <div className="flex items-start justify-between gap-1.5 px-3">
+              <span className="truncate font-semibold text-[#000] text-[10.5px]">
                 Meeting on Wednesday, Aug 5 at 12:09 pm
               </span>
-              <span className="shrink-0 pt-0.5 font-bold text-[#000] text-[12px] leading-none tracking-[0.06em]">
+              <span className="shrink-0 pt-0.5 font-bold text-[#000] text-[11px] leading-none tracking-[0.06em]">
                 ···
               </span>
             </div>
 
             {/* Timer, the loudest thing on the screen */}
-            <span className="mt-4 text-center font-light text-[#000] text-[46px] leading-none tracking-[-0.04em] tabular-nums">
+            <span className="mt-6 text-center font-light text-[#000] text-[42px] leading-none tracking-[-0.04em] tabular-nums">
               {elapsed(step)}
             </span>
 
             {/* Level meter: colour only, so nothing relayouts on each tick */}
-            <div className="mt-3 flex items-center justify-center gap-[5px]">
+            <div className="mt-3.5 flex items-center justify-center gap-[5px]">
               {Array.from({ length: BARS }, (_, index) => (
                 <span
-                  className="h-[18px] w-[5px] rounded-full transition-colors duration-200 ease-out"
+                  className="h-[17px] w-[5px] rounded-full transition-colors duration-200 ease-out"
                   key={`${index}-bar`}
                   style={{
                     backgroundColor:
@@ -144,31 +147,32 @@ export const IphoneMock = ({ className }: { className?: string }) => {
               ))}
             </div>
 
-            <p className="mt-4 px-3.5 text-[#adadb2] text-[12px]">
+            <p className="mt-5 min-h-[58px] px-3.5 text-[#adadb2] text-[11px]">
               Write your notes here...
             </p>
 
-            <div className="mt-4 h-px bg-black/8" />
+            <div className="h-px bg-black/8" />
 
             <div className="px-3.5 pt-3">
               <p className="flex items-baseline gap-1.5">
-                <span className="font-semibold text-[#000] text-[12px]">
+                <span className="font-semibold text-[#000] text-[11px]">
                   Speaker A
                 </span>
                 <span className="font-mono text-[#8e8e93] text-[9px] tabular-nums">
                   00:01
                 </span>
               </p>
-              <p className="mt-0.5 text-[#000] text-[12px]">
+              <p className="mt-0.5 text-[#000] text-[11px]">
                 Hey, this is a test.
               </p>
             </div>
 
-            <div className="min-h-[52px] flex-1" />
+            {/* Absorbs the remaining height, the way the real screen does */}
+            <div className="flex-1" />
 
             {/* Action bar */}
-            <div className="flex items-center gap-2 bg-[#f2f2f7] px-3 py-3">
-              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#007aff] py-2 font-medium text-[12px] text-white">
+            <div className="flex items-center gap-2 bg-[#f2f2f7] px-3 pt-2.5 pb-4">
+              <span className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#007aff] py-2 font-medium text-[11px] text-white">
                 <svg
                   aria-hidden="true"
                   fill="none"
@@ -186,7 +190,7 @@ export const IphoneMock = ({ className }: { className?: string }) => {
                 </svg>
                 Key moment
               </span>
-              <span className="flex items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2 font-medium text-[#d70015] text-[12px] shadow-sm ring-1 ring-black/5">
+              <span className="flex items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2 font-medium text-[#d70015] text-[11px] shadow-sm ring-1 ring-black/5">
                 <span className="size-2.5 rounded-[2px] bg-[#d70015]" />
                 Stop
               </span>
