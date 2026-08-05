@@ -16,6 +16,11 @@ struct ConveneMobileApp: App {
                 .onChange(of: store.isRecording, initial: true) { _, recording in
                     UIApplication.shared.isIdleTimerDisabled = recording
                 }
+                #if DEBUG
+            // `nil` in every launch but a dark screenshot run, where `preferredColorScheme`
+            // is documented as leaving the appearance to the system.
+            .preferredColorScheme(ScreenshotFixture.preferredColorScheme)
+                #endif
         }
     }
 }

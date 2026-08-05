@@ -53,11 +53,13 @@ final class AssemblyAIRealtimeTranscriber: ObservableObject {
         let keyterms = KeytermsBuilder.build(attendees: attendeeNames, title: meetingTitle)
 
         for speaker in speakers {
-            guard let url = Self.streamURL(
-                for: speaker,
-                keyterms: keyterms,
-                expectedSpeakerCount: expectedSpeakerCount
-            ) else {
+            guard
+                let url = Self.streamURL(
+                    for: speaker,
+                    keyterms: keyterms,
+                    expectedSpeakerCount: expectedSpeakerCount
+                )
+            else {
                 lastError = "AssemblyAI: could not build streaming URL"
                 isConnecting = false
                 meetingStartedAt = nil
@@ -190,8 +192,9 @@ final class AssemblyAIRealtimeTranscriber: ObservableObject {
         }
 
         if !keyterms.isEmpty,
-           let data = try? JSONEncoder().encode(keyterms),
-           let json = String(data: data, encoding: .utf8) {
+            let data = try? JSONEncoder().encode(keyterms),
+            let json = String(data: data, encoding: .utf8)
+        {
             items.append(URLQueryItem(name: "keyterms_prompt", value: json))
         }
 
@@ -199,6 +202,14 @@ final class AssemblyAIRealtimeTranscriber: ObservableObject {
         return components.url
     }
 
+    #if DEBUG
+    /// Publish a canned transcript without a socket, for the App Store screenshot fixture
+    /// (`ScreenshotFixture`). No client is opened, so `isRunning` stays false and `stop()` remains
+    /// a no-op — this only fills the view the recording sheet reads.
+    func debugReplaceSegments(_ segments: [TranscriptSegment]) {
+        self.segments = segments
+    }
+    #endif
 }
 
 // MARK: - Streaming client

@@ -77,6 +77,15 @@ final class MobilePersistenceService: ObservableObject {
         lastError = nil
     }
 
+    #if DEBUG
+    /// Point saves at `url` without going through the document picker, for the App Store screenshot
+    /// fixture (`ScreenshotFixture`). No bookmark is written, because only a picked folder can
+    /// produce one that resolves with a security scope — this lasts for the launch and no longer.
+    func debugUseFolder(_ url: URL) {
+        vaultFolderURL = url
+    }
+    #endif
+
     /// Every folder a meeting may have been written to. Used when deleting from the library, which
     /// has to find the markdown wherever it ended up.
     var candidateFolders: [URL] {

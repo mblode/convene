@@ -30,7 +30,9 @@ struct EventRow: View {
             .frame(height: 22)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(rowBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+            .background(
+                rowBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -56,7 +58,7 @@ struct EventRow: View {
         } else if let label = relativeLabel {
             Text(label)
                 .font(.pillLabel.weight(.semibold))
-                .foregroundStyle(status == .current ? Color.white : Color.accent)
+                .foregroundStyle(status == .current ? Color.white : Color.accentOnSoft)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2)
                 .background(Capsule().fill(status == .current ? Color.accent : Color.accentSoft))
@@ -68,7 +70,7 @@ struct EventRow: View {
                 Text("\(event.attendees.count)")
                     .font(.pillLabel.monospacedDigit())
             }
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.secondary)
         }
     }
 

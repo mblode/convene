@@ -104,6 +104,20 @@ final class MicRecorder: ObservableObject {
         logInfo("MicRecorder: stopped")
     }
 
+    #if DEBUG
+    /// Report capture as running without an engine, and light the meter, for the App Store
+    /// screenshot fixture (`ScreenshotFixture`). No audio session is activated and no tap is
+    /// installed, so `stop()` stays safe to call afterwards.
+    ///
+    /// `level` is fed as an RMS through the meter's own envelope rather than assigned, so the bars
+    /// settle exactly where a room at that volume would put them.
+    func debugPoseAsCapturing(level rms: Float) {
+        isRecording = true
+        isInterrupted = false
+        for _ in 0..<24 { levelMeter.update(rms: rms) }
+    }
+    #endif
+
     // MARK: - Engine
 
     private func startEngine() throws {

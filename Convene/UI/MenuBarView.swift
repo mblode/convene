@@ -13,10 +13,28 @@ struct MenuBarView: View {
             content
         }
         .frame(width: 360)
+        .background(backdrop)
         .task {
             await meetingStore.calendarService.refreshEvents()
         }
         .onReceive(tick) { now = $0 }
+    }
+
+    /// On macOS 26 the popover's own chrome is already Liquid Glass, so the panel stays clear and
+    /// lets it through rather than stacking a second glass layer on top — glass on glass is the one
+    /// thing the material is not meant to do.
+    ///
+    /// Below 26 there is no glass to inherit, just a plain `NSVisualEffectView` blurring whatever
+    /// window sits behind the panel. That makes text contrast a function of the user's desktop —
+    /// black labels over a backdrop sampled from a dark terminal measure 2.97:1 — so those versions
+    /// get an opaque substrate instead.
+    @ViewBuilder
+    private var backdrop: some View {
+        if #available(macOS 26.0, *) {
+            Color.clear
+        } else {
+            Color.appBackground
+        }
     }
 
     @ViewBuilder
@@ -285,8 +303,9 @@ struct MenuBarView: View {
                         meetingStore.persistence.openFile(url)
                     }
                 }
-                .disabled(meetingStore.persistence.outputFolderURL == nil
-                    && meetingStore.persistence.lastSavedFileURL == nil)
+                .disabled(
+                    meetingStore.persistence.outputFolderURL == nil
+                        && meetingStore.persistence.lastSavedFileURL == nil)
 
                 Divider()
 

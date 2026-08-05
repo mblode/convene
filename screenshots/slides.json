@@ -1,0 +1,38 @@
+[
+  {
+    "out": "01-record",
+    "caption": "Record the room, transcribed live",
+    "shots": ["01-record.png", "04-transcript.png"],
+    "theme": "light"
+  },
+  {
+    "out": "02-notes",
+    "caption": "Meeting notes saved as Markdown you own",
+    "shots": ["02-detail.png", "05-settings.png"],
+    "theme": "light"
+  },
+  {
+    "out": "03-summary",
+    "caption": "AI summary written the moment you stop",
+    "shots": ["03-summary.png", "02-detail.png"],
+    "theme": "light"
+  },
+  {
+    "out": "04-transcript",
+    "caption": "Full transcript, split by speaker",
+    "shots": ["04-transcript.png", "01-record.png"],
+    "theme": "light"
+  },
+  {
+    "out": "05-vault",
+    "caption": "Save straight into your Obsidian vault",
+    "shots": ["05-settings.png", "03-summary.png"],
+    "theme": "light"
+  },
+  {
+    "out": "06-library",
+    "caption": "Every meeting, searchable, on your phone",
+    "shots": ["06-library-dark.png", "07-detail-dark.png"],
+    "theme": "dark"
+  }
+]
