@@ -26,7 +26,7 @@ Everything else is the Mac app: live transcript, `Key moment` to flag something 
 
 Notes go to the same place they do on the Mac: your own folder. In Settings, tap **Choose your vault** and browse to your Obsidian vault — Obsidian and iCloud Drive both show up in the file browser — and meetings land there as markdown, syncing to the same vault on your Mac. Leave it alone and they stay in Convene's folder under **On My iPhone** in the Files app.
 
-Needs iOS 17 or later. The App Store build is in TestFlight while it goes through review — or clone the repo and run `make ios-run`, or open `Convene.xcodeproj` and run the `ConveneMobile` scheme on your phone.
+Needs iOS 17 or later. <strong><a href="https://testflight.apple.com/join/ZphcgfD7">Join the TestFlight beta</a></strong> while it goes through App Store review — or clone the repo and run `make ios-run`, or open `Convene.xcodeproj` and run the `ConveneMobile` scheme on your phone.
 
 ## Install
 
