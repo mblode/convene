@@ -80,8 +80,7 @@ export const SiteFooter = () => (
           <a
             className="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition-colors hover:text-foreground"
             href={siteConfig.links.author}
-            rel="author noopener noreferrer"
-            target="_blank"
+            rel="author"
           >
             {/* oxlint-disable-next-line nextjs/no-img-element -- self-hosted 20px avatar, plain img avoids next/image overhead */}
             <img
@@ -96,6 +95,15 @@ export const SiteFooter = () => (
           </a>
         </p>
         <nav aria-label="Legal and support" className="flex items-center gap-4">
+          {/* The edge back to the hub: same origin behind a rewrite, so same tab
+              and no rel. Without it this zone is a dead end. See
+              blode-co/apps/web/.claude/knowledge/zone-conventions.md. */}
+          <a
+            className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            href="https://blode.co/projects"
+          >
+            All projects
+          </a>
           <Link
             className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
             href="/support"
