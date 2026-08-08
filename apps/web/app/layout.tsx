@@ -1,5 +1,4 @@
 import { Agentation } from "agentation";
-import { GeistMono } from "geist/font/mono";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 
@@ -7,13 +6,21 @@ import { MotionProvider } from "@/components/shared/motion-provider";
 
 import "./globals.css";
 
-// Roman only: the site sets no italic text, and the italic face is another
-// 124 KB on first paint.
 const glide = localFont({
   display: "swap",
-  src: [{ path: "../public/glide-variable.woff2", style: "normal" }],
+  src: [
+    { path: "./fonts/glide-variable.woff2", style: "normal" },
+    { path: "./fonts/glide-variable-italic.woff2", style: "italic" },
+  ],
   variable: "--font-glide",
-  weight: "400 900",
+  weight: "100 950",
+});
+
+const glideMono = localFont({
+  display: "swap",
+  src: "./fonts/glide-mono.woff2",
+  variable: "--font-glide-mono",
+  weight: "400",
 });
 
 const siteUrl = "https://blode.co/convene";
@@ -64,7 +71,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html className={`${glide.variable} ${GeistMono.variable}`} lang="en">
+    <html className={`${glide.variable} ${glideMono.variable}`} lang="en">
       <head>
         <link href={process.env.NEXT_PUBLIC_POSTHOG_HOST} rel="preconnect" />
       </head>
