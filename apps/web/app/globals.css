@@ -8,9 +8,10 @@
     var(--font-glide), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
   --font-mono:
-    var(--font-geist-mono), ui-monospace, "SFMono-Regular", "SF Mono", Menlo,
+    var(--font-glide-mono), ui-monospace, "SFMono-Regular", "SF Mono", Menlo,
     Consolas, "Liberation Mono", monospace;
   --font-display: var(--font-glide);
+  --font-heading: var(--font-glide);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -73,7 +74,9 @@
   --secondary: #eceae5;
   --secondary-foreground: #26251e;
   --muted: #eceae5;
-  --muted-foreground: #26251e99;
+  /* 72% ink, not 60%: at 60% the secondary text was 4.1:1 on the paper
+   * background and 3.6:1 on `--muted`, both under AA. */
+  --muted-foreground: #26251eb8;
   --accent: #eceae5;
   --accent-foreground: #26251e;
   --link: #0064c8;

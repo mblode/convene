@@ -28,7 +28,7 @@ npm run lint:fix      # biome check --write
 - Next.js 16 (App Router, React Compiler, Turbopack)
 - React 19
 - Tailwind CSS v4 with the Tatem dark + Sky Gradient visual system
-- Glide variable font (`public/glide-variable*.woff2`)
+- Glide variable font (`app/fonts/glide-*.woff2`, loaded through `next/font/local`)
 - Biome + ultracite for lint and format
 - Vercel for hosting (production tracks `main`)
 

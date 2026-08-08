@@ -17,7 +17,10 @@ import { chromium } from "playwright";
 const HERE = import.meta.dirname;
 const RAW = path.join(HERE, "raw");
 const OUT = path.join(HERE, "out");
-const FONT_SOURCE = path.join(HERE, "../apps/web/public/glide-variable.woff2");
+const FONT_SOURCE = path.join(
+  HERE,
+  "../apps/web/app/fonts/glide-variable.woff2"
+);
 
 // Apple's 6.9" iPhone display slot, and the simulator's native resolution.
 const WIDTH = 1320;
