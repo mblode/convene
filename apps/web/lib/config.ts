@@ -19,15 +19,15 @@ export const siteConfig = {
     github: "https://github.com/mblode/convene",
     /** Source deep-links: a checkable claim beats a compliance badge. */
     keychainSource:
-      "https://github.com/mblode/convene/blob/main/Shared/Keychain/KeychainManager.swift",
+      "https://github.com/mblode/convene/blob/main/packages/shared/Keychain/KeychainManager.swift",
     persistenceSource:
-      "https://github.com/mblode/convene/tree/main/Shared/Persistence",
+      "https://github.com/mblode/convene/tree/main/packages/shared/Persistence",
     releases: "https://github.com/mblode/convene/releases",
     /** Set to the public TestFlight URL once Beta App Review has passed. The
      * iPhone section renders a "not yet open" variant while this is null. */
     testflight: "https://testflight.apple.com/join/ZphcgfD7" as string | null,
     walSource:
-      "https://github.com/mblode/convene/blob/main/Shared/Persistence/TranscriptWALService.swift",
+      "https://github.com/mblode/convene/blob/main/packages/shared/Persistence/TranscriptWALService.swift",
   },
   name: "Convene",
   requirements: {

@@ -9,7 +9,7 @@ import { useMockClock } from "./use-mock-clock";
 /** Drawn to match the real popover in the light appearance: a translucent
  * panel, a status circle tinted with the event's calendar colour, the time
  * range as quiet metadata ahead of the title, and either a countdown pill or
- * an attendee count trailing. Layout mirrors Convene/UI/Components/EventRow.swift. */
+ * an attendee count trailing. Layout mirrors apps/convene/UI/Components/EventRow.swift. */
 interface ScheduleEvent {
   attendees?: number;
   /** The calendar's own colour, as EventKit hands it over. */

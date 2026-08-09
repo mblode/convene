@@ -34,7 +34,7 @@ The seven raw captures are `01-record`, `02-detail`, `03-summary`, `04-transcrip
 ## Gotchas
 
 - **Debug build only.** The seeded fixture is behind `#if DEBUG`
-  (`ConveneMobile/Debug/ScreenshotFixture.swift`); a Release build lands on `WelcomeView` with an
+  (`apps/mobile/Debug/ScreenshotFixture.swift`); a Release build lands on `WelcomeView` with an
   empty library.
 
 - **This build is signed, unlike `make ios-build` and `make ios-run`.** Those pass
@@ -82,4 +82,4 @@ attachment name from `slides.json`. To change what the screens *show*, edit the 
 
 `frame.html` needs the Glide face; `compose.mjs` copies it from `apps/web/app/fonts/glide-variable.woff2`
 beside the page each run. Colours come from `apps/web/app/globals.css` and
-`ConveneMobile/UI/Theme/Palette.swift`.
+`apps/mobile/UI/Theme/Palette.swift`.
