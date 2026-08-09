@@ -14,7 +14,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 let source = "AppIcon-iOS-Default-1024x1024@1x.png"
-let destination = "ConveneMobile/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
+let destination = "apps/mobile/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
 let side = 1024
 
 guard let imageSource = CGImageSourceCreateWithURL(URL(fileURLWithPath: source) as CFURL, nil),

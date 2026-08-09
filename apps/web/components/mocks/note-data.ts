@@ -1,5 +1,5 @@
 /** The note Convene writes for the meeting shown in the transcript mock.
- * Structure mirrors Shared/Persistence/MarkdownRenderer.swift exactly:
+ * Structure mirrors packages/shared/Persistence/MarkdownRenderer.swift exactly:
  * YAML frontmatter, an H1, the Key Moments index with wikilinks into the
  * transcript, TL;DR, sections, then `### MM:SS` transcript headers. */
 export const NOTE_FILENAME = "2026-06-09 103128 - Standup - a1b2c3d4.md";

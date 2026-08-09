@@ -1,8 +1,21 @@
 # AGENTS.md
 
 Convene: a macOS menu-bar app (`Convene`) and an iPhone app (`ConveneMobile`), both Swift/SwiftUI
-over a shared `Shared/` layer, with a Next.js marketing site in `apps/web`. The Xcode project is
-generated from `project.yml` by xcodegen — it is not checked in.
+over a shared `packages/shared` layer, with a Next.js marketing site in `apps/web`. The Xcode project
+is generated from `project.yml` by xcodegen — it is not checked in.
+
+## Layout
+
+```
+apps/
+  convene/           # macOS menu-bar app sources
+  convene-tests/     # macOS unit tests
+  mobile/            # iPhone app sources
+  mobile-uitests/    # iPhone UI / screenshot tests
+  web/               # Next.js marketing site
+packages/
+  shared/            # Foundation/SwiftUI code used by both native apps
+```
 
 ## Setup
 
@@ -55,8 +68,8 @@ before `.swift-format` existed do not satisfy it; the pre-commit hook formats ea
 time it is staged, so the compliant set grows one touched file at a time. Do not "fix" this with a
 repo-wide reformat — it would bury every real change in whitespace.
 
-`Convene/UI/Theme/Color+Theme.swift` and `Convene/UI/Settings/Pages/PermissionsPage.swift` carry
-`// swift-format-ignore-file`: their `=` columns are hand-aligned to read as tables and
+`apps/convene/UI/Theme/Color+Theme.swift` and `apps/convene/UI/Settings/Pages/PermissionsPage.swift`
+carry `// swift-format-ignore-file`: their `=` columns are hand-aligned to read as tables and
 swift-format collapses that. Don't remove the directive to "fix" their formatting.
 
 ## Gotchas
@@ -66,16 +79,17 @@ swift-format collapses that. Don't remove the directive to "fix" their formattin
   *Symptom:* "cannot find X in scope" / "cannot find type X" for a file that plainly exists on disk.
   `make build`/`test`/`ios-build` run `project` for you; building from Xcode does not.
 
-- **`Shared/` must not import AppKit or UIKit.** It is listed as a source path under *both* the
-  `Convene` (macOS) and `ConveneMobile` (iOS) targets in `project.yml`, so one `import AppKit` there
-  breaks the iOS build. Today `Shared/` is Foundation/SwiftUI only, with zero `#if os(...)` — keep
-  it that way; put platform UI under `Convene/` or `ConveneMobile/`.
+- **`packages/shared` must not import AppKit or UIKit.** It is listed as a source path under *both*
+  the `Convene` (macOS) and `ConveneMobile` (iOS) targets in `project.yml`, so one `import AppKit`
+  there breaks the iOS build. Today `packages/shared` is Foundation/SwiftUI only, with zero
+  `#if os(...)` — keep it that way; put platform UI under `apps/convene/` or `apps/mobile/`.
   *Symptom:* iOS build fails with "no such module 'AppKit'" while the Mac build is green.
 
 - **Never add `temperature`, `top_p`, `top_k`, or a `budget_tokens` thinking config to the Claude
   request body.** The models offered reject them — see the comment above the request body in
-  `Shared/Summary/ClaudeSummaryService.swift`. `max_tokens` there is deliberately generous because
-  thinking is on by default and shares that budget; a truncated reply fails JSON parsing outright.
+  `packages/shared/Summary/ClaudeSummaryService.swift`. `max_tokens` there is deliberately generous
+  because thinking is on by default and shares that budget; a truncated reply fails JSON parsing
+  outright.
   *Symptom:* HTTP 400 from the API, or "no summary" with a decode error in the log.
 
 - **Archives must land in `~/Library/Developer/Xcode/Archives/`.** Use
@@ -96,12 +110,12 @@ swift-format collapses that. Don't remove the directive to "fix" their formattin
   fixes never reach TestFlight.
   *Symptom:* a TestFlight build whose number is new but whose behaviour is the previous build's.
 
-- **`ITSAppUsesNonExemptEncryption=false` in `ConveneMobile/Info.plist` is deliberate.** It skips the
+- **`ITSAppUsesNonExemptEncryption=false` in `apps/mobile/Info.plist` is deliberate.** It skips the
   export-compliance questionnaire on every TestFlight upload. Don't remove it.
   *Symptom:* every upload sits in "Missing Compliance" until you answer the prompt by hand.
 
-- **Deployment targets: macOS 15.0, iOS 17.0.** Liquid Glass APIs in `ConveneMobile` are gated behind
-  `if #available(iOS 26.0, *)` (see `ConveneMobile/UI/Theme/LiquidGlass.swift`); anything newer than
+- **Deployment targets: macOS 15.0, iOS 17.0.** Liquid Glass APIs in `apps/mobile` are gated behind
+  `if #available(iOS 26.0, *)` (see `apps/mobile/UI/Theme/LiquidGlass.swift`); anything newer than
   the deployment target needs the same gate.
   *Symptom:* "is only available in iOS 26.0 or newer" at compile time.
 
