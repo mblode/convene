@@ -12,20 +12,14 @@ import { SiteFooter } from "@/components/shared/site-footer";
 import { SiteHeader } from "@/components/shared/site-header";
 import { FAQ } from "@/lib/faq";
 import { getLatestRelease } from "@/lib/release";
-import {
-  faqPageSchema,
-  softwareApplicationSchema,
-  webSiteSchema,
-} from "@/lib/structured-data";
+import { homePageSchema } from "@/lib/structured-data";
 
 export default async function Page() {
   const release = await getLatestRelease();
 
   return (
     <>
-      <JsonLd data={softwareApplicationSchema()} />
-      <JsonLd data={webSiteSchema()} />
-      <JsonLd data={faqPageSchema(FAQ)} />
+      <JsonLd data={homePageSchema(FAQ)} />
 
       <SiteHeader downloadUrl={release.downloadUrl} />
 
