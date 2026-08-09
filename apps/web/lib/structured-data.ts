@@ -1,7 +1,6 @@
 import { siteConfig } from "@/lib/config";
 
-/** The repo has no LICENSE file — the README's License section states MIT. */
-const licenseUrl = `${siteConfig.links.github}#license`;
+const licenseUrl = `${siteConfig.links.github}/blob/main/LICENSE.md`;
 
 const siteUrl = siteConfig.url;
 
