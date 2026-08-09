@@ -5,7 +5,7 @@
 # Apple requires a 6.9" iPhone set, which is 1320x2868 — the native resolution of the iPhone 17 Pro
 # Max simulator, so the captures need no rescaling.
 #
-# The seeded fixture lives behind `#if DEBUG` (ConveneMobile/Debug/ScreenshotFixture.swift), so this
+# The seeded fixture lives behind `#if DEBUG` (apps/mobile/Debug/ScreenshotFixture.swift), so this
 # deliberately builds Debug. A Release build lands on WelcomeView with an empty library.
 #
 # Usage:

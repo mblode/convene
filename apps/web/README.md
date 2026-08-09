@@ -68,4 +68,4 @@ Pushed to Vercel via the linked project — production deploys run on every push
 
 ## Updating icons
 
-`public/app-icon.png`, `public/web-app-manifest-{192,512}.png`, `app/apple-icon.png`, `app/favicon.ico`, `app/icon0.svg`, and `app/icon1.png` should be regenerated from the Convene macOS app icon source at `../Convene/Assets.xcassets/AppIcon.appiconset/` whenever the app icon changes.
+`public/app-icon.png`, `public/web-app-manifest-{192,512}.png`, `app/apple-icon.png`, `app/favicon.ico`, `app/icon0.svg`, and `app/icon1.png` should be regenerated from the Convene macOS app icon source at `../convene/Assets.xcassets/AppIcon.appiconset/` whenever the app icon changes.

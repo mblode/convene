@@ -70,7 +70,7 @@ jobs:
 
   ios-build:
     name: iOS Build
-    # macos-26, not macos-15: the Liquid Glass APIs in ConveneMobile/UI/Theme/LiquidGlass.swift
+    # macos-26, not macos-15: the Liquid Glass APIs in apps/mobile/UI/Theme/LiquidGlass.swift
     # need the iOS 26 SDK to compile. `if #available(iOS 26.0, *)` gates them at *runtime*; the
     # symbols still have to exist at compile time, and macos-15 ships Xcode 16 / the iOS 18 SDK.
     runs-on: macos-26

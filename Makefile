@@ -28,7 +28,7 @@ LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDE
 
 .PHONY: project local-signing-identity build debug install test archive export dmg-background dmg notarize ios-icon ios-build ios-run ios-archive screenshots format format-check clean
 
-SWIFT_SOURCES = Convene Shared ConveneMobile ConveneTests
+SWIFT_SOURCES = apps/convene packages/shared apps/mobile apps/convene-tests apps/mobile-uitests
 
 # Apply .swift-format to every Swift source. The pre-commit hook does this per
 # staged file; run this only when you intend to reformat whole directories.

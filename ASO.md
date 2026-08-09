@@ -121,7 +121,7 @@ the TestFlight **Test Information** page before external testing can start.
 
 `1.0` comes from `MARKETING_VERSION` under the `ConveneMobile` target in `project.yml`, which
 overrides the shared `settings.base` value so the Mac app stays on its own number. The copyright
-string matches `NSHumanReadableCopyright` in `ConveneMobile/Info.plist`.
+string matches `NSHumanReadableCopyright` in `apps/mobile/Info.plist`.
 
 ---
 
@@ -151,14 +151,14 @@ Apple OCR-indexes screenshot text.
 6. Every meeting, searchable, on your phone
 
 **App Privacy** — **Data Not Collected**. Nothing is transmitted to the developer: there is no
-account, no Convene server, and no analytics or crash SDK in the binary (grep `Shared/` and
-`ConveneMobile/` for `posthog|analytics|telemetry|sentry` — no hits). The AssemblyAI, Anthropic and
+account, no Convene server, and no analytics or crash SDK in the binary (grep `packages/shared/` and
+`apps/mobile/` for `posthog|analytics|telemetry|sentry` — no hits). The AssemblyAI, Anthropic and
 OpenAI calls run on the *user's own* API keys, so that data is collected by services the user
 contracts with directly, not by or on behalf of Convene. The privacy policy spells those flows out in
 full so the declaration doesn't read as evasive.
 
 **Export compliance** — pre-answered by `ITSAppUsesNonExemptEncryption = false` in
-`ConveneMobile/Info.plist`, which is why uploads never sit in "Missing Compliance". Don't remove it.
+`apps/mobile/Info.plist`, which is why uploads never sit in "Missing Compliance". Don't remove it.
 
 **App Review Information** — see `APP-REVIEW.md`.
 

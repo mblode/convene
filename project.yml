@@ -33,8 +33,8 @@ targets:
     platform: macOS
     deploymentTarget: "15.0"
     sources:
-      - path: Shared
-      - path: Convene
+      - path: packages/shared
+      - path: apps/convene
         excludes:
           - "Info.plist"
           - "Convene.entitlements"
@@ -42,8 +42,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        INFOPLIST_FILE: Convene/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Convene/Convene.entitlements
+        INFOPLIST_FILE: apps/convene/Info.plist
+        CODE_SIGN_ENTITLEMENTS: apps/convene/Convene.entitlements
         INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
         ENABLE_USER_SCRIPT_SANDBOXING: YES
     dependencies:
@@ -57,10 +57,10 @@ targets:
     platform: macOS
     deploymentTarget: "15.0"
     sources:
-      - path: ConveneTests
+      - path: apps/convene-tests
         excludes:
           - "Fixtures/**"
-      - path: ConveneTests/Fixtures
+      - path: apps/convene-tests/Fixtures
         buildPhase: resources
     settings:
       base:
@@ -71,14 +71,14 @@ targets:
 
   # The iPhone app. iOS can't tap another app's audio, so this records the room through the mic as
   # a single diarized stream rather than the Mac's mic + system-audio pair. Everything below the
-  # capture layer — session, transcriber, WAL, markdown — is the same Shared code.
+  # capture layer — session, transcriber, WAL, markdown — is the same packages/shared code.
   ConveneMobile:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: Shared
-      - path: ConveneMobile
+      - path: packages/shared
+      - path: apps/mobile
         excludes:
           - "Info.plist"
     settings:
@@ -98,7 +98,7 @@ targets:
         MARKETING_VERSION: "1.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        INFOPLIST_FILE: ConveneMobile/Info.plist
+        INFOPLIST_FILE: apps/mobile/Info.plist
         # iPhone only: the layouts are single-column and the whole thing assumes a phone on a table.
         TARGETED_DEVICE_FAMILY: "1"
         # Hardened runtime is a macOS notarization setting; the shared base turns it on for the Mac app.
@@ -111,7 +111,7 @@ targets:
     type: bundle.ui-testing
     platform: iOS
     deploymentTarget: "17.0"
-    sources: [ConveneMobileUITests]
+    sources: [apps/mobile-uitests]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene.mobile.uitests
