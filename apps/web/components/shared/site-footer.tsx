@@ -24,9 +24,10 @@ const COLUMNS = [
     links: [
       { href: siteConfig.links.github, label: "Source on GitHub" },
       { href: siteConfig.links.releases, label: "Releases" },
-      // The repo has no LICENSE file; the README's License section is the
-      // canonical statement. Point there until one is added.
-      { href: `${siteConfig.links.github}#license`, label: "MIT license" },
+      {
+        href: `${siteConfig.links.github}/blob/main/LICENSE.md`,
+        label: "MIT license",
+      },
     ],
     title: "Open source",
   },
@@ -49,7 +50,9 @@ export const SiteFooter = () => (
               rel="noopener noreferrer", which only means something
               cross-origin. Without them this zone is a dead end. See
               blode-co/apps/web/.claude/knowledge/zone-conventions.md. */}
-          <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-sm">
+          {/* Stacked rather than one middot-separated row: this grid cell is
+              narrow enough that the row wraps and strands the separator. */}
+          <div className="mt-5 flex flex-col items-start gap-1 text-muted-foreground text-sm">
             <span className="flex items-center gap-1">
               Crafted by
               <a
@@ -68,9 +71,6 @@ export const SiteFooter = () => (
                 />
                 Matthew Blode
               </a>
-            </span>
-            <span aria-hidden className="select-none opacity-40">
-              ·
             </span>
             <a
               className="rounded transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"

@@ -1,64 +1,19 @@
-import { ImageResponse } from "next/og";
+import { generateOgImage } from "./og-image-shared";
 
-export const alt = "Convene - open-source AI meeting notes for macOS";
-export const contentType = "image/png";
-export const size = { height: 630, width: 1200 };
+export { contentType, size } from "./og-image-shared";
 
-// Design tokens mirrored from globals.css.
-const SKY =
-  "linear-gradient(180deg, rgb(90, 118, 148) 0%, rgb(126, 150, 168) 47%, rgb(171, 183, 181) 100%)";
-const POLAR_WHITE = "#ffffff";
+export const alt = "Convene: your meetings, as Markdown in your own folder.";
 
-// Glide is a variable WOFF2 font, which next/og (Satori) cannot decode, so we
-// fall back to the bundled default font.
-export default function OpengraphImage() {
-  return new ImageResponse(
-    <div
-      style={{
-        alignItems: "center",
-        background: SKY,
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        justifyContent: "center",
-        padding: "80px",
-        width: "100%",
-      }}
-    >
-      <div
-        style={{
-          color: POLAR_WHITE,
-          display: "flex",
-          fontSize: 148,
-          fontWeight: 500,
-          letterSpacing: "-0.04em",
-          lineHeight: 1,
-        }}
-      >
-        Convene
-      </div>
-      <div
-        style={{
-          color: "rgba(255, 255, 255, 0.85)",
-          display: "flex",
-          fontSize: 46,
-          marginTop: 28,
-        }}
-      >
-        An open-source Granola clone for macOS.
-      </div>
-      <div
-        style={{
-          color: "rgba(255, 255, 255, 0.7)",
-          display: "flex",
-          fontSize: 30,
-          marginTop: 20,
-          textAlign: "center",
-        }}
-      >
-        Records, transcribes, and writes notes into a folder you own.
-      </div>
-    </div>,
-    { ...size }
-  );
+// The shared generator reads the Glide TTF cuts off disk, which the edge
+// runtime cannot do.
+export const runtime = "nodejs";
+
+// Near-identical to `twitter-image.tsx` on purpose: Next's file conventions
+// want a route per card, and both cards are one design, so the shared generator
+// is the single source and a change lands on both. This route used to render
+// its own gradient and pass no `fonts` at all, which meant every non-Twitter
+// share went out in Satori's bundled fallback face on a site that loads Glide
+// everywhere else.
+export default function Image() {
+  return generateOgImage();
 }

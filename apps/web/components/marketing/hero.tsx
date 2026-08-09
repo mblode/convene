@@ -6,7 +6,10 @@ import type { Release } from "@/lib/release";
 import { MenuBarMock } from "../mocks/menu-bar-mock";
 
 export const Hero = ({ release }: { release: Release }) => (
-  <section className="relative overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-24">
+  // Deliberately small top padding: the breadcrumb row above this in
+  // `app/page.tsx` already clears the fixed header, so repeating that here
+  // would stack two gaps. This is the root page's hero and nothing else's.
+  <section className="relative overflow-hidden pt-6 pb-16 sm:pt-8 sm:pb-24">
     <div
       aria-hidden="true"
       className="hero-glow pointer-events-none absolute inset-0"

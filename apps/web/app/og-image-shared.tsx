@@ -6,8 +6,10 @@ import { ImageResponse } from "next/og";
 export const size = { height: 630, width: 1200 };
 export const contentType = "image/png";
 
-// Static TTF cuts, not the variable WOFF2 the site ships: Satori decodes
-// neither WOFF2 nor variable axes, and silently falls back to its bundled font.
+// Static TTF cuts, not the variable WOFF2 the site ships. Handing Satori a
+// woff2 is a hard error, `Unsupported OpenType signature wOF2`, not a fallback;
+// what falls back silently to its bundled font is passing no `fonts` at all,
+// which is how this route's sibling shipped off-brand for months.
 export const generateOgImage = async (): Promise<ImageResponse> => {
   const publicDir = path.join(process.cwd(), "public");
 

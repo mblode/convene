@@ -10,6 +10,8 @@ import { TrustStrip } from "@/components/marketing/trust-strip";
 import { JsonLd } from "@/components/shared/json-ld";
 import { SiteFooter } from "@/components/shared/site-footer";
 import { SiteHeader } from "@/components/shared/site-header";
+import { ZoneBreadcrumb } from "@/components/shared/zone-breadcrumb";
+import { Container } from "@/components/ui/section";
 import { FAQ } from "@/lib/faq";
 import { getLatestRelease } from "@/lib/release";
 import { homePageSchema } from "@/lib/structured-data";
@@ -24,6 +26,14 @@ export default async function Page() {
       <SiteHeader downloadUrl={release.downloadUrl} />
 
       <main id="main">
+        {/* Rule 4: the trail is visible, not only in the JSON-LD, and it reads
+            exactly as the BreadcrumbList does. It clears the fixed header on
+            the hero's behalf, so the hero's own top padding is reduced to
+            match. Root page only. */}
+        <Container className="pt-20 sm:pt-28">
+          <ZoneBreadcrumb product="Convene" />
+        </Container>
+
         <Hero release={release} />
         <TrustStrip />
         <Promises />
