@@ -42,6 +42,43 @@ export const SiteFooter = () => (
             Meeting notes that end up as Markdown in a folder you own. Open
             source, MIT licensed.
           </p>
+
+          {/* The two edges back to the hub, beside the wordmark rather than
+              buried under three columns of product links. Both are the same
+              origin behind a rewrite, so: same tab, and no
+              rel="noopener noreferrer", which only means something
+              cross-origin. Without them this zone is a dead end. See
+              blode-co/apps/web/.claude/knowledge/zone-conventions.md. */}
+          <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-sm">
+            <span className="flex items-center gap-1">
+              Crafted by
+              <a
+                className="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                href={siteConfig.links.author}
+                rel="author"
+              >
+                {/* oxlint-disable-next-line nextjs/no-img-element -- self-hosted 20px avatar, plain img avoids next/image overhead */}
+                <img
+                  alt=""
+                  className="rounded-full"
+                  height={20}
+                  loading="lazy"
+                  src={asset("/avatar-sm.png")}
+                  width={20}
+                />
+                Matthew Blode
+              </a>
+            </span>
+            <span aria-hidden className="select-none opacity-40">
+              ·
+            </span>
+            <a
+              className="rounded transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              href="https://blode.co/projects"
+            >
+              All projects
+            </a>
+          </div>
         </div>
 
         {COLUMNS.map((column) => (
@@ -75,35 +112,10 @@ export const SiteFooter = () => (
       </div>
 
       <div className="mt-12 flex flex-col items-center justify-between gap-3 border-border/60 border-t pt-6 text-sm sm:flex-row">
-        <p className="flex items-center gap-1 text-muted-foreground">
-          Crafted by
-          <a
-            className="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition-colors hover:text-foreground"
-            href={siteConfig.links.author}
-            rel="author"
-          >
-            {/* oxlint-disable-next-line nextjs/no-img-element -- self-hosted 20px avatar, plain img avoids next/image overhead */}
-            <img
-              alt=""
-              className="rounded-full"
-              height={20}
-              loading="lazy"
-              src={asset("/avatar-sm.png")}
-              width={20}
-            />
-            Matthew Blode
-          </a>
+        <p className="text-muted-foreground">
+          MIT licensed · No tracking in the app
         </p>
         <nav aria-label="Legal and support" className="flex items-center gap-4">
-          {/* The edge back to the hub: same origin behind a rewrite, so same tab
-              and no rel. Without it this zone is a dead end. See
-              blode-co/apps/web/.claude/knowledge/zone-conventions.md. */}
-          <a
-            className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-            href="https://blode.co/projects"
-          >
-            All projects
-          </a>
           <Link
             className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
             href="/support"
@@ -117,10 +129,6 @@ export const SiteFooter = () => (
             Privacy
           </Link>
         </nav>
-
-        <p className="text-muted-foreground">
-          MIT licensed · No tracking in the app
-        </p>
       </div>
     </div>
   </footer>
