@@ -3,7 +3,12 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 
 import { MotionProvider } from "@/components/shared/motion-provider";
-import { ogSiteName, titleTemplate } from "@/lib/config";
+import {
+  ogSiteName,
+  siteConfig,
+  titleTemplate,
+  twitterHandle,
+} from "@/lib/config";
 
 import "./globals.css";
 
@@ -41,6 +46,11 @@ export const metadata: Metadata = {
   appleWebApp: {
     title: "Convene",
   },
+  // Rule 10. Both are scalar-valued, so unlike `openGraph` and `twitter` they
+  // are not replaced wholesale by a page that sets its own: every route
+  // inherits these without restating them.
+  authors: [{ name: ogSiteName, url: siteConfig.links.author }],
+  creator: ogSiteName,
   description: siteDescription,
   // Includes the basePath: Next does not prefix it onto generated image
   // routes, so a bare origin here resolves og:image to a 404.
@@ -61,6 +71,7 @@ export const metadata: Metadata = {
   // the entire time.
   twitter: {
     card: "summary_large_image",
+    creator: twitterHandle,
   },
   verification: {
     google: "mFwyBIbXTaKK4uF_NA0MzVWFyY40hPgBjFObg3rje04",

@@ -17,6 +17,11 @@ export const fallbackVersion = "v0.1.9";
  * blode-co/apps/web/.claude/knowledge/zone-conventions.md. */
 export const ogSiteName = "Matthew Blode";
 
+/** Rule 10. Scalar, and inside the `twitter` object rather than beside it, so
+ * it reaches every route that does not declare its own `twitter` block. Today
+ * none of them do. Matches `blode-co/apps/web/lib/site.ts`. */
+export const twitterHandle = "@mattblode";
+
 /** Applied to `<title>`, `og:title` and `twitter:title` alike. Next tracks the
  * three templates separately (`resolve-opengraph.js`), so a page can carry the
  * product in one and drop it from the others without any build error. */
