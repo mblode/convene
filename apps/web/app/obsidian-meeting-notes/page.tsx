@@ -21,7 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { siteConfig } from "@/lib/config";
+import { ogImages, ogSiteName, siteConfig } from "@/lib/config";
 import { getLatestRelease } from "@/lib/release";
 import { faqPageSchema } from "@/lib/structured-data";
 
@@ -32,6 +32,8 @@ export const metadata: Metadata = {
   openGraph: {
     description:
       "Record and transcribe meetings straight into an Obsidian vault, as Markdown you own.",
+    images: ogImages,
+    siteName: ogSiteName,
     title: "AI meeting notes in Obsidian",
     type: "article",
     url: "/obsidian-meeting-notes",

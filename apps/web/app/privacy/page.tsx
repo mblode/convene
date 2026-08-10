@@ -8,7 +8,7 @@ import {
   DocSection,
   LINK,
 } from "@/components/doc-page";
-import { siteConfig } from "@/lib/config";
+import { ogImages, ogSiteName, siteConfig } from "@/lib/config";
 
 const description =
   "Convene has no account and no server. What the Mac and iPhone apps do with your meeting data, which services see it, and what stays on your device.";
@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description,
   openGraph: {
     description,
+    images: ogImages,
+    siteName: ogSiteName,
     title: "Privacy",
     type: "article",
   },

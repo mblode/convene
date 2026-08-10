@@ -20,7 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { siteConfig } from "@/lib/config";
+import { ogImages, ogSiteName, siteConfig } from "@/lib/config";
 import { getLatestRelease } from "@/lib/release";
 import { faqPageSchema } from "@/lib/structured-data";
 
@@ -33,6 +33,8 @@ export const metadata: Metadata = {
   openGraph: {
     description:
       "An honest comparison of Convene and Granola, including what Granola does better.",
+    images: ogImages,
+    siteName: ogSiteName,
     title: "The open-source Granola alternative",
     type: "article",
     url: "/granola-alternative",
