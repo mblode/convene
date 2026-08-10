@@ -72,12 +72,6 @@ export const SiteFooter = () => (
                 Matthew Blode
               </a>
             </span>
-            <a
-              className="rounded transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-              href="https://blode.co/projects"
-            >
-              All projects
-            </a>
           </div>
         </div>
 
