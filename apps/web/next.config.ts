@@ -62,7 +62,6 @@ const nextConfig: NextConfig = {
     return Promise.resolve([
       { headers: securityHeaders, source: "/:path*" },
       { headers: crossOriginResource, source: "/opengraph-image" },
-      { headers: crossOriginResource, source: "/twitter-image" },
       { headers: crossOriginResource, source: "/web-app-manifest-:size.png" },
     ]);
   },

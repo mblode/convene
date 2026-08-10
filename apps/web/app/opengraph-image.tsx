@@ -1,19 +1,24 @@
-import { generateOgImage } from "./og-image-shared";
+import { renderZoneOgImage } from "@/app/og-image-shared";
+import { siteConfig } from "@/lib/config";
 
-export { contentType, size } from "./og-image-shared";
+export {
+  OG_CONTENT_TYPE as contentType,
+  OG_SIZE as size,
+} from "@/app/og-image-shared";
 
 export const alt = "Convene: your meetings, as Markdown in your own folder.";
 
-// The shared generator reads the Glide TTF cuts off disk, which the edge
-// runtime cannot do.
-export const runtime = "nodejs";
-
-// Near-identical to `twitter-image.tsx` on purpose: Next's file conventions
-// want a route per card, and both cards are one design, so the shared generator
-// is the single source and a change lands on both. This route used to render
-// its own gradient and pass no `fonts` at all, which meant every non-Twitter
-// share went out in Satori's bundled fallback face on a site that loads Glide
-// everywhere else.
-export default function Image() {
-  return generateOgImage();
+/**
+ * The house card (Rule 12), replacing the cream Convene-only shared generator.
+ *
+ * The matching `twitter-image` is gone rather than converted: Next reuses this
+ * route for `twitter:image`, and the old pair were the same design twice.
+ */
+export default function OpengraphImage() {
+  return renderZoneOgImage({
+    badge: "CONVENE",
+    eyebrow: "blode.co/convene",
+    subtitle: "Your meetings, as Markdown in your own folder.",
+    title: siteConfig.name,
+  });
 }
