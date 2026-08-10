@@ -8,13 +8,10 @@ import { MenuBarMock } from "../mocks/menu-bar-mock";
 export const Hero = ({ release }: { release: Release }) => (
   // Deliberately small top padding: the breadcrumb row above this in
   // `app/page.tsx` already clears the fixed header, so repeating that here
-  // would stack two gaps. This is the root page's hero and nothing else's.
-  <section className="relative overflow-hidden pt-6 pb-16 sm:pt-8 sm:pb-24">
-    <div
-      aria-hidden="true"
-      className="hero-glow pointer-events-none absolute inset-0"
-    />
-
+  // would stack two gaps. The shared hero glow also lives on that wrapper —
+  // not here — so the trail and headline sit on one continuous plane under
+  // the frosted nav. This is the root page's hero and nothing else's.
+  <section className="relative pt-6 pb-16 sm:pt-8 sm:pb-24">
     <Container className="relative">
       <div className="max-w-3xl">
         <Reveal>

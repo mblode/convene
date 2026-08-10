@@ -141,11 +141,14 @@
     }
   }
 
+  /* Soft ink wash behind the home breadcrumb + hero. Anchored lower so the
+   * densest part sits under the headline, not under the frosted header — a
+   * top-heavy wash used to read as a grey band between the nav and the trail. */
   .hero-glow {
     background: radial-gradient(
-      ellipse 80% 60% at 50% 40%,
+      ellipse 80% 55% at 50% 55%,
       #26251e0d,
-      transparent
+      transparent 70%
     );
   }
 
