@@ -26,15 +26,25 @@ export default async function Page() {
       <SiteHeader downloadUrl={release.downloadUrl} />
 
       <main id="main">
-        {/* Rule 4: the trail is visible, not only in the JSON-LD, and it reads
-            exactly as the BreadcrumbList does. It clears the fixed header on
-            the hero's behalf, so the hero's own top padding is reduced to
-            match. Root page only. */}
-        <Container className="pt-20 sm:pt-28">
-          <ZoneBreadcrumb product="Convene" />
-        </Container>
+        {/* Breadcrumb + hero share one glow plane so the frosted header blurs
+            the same atmosphere as the content under it — otherwise the glow
+            starts mid-page and reads as a dirty band under the nav. */}
+        <div className="relative overflow-hidden">
+          <div
+            aria-hidden="true"
+            className="hero-glow pointer-events-none absolute inset-0"
+          />
 
-        <Hero release={release} />
+          {/* Rule 4: the trail is visible, not only in the JSON-LD, and it reads
+              exactly as the BreadcrumbList does. It clears the fixed header on
+              the hero's behalf, so the hero's own top padding is reduced to
+              match. Root page only. */}
+          <Container className="relative pt-20 sm:pt-28">
+            <ZoneBreadcrumb product="Convene" />
+          </Container>
+
+          <Hero release={release} />
+        </div>
         <TrustStrip />
         <Promises />
         <HowItWorks />
