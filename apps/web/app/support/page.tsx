@@ -8,7 +8,7 @@ import {
   DocSection,
   LINK,
 } from "@/components/doc-page";
-import { siteConfig } from "@/lib/config";
+import { ogImages, ogSiteName, siteConfig } from "@/lib/config";
 
 const description =
   "Getting Convene running on iPhone and Mac: what you need, where your notes are saved, what to do when transcription, the microphone, or your vault folder stops working, and how to get in touch.";
@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description,
   openGraph: {
     description,
+    images: ogImages,
+    siteName: ogSiteName,
     title: "Support",
     type: "article",
   },

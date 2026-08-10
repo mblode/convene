@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 
 import { MotionProvider } from "@/components/shared/motion-provider";
+import { ogSiteName, titleTemplate } from "@/lib/config";
 
 import "./globals.css";
 
@@ -46,19 +47,20 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   openGraph: {
     description: siteDescription,
-    siteName: "Convene",
-    title: siteTitle,
+    siteName: ogSiteName,
+    title: { default: siteTitle, template: titleTemplate },
     type: "website",
     url: siteUrl,
   },
-  title: {
-    default: siteTitle,
-    template: "%s · Convene",
-  },
+  title: { default: siteTitle, template: titleTemplate },
+  // Deliberately only the card type. An inner page declares `openGraph` but not
+  // `twitter`, so it inherits this block whole: any `title` or `description`
+  // set here became the title and description of every inner card, and
+  // /support shared as the home page. Left empty, Next fills both from the
+  // page's own metadata. Nothing failed the build, and `<title>` looked right
+  // the entire time.
   twitter: {
     card: "summary_large_image",
-    description: siteDescription,
-    title: siteTitle,
   },
   verification: {
     google: "mFwyBIbXTaKK4uF_NA0MzVWFyY40hPgBjFObg3rje04",
