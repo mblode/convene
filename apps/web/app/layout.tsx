@@ -30,8 +30,12 @@ const glideMono = localFont({
 });
 
 const siteUrl = "https://blode.co/convene";
-const siteTitle =
-  "Convene: open-source AI meeting notes for Mac, saved as Markdown";
+// Rule 8: under 60 characters so the SERP does not truncate it. The previous
+// 64-character version carried both the platform and the Markdown hook and lost
+// the tail. Markdown is the one kept: it is what the H1 leads on, what
+// /obsidian-meeting-notes ranks for, and unlike "for Mac" it stays true now
+// that there is an iPhone app.
+const siteTitle = "Convene: open-source AI meeting notes, saved as Markdown";
 const siteDescription =
   "Convene records both sides of your call, transcribes it live, and writes the note into a folder you own. No meeting bot joins. There is no Convene server. Open source, macOS and iPhone.";
 
