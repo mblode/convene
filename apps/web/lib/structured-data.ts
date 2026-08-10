@@ -30,12 +30,16 @@ const softwareApplicationNode = {
   applicationCategory: "BusinessApplication",
   author: { "@id": personId },
   description: siteConfig.description,
+  image: `${siteUrl}/opengraph-image`,
   isAccessibleForFree: true,
   license: licenseUrl,
   name: siteConfig.name,
   offers: {
     "@type": "Offer",
-    price: "0",
+    availability: "https://schema.org/InStock",
+    // Numeric 0 matches Google's SoftwareApplication example. String "0"
+    // is schema.org-legal but Semrush Site Audit flags it as invalid markup.
+    price: 0,
     priceCurrency: "USD",
   },
   operatingSystem: "macOS 15, iOS 17",
@@ -92,20 +96,28 @@ export const homePageSchema = (
   "@graph": [
     {
       "@id": webPageId,
-      /** Also an FAQPage: the questions are the page's own main entity rather
-       * than a second, disconnected document about the same URL. */
-      "@type": ["WebPage", "FAQPage"],
+      "@type": "WebPage",
       about: { "@id": softwareId },
       breadcrumb: { "@id": breadcrumbId },
       description: siteConfig.description,
       inLanguage: "en",
       isPartOf: { "@id": websiteId },
-      mainEntity: questionNodes(faqItems),
       name: siteConfig.name,
       url: siteUrl,
     },
     softwareApplicationNode,
     breadcrumbNode,
+    // Separate FAQPage node (not dual-typed onto WebPage). Semrush and Google's
+    // rich-result validators treat ["WebPage","FAQPage"] as invalid markup.
+    {
+      "@id": `${siteUrl}/#faq`,
+      "@type": "FAQPage",
+      inLanguage: "en",
+      isPartOf: { "@id": websiteId },
+      mainEntity: questionNodes(faqItems),
+      name: `${siteConfig.name} questions`,
+      url: siteUrl,
+    },
   ],
 });
 
