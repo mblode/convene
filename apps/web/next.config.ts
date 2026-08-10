@@ -38,10 +38,10 @@ const securityHeaders = [
   { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
 ];
 
-/** Social cards are fetched by other origins, so they need a looser CORP than
- * the rest of the site. */
-const crossOrigin = [
-  ...securityHeaders.filter((h) => h.key !== "Cross-Origin-Resource-Policy"),
+/** Social cards and manifest icons are fetched by other origins, so they need
+ * a looser CORP than the catch-all supplies. Override only this key and let
+ * the catch-all provide the rest. */
+const crossOriginResource = [
   { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
 ];
 
@@ -50,14 +50,20 @@ const nextConfig: NextConfig = {
   basePath: "/convene",
   experimental: { turbopackRustReactCompiler: true },
   headers() {
+    // Every matching rule applies in array order and a later one wins per
+    // header key, so the catch-all has to come FIRST and the per-route
+    // overrides after it. With the catch-all last, as it was, it reinstated
+    // `same-origin` on all three shareable assets below and the OG card
+    // shipped uncacheable by any unfurler: a blank share.
+    //
+    // ":path*", not "(.*)": under a basePath the latter compiles to
+    // "/convene/(.*)", which needs at least one segment and so skips the
+    // landing page itself. ":path*" matches zero segments too.
     return Promise.resolve([
-      { headers: crossOrigin, source: "/opengraph-image" },
-      { headers: crossOrigin, source: "/twitter-image" },
-      { headers: crossOrigin, source: "/web-app-manifest-:size.png" },
-      // ":path*", not "(.*)": under a basePath the latter compiles to
-      // "/convene/(.*)", which needs at least one segment and so skips the
-      // landing page itself. ":path*" matches zero segments too.
       { headers: securityHeaders, source: "/:path*" },
+      { headers: crossOriginResource, source: "/opengraph-image" },
+      { headers: crossOriginResource, source: "/twitter-image" },
+      { headers: crossOriginResource, source: "/web-app-manifest-:size.png" },
     ]);
   },
   reactCompiler: true,
