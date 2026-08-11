@@ -70,7 +70,10 @@ export const ObsidianMock = ({ className }: { className?: string }) => (
           Key Moments
         </p>
         <p className="mt-1.5 text-[13px]">
-          <span className="text-cerulean underline decoration-cerulean/40">
+          {/* 13px on the chrome: `--cerulean` is 4.22:1, under AA.
+              `--cerulean-chrome` is 4.66:1. The underline keeps the softer
+              tint — a decorative rule only has to clear 3:1. */}
+          <span className="text-cerulean-chrome underline decoration-cerulean/40">
             00:38
           </span>
           <span className="text-chrome-foreground/70"> — Ship decision</span>

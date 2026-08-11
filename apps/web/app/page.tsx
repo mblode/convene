@@ -1,12 +1,11 @@
+import { AnswerBlock } from "@/components/marketing/answer-block";
 import { ClosingCta } from "@/components/marketing/closing-cta";
 import { DataFlow } from "@/components/marketing/data-flow";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { Hero } from "@/components/marketing/hero";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { Iphone } from "@/components/marketing/iphone";
-import { Promises } from "@/components/marketing/promises";
 import { Setup } from "@/components/marketing/setup";
-import { TrustStrip } from "@/components/marketing/trust-strip";
 import { JsonLd } from "@/components/shared/json-ld";
 import { SiteFooter } from "@/components/shared/site-footer";
 import { SiteHeader } from "@/components/shared/site-header";
@@ -45,8 +44,10 @@ export default async function Page() {
 
           <Hero release={release} />
         </div>
-        <TrustStrip />
-        <Promises />
+        {/* The answer sits between the hero and the proof deliberately: it is
+            the paragraph an answer engine lifts, so nothing that needs
+            interpreting should come before it. */}
+        <AnswerBlock />
         <HowItWorks />
         <DataFlow />
         <Setup />

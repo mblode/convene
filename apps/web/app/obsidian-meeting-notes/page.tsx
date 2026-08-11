@@ -7,6 +7,7 @@ import {
   ArticleHeader,
   Bullet,
   Bullets,
+  FaqList,
   LINK,
   Lead,
   Prose,
@@ -15,15 +16,10 @@ import { DownloadButton } from "@/components/shared/download-button";
 import { JsonLd } from "@/components/shared/json-ld";
 import { SiteFooter } from "@/components/shared/site-footer";
 import { SiteHeader } from "@/components/shared/site-header";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { ogImages, ogSiteName, siteConfig } from "@/lib/config";
+import { OBSIDIAN_UPDATED } from "@/lib/landing";
 import { getLatestRelease } from "@/lib/release";
-import { faqPageSchema } from "@/lib/structured-data";
+import { articlePageSchema } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/obsidian-meeting-notes" },
@@ -41,40 +37,50 @@ export const metadata: Metadata = {
   title: "AI meeting notes that write themselves into your Obsidian vault",
 };
 
+/** `id` is the anchor of the rendered `<h3>` and is published as
+ * `acceptedAnswer.url`. Hand-written rather than derived from the question, so
+ * rewording a question cannot silently break an inbound link. */
 const FAQ = [
   {
     answer:
-      "Convene asks you to pick a folder the first time you run it. Choose your vault, or a folder inside it such as Work/Meetings. From then on every meeting is saved there as a Markdown file the moment you stop recording, and Obsidian picks it up on its next scan — usually instantly.",
+      "Convene asks you to pick a folder the first time you run it. Choose your vault, or a folder inside it such as Work/Meetings. From then on every meeting is saved there as a Markdown file the moment you stop recording, and Obsidian picks it up on its next scan, usually instantly.",
+    id: "save-to-vault",
     question: "How do I save meeting notes into my Obsidian vault?",
   },
   {
     answer:
-      "A single .md file named like “2026-06-09 103128 - Standup - a1b2c3d4.md”. It opens with YAML frontmatter — title, date, duration, attendees, and which model wrote the summary — then a Key Moments index, a TL;DR, decisions, an action-item checklist, and the full transcript under timestamped headings.",
+      "A single .md file named like “2026-06-09 103128 - Standup - a1b2c3d4.md”. It opens with YAML frontmatter (title, date, duration, attendees, and which model wrote the summary), then a Key Moments index, a TL;DR, decisions, an action-item checklist, and the full transcript under timestamped headings.",
+    id: "note-shape",
     question: "What does the note look like?",
   },
   {
     answer:
       "Yes. The frontmatter includes a tags list with meeting and convene, plus attendees, date and duration_minutes as real fields. Dataview and Bases can query all of it, so a table of every meeting Sarah attended this month is a few lines away.",
+    id: "dataview",
     question: "Does it work with Dataview and Obsidian Bases?",
   },
   {
     answer:
       "They are real wikilinks. When the summary says a decision was made at 00:38, that timestamp is written as a link to the ### 00:38 heading in the transcript below it, so one click takes you to what was actually said. Convene computes the transcript headings before it writes the summary, so a citation can never point at a heading that does not exist.",
+    id: "citations",
     question: "Do the timestamp citations actually link to anything?",
   },
   {
     answer:
       "It handles it properly. Vaults synced through iCloud Drive are the common case, so Convene writes through the system file coordinator rather than dropping bytes on the path. That is what stops you ending up with “conflicted copy” files or a half-synced note.",
+    id: "icloud",
     question: "Will it break my iCloud-synced vault?",
   },
   {
     answer:
-      "Point both at the same vault. There is no Convene account and no sync service — the Mac app and the iPhone app each write Markdown into the folder you gave them, and whatever already syncs your vault carries the files between devices.",
+      "Point both at the same vault. There is no Convene account and no sync service. The Mac app and the iPhone app each write Markdown into the folder you gave them, and whatever already syncs your vault carries the files between devices.",
+    id: "same-vault",
     question: "Can the Mac and iPhone apps write into the same vault?",
   },
   {
     answer:
       "Only the note. The structured transcript JSON is kept in Application Support, deliberately outside your vault, so Convene never litters your graph with files you did not ask for. Audio is never written to disk at all.",
+    id: "vault-clutter",
     question: "Does it put anything else in my vault?",
   },
 ];
@@ -84,20 +90,27 @@ export default async function ObsidianMeetingNotesPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <JsonLd data={faqPageSchema(FAQ)} />
+      <JsonLd
+        data={articlePageSchema({
+          dateModified: OBSIDIAN_UPDATED,
+          description: metadata.description as string,
+          items: FAQ,
+          name: "AI meeting notes in your Obsidian vault",
+          slug: "obsidian-meeting-notes",
+        })}
+      />
       <SiteHeader downloadUrl={release.downloadUrl} />
 
       <main className="flex-1 pt-14" id="main">
         <ArticleHeader
           lede="Convene records the call, transcribes both sides live, and writes the finished note straight into your vault as Markdown. No export step, no plugin, and no second app holding your notes hostage."
           title="AI meeting notes that write themselves into your Obsidian vault"
-          width="max-w-3xl"
         />
 
-        <ArticleBody width="max-w-3xl">
+        <ArticleBody>
           <Prose title="The problem with every other option">
             <p>
-              Granola, Otter, Fireflies, Notion — they all store your meeting
+              Granola, Otter, Fireflies, Notion. They all store your meeting
               notes inside their own product. You can usually export, which
               means you can usually do a chore. The notes you want to link to
               your project page, your 1:1 note and your reading list end up
@@ -130,7 +143,7 @@ export default async function ObsidianMeetingNotesPage() {
               <span className="whitespace-nowrap font-medium text-foreground">
                 ⌥⇧K
               </span>{" "}
-              during a call and the flag lands twice — in an index at the top of
+              during a call and the flag lands twice: in an index at the top of
               the note, and inline in the transcript at the right second.
             </p>
             <ObsidianMock className="mt-6" />
@@ -163,7 +176,7 @@ export default async function ObsidianMeetingNotesPage() {
               <Bullet>
                 <Lead>Optionally add an Anthropic or OpenAI key</Lead> for
                 summaries. Without one you still get the transcript, the key
-                moments and the note — just no TL;DR.
+                moments and the note, just no TL;DR.
               </Bullet>
               <Bullet>
                 <Lead>Record a meeting.</Lead> The file appears in the vault
@@ -175,11 +188,11 @@ export default async function ObsidianMeetingNotesPage() {
 
           <Prose title="Querying your meetings">
             <p>
-              Because the frontmatter is real structured data —{" "}
+              Because the frontmatter is real structured data (
               <code className="font-mono text-[0.9em]">attendees</code>,{" "}
               <code className="font-mono text-[0.9em]">date</code>,{" "}
               <code className="font-mono text-[0.9em]">duration_minutes</code>,{" "}
-              <code className="font-mono text-[0.9em]">tags</code> — Dataview
+              <code className="font-mono text-[0.9em]">tags</code>), Dataview
               and Bases can treat your meetings as a table. Every call with a
               given person this quarter, every meeting over an hour, every note
               still carrying unchecked action items: all of it is a query rather
@@ -196,20 +209,13 @@ export default async function ObsidianMeetingNotesPage() {
             </p>
             <p>
               Convene writes through the system file coordinator specifically
-              because synced vaults are the normal case — that is what keeps a
+              because synced vaults are the normal case. That is what keeps a
               note from landing half-written and turning into a conflicted copy.
             </p>
           </Prose>
 
           <Prose id="faq" title="Questions">
-            <Accordion className="w-full" collapsible type="single">
-              {FAQ.map((item) => (
-                <AccordionItem key={item.question} value={item.question}>
-                  <AccordionTrigger>{item.question}</AccordionTrigger>
-                  <AccordionContent>{item.answer}</AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+            <FaqList items={FAQ} />
           </Prose>
 
           <div className="mt-14 rounded-xl bg-card p-6 sm:p-8">

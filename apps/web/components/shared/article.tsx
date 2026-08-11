@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /** Shared link treatment for body copy on the long-form pages. */
 export const LINK =
-  "rounded text-link underline decoration-border underline-offset-4 transition-colors hover:decoration-current focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none";
+  "rounded text-link underline decoration-border underline-offset-4 transition-colors hover:decoration-current focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none";
 
 export const Prose = ({
   children,
@@ -43,6 +43,47 @@ export const Lead = ({ children }: { children: ReactNode }) => (
   <strong className="font-medium text-foreground">{children}</strong>
 );
 
+/**
+ * The FAQ on a long-form page, as plain headings and paragraphs.
+ *
+ * This replaced an `Accordion` on both SEO pages, and it was **not** a crawler
+ * fix — `components/ui/accordion.tsx` passes `keepMounted` and `hidden={false}`,
+ * so every answer was already in the server HTML whether or not its item was
+ * open. What was wrong: a collapsed panel sits at `opacity-0` while staying in
+ * the document, so its text remained in the tab order and in find-in-page while
+ * being invisible, and an accordion trigger is a `<button>` rather than a
+ * heading, so the questions produced no document outline.
+ *
+ * The `id` on each `<h3>` is published as `acceptedAnswer.url` by
+ * `articlePageSchema()`. Deleting it points the graph at an anchor that resolves
+ * to nothing.
+ *
+ * `h3`, not `h2`, because `Prose` renders the section's own `h2` above this.
+ */
+export const FaqList = ({
+  items,
+}: {
+  items: readonly { answer: string; id: string; question: string }[];
+}) => (
+  <dl className="space-y-8">
+    {items.map((item) => (
+      <div key={item.id}>
+        <dt>
+          <h3
+            className="max-w-[48ch] scroll-mt-20 text-pretty font-medium text-foreground text-lg tracking-tight"
+            id={item.id}
+          >
+            {item.question}
+          </h3>
+        </dt>
+        <dd className="mt-2 max-w-[68ch] text-pretty leading-relaxed">
+          {item.answer}
+        </dd>
+      </div>
+    ))}
+  </dl>
+);
+
 /** The masthead every long-form page opens with: a way back, the title, a
  * lede, and an optional dated line — comparison claims go stale, so the date
  * is part of the argument rather than decoration. */
@@ -60,7 +101,7 @@ export const ArticleHeader = ({
   <Section className="pb-0">
     <Container className={width}>
       <Link
-        className="rounded text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="rounded text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
         href="/"
       >
         ← Convene

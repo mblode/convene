@@ -70,6 +70,11 @@ const TOTAL_STEPS = LINES.length + 3;
 
 export const TranscriptMock = ({ className }: { className?: string }) => {
   const { active, ref, step } = useMockClock({
+    // Opens on the finished frame rather than an empty one. The clock starts
+    // when the mock scrolls into view, so step 0 is not a frame a reader might
+    // catch — it is the frame every reader gets first, and for the transcript
+    // that meant a tall empty rectangle holding a chrome bar and a caret.
+    initialStep: LINES.length,
     intervalMs: 1100,
     reducedStep: LINES.length,
     steps: TOTAL_STEPS,
@@ -78,7 +83,7 @@ export const TranscriptMock = ({ className }: { className?: string }) => {
   return (
     <ProductFrame
       className={className}
-      description="A live transcript split by speaker while the meeting runs. Your side, captured from your microphone: “Before we start — I've got Convene running, so nobody has to take notes,” and “Then let's ship it. Sarah, can you draft the release note?” The other side, captured from your Mac's system audio and separated by speaker: Sarah reports the auth migration landed last night and is feature-flagged with low rollback risk, Marcus asks about risk before Thursday's enterprise demo, and Sarah agrees to have the release note up by Friday. A key moment was flagged at 38 seconds with option shift K."
+      description="A timestamped live transcript separates microphone and system-audio speakers, with a key moment flagged at 38 seconds."
     >
       <div ref={ref}>
         {/* Title bar */}
@@ -104,7 +109,10 @@ export const TranscriptMock = ({ className }: { className?: string }) => {
 
         {/* Two capture sources, named. This is the whole point of the mock. */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 border-white/8 border-b px-4 py-2.5 text-[11px]">
-          <span className="flex items-center gap-1.5 text-cerulean">
+          {/* Text takes `--cerulean-chrome` (4.66:1 on the chrome, up from
+              `--cerulean`'s 4.22:1 at 11px); the dot keeps `--cerulean`, which
+              is what that token is documented for. */}
+          <span className="flex items-center gap-1.5 text-cerulean-chrome">
             <span className="size-1.5 rounded-full bg-cerulean" />
             Your mic
           </span>
@@ -158,7 +166,9 @@ export const TranscriptMock = ({ className }: { className?: string }) => {
                   <span
                     className={cn(
                       "mr-2 font-semibold text-[13px]",
-                      line.source === "mic" ? "text-cerulean" : "text-[#c7b8a1]"
+                      line.source === "mic"
+                        ? "text-cerulean-chrome"
+                        : "text-[#c7b8a1]"
                     )}
                   >
                     {line.speaker}

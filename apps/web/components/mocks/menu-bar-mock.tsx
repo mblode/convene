@@ -164,6 +164,11 @@ const MenuBarGlyphs = () => (
 
 export const MenuBarMock = ({ className }: { className?: string }) => {
   const { active, ref, step } = useMockClock({
+    // Opens on the finished frame rather than an empty one. The clock starts
+    // when the mock scrolls into view, so step 0 is not a frame a reader might
+    // catch — it is the frame every reader gets first, and for the transcript
+    // that meant a tall empty rectangle holding a chrome bar and a caret.
+    initialStep: 2,
     intervalMs: 1000,
     reducedStep: 2,
     steps: TOTAL_STEPS,
@@ -175,7 +180,7 @@ export const MenuBarMock = ({ className }: { className?: string }) => {
   return (
     <ProductFrame
       className={className}
-      description="The Convene menu bar item on macOS. Its status item shows a countdown reading “Standup, in 7 minutes”, and the popover below lists today's schedule: Design review from 9:00 to 9:30 with 3 people and already finished, Standup from 10:30 to 11:00 starting in 7 minutes, Pricing sync with Acme from 2:00 to 2:30 with 4 people, and a 1:1 with Sarah from 4:30 to 5:00. Each row carries a circle tinted with its calendar colour. A Record button sits in the header, and while recording it becomes a red Stop button beside a running timer."
+      description="Convene's macOS menu shows today's meetings, a countdown to the next one, and a Record button that becomes a timer while recording."
     >
       <div className="select-none" ref={ref}>
         {/* Desktop backdrop, so the menu bar reads as sitting on a screen. */}
@@ -241,10 +246,14 @@ export const MenuBarMock = ({ className }: { className?: string }) => {
                     </span>
                   )}
 
+                  {/* #0071e3, not the #007aff macOS draws: white on #007aff
+                      measures 4.02:1, and this is 13px label text, so it needs
+                      4.5:1. #0071e3 is 4.70:1 — Apple's own web blue, half a
+                      hue-step darker, which reads as the same button. */}
                   <div
                     className={cn(
                       "flex items-center gap-1.5 rounded-[7px] px-2.5 py-1 font-medium text-[13px] text-white transition-colors duration-300",
-                      isRecording ? "bg-[#ff3b30]" : "bg-[#007aff]"
+                      isRecording ? "bg-[#ff3b30]" : "bg-[#0071e3]"
                     )}
                   >
                     {isRecording ? (

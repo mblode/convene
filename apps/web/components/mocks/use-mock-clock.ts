@@ -17,16 +17,29 @@ import { useEffect, useRef, useState } from "react";
  * animation keeps burning compositor time off-screen otherwise.
  */
 export const useMockClock = ({
+  initialStep = 0,
   intervalMs,
   steps,
   reducedStep,
 }: {
+  /** The frame the server renders, before any tick.
+   *
+   * Defaults to 0, which is what every mock written before this option existed
+   * gets — an empty frame that fills in on hydration. That is fine for a mock
+   * whose whole job is to animate, and wrong for one whose job is to *prove*
+   * something: a reader with JS disabled would see an empty box where the
+   * argument was supposed to be. Pass `reducedStep` and the finished frame is
+   * in the HTML, with the loop rewinding it after mount.
+   *
+   * Added rather than changed for the same reason it is optional: five mocks
+   * already depend on starting at 0, and none of their behaviour moves. */
+  initialStep?: number;
   intervalMs: number;
   steps: number;
   reducedStep: number;
 }) => {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(initialStep);
   const [reduced, setReduced] = useState(false);
   const [inView, setInView] = useState(false);
 

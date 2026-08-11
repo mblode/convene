@@ -16,6 +16,11 @@ const elapsed = (step: number) => `00:${String(step + 4).padStart(2, "0")}`;
 
 export const IphoneMock = ({ className }: { className?: string }) => {
   const { ref, step } = useMockClock({
+    // Opens on the finished frame rather than an empty one. The clock starts
+    // when the mock scrolls into view, so step 0 is not a frame a reader might
+    // catch — it is the frame every reader gets first, and for the transcript
+    // that meant a tall empty rectangle holding a chrome bar and a caret.
+    initialStep: 3,
     intervalMs: 420,
     reducedStep: 3,
     steps: TOTAL_STEPS,
@@ -25,11 +30,8 @@ export const IphoneMock = ({ className }: { className?: string }) => {
   return (
     <figure className={cn("mx-auto w-full max-w-[264px]", className)}>
       <figcaption className="sr-only">
-        The Convene iPhone app while a meeting records. A sheet shows the
-        meeting title, a large timer reading seven seconds, a red input level
-        meter, a field to write your own notes into, and the transcript so far,
-        where Speaker A says “Hey, this is a test” at one second. A blue Key
-        moment button and a Stop button sit at the bottom.
+        Convene recording a room on iPhone, with a timer, input meter, live
+        transcript, notes field, and controls for key moments and stopping.
       </figcaption>
 
       {/* Device proportions are the real ones: a 393x852pt screen inside a
