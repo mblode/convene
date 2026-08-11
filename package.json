@@ -13,6 +13,7 @@
     "format": "turbo format",
     "format:check": "turbo format:check",
     "check-types": "turbo check-types",
+    "test": "turbo test",
     "check": "ultracite check",
     "fix": "ultracite fix",
     "prepare": "if [ -z \"$VERCEL\" ]; then lefthook install; fi"

@@ -56,7 +56,7 @@ export const SiteFooter = () => (
             <span className="flex items-center gap-1">
               Crafted by
               <a
-                className="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                className="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
                 href={siteConfig.links.author}
                 rel="author"
               >
@@ -83,7 +83,7 @@ export const SiteFooter = () => (
                 <li key={link.href}>
                   {"external" in column && column.external ? (
                     <a
-                      className="rounded text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                      className="rounded text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
                       href={link.href}
                       rel="noopener noreferrer"
                       target="_blank"
@@ -92,7 +92,7 @@ export const SiteFooter = () => (
                     </a>
                   ) : (
                     <Link
-                      className="rounded text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                      className="rounded text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
                       href={link.href}
                     >
                       {link.label}
@@ -111,13 +111,13 @@ export const SiteFooter = () => (
         </p>
         <nav aria-label="Legal and support" className="flex items-center gap-4">
           <Link
-            className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
             href="/support"
           >
             Support
           </Link>
           <Link
-            className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
             href="/privacy"
           >
             Privacy

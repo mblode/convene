@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/reveal";
 import { Container, Section, SectionHeading } from "@/components/ui/section";
 import { siteConfig } from "@/lib/config";
+import { SECTIONS } from "@/lib/landing";
 
 import { IphoneMock } from "../mocks/iphone-mock";
 
@@ -15,9 +16,9 @@ export const Iphone = () => {
           <div>
             <SectionHeading
               eyebrow="On your iPhone"
-              lede="iOS will not let an app capture another app's audio, so the phone records the room and splits the speakers afterwards. Put it on the table. Point it at the same vault as your Mac and the notes meet there."
+              lede={SECTIONS.iphone.lede}
             >
-              For the meetings in a room.
+              {SECTIONS.iphone.heading}
             </SectionHeading>
 
             {testflight ? (

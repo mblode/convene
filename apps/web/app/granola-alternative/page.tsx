@@ -6,6 +6,7 @@ import {
   ArticleHeader,
   Bullet,
   Bullets,
+  FaqList,
   LINK,
   Lead,
   Prose,
@@ -14,17 +15,10 @@ import { DownloadButton } from "@/components/shared/download-button";
 import { JsonLd } from "@/components/shared/json-ld";
 import { SiteFooter } from "@/components/shared/site-footer";
 import { SiteHeader } from "@/components/shared/site-header";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { ogImages, ogSiteName, siteConfig } from "@/lib/config";
+import { COMPARED_ON, GRANOLA_UPDATED } from "@/lib/landing";
 import { getLatestRelease } from "@/lib/release";
-import { faqPageSchema } from "@/lib/structured-data";
-
-const COMPARED_ON = "5 August 2026";
+import { articlePageSchema } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/granola-alternative" },
@@ -57,7 +51,7 @@ const ROWS = [
     label: "Where notes live",
   },
   {
-    convene: "None — no account exists",
+    convene: "None (no account exists)",
     granola: "Required",
     label: "Account",
   },
@@ -69,7 +63,7 @@ const ROWS = [
   },
   { convene: "No", granola: "No", label: "Bot joins the call" },
   {
-    convene: "Two streams — your mic and system audio captured separately",
+    convene: "Two streams: your mic and system audio, captured separately",
     granola: "System audio",
     label: "How it captures",
   },
@@ -95,7 +89,7 @@ const ROWS = [
     label: "Obsidian",
   },
   {
-    convene: "None — it writes files, so use whatever reads files",
+    convene: "None. It writes files, so use whatever reads files",
     granola: "Notion, Slack, HubSpot, Affinity, Zapier and more on paid plans",
     label: "Integrations",
   },
@@ -106,40 +100,50 @@ const ROWS = [
   },
 ];
 
+/** `id` is the anchor of the rendered `<h3>` and is published as
+ * `acceptedAnswer.url`. Hand-written rather than derived from the question, so
+ * rewording a question cannot silently break an inbound link. */
 const FAQ = [
   {
     answer:
-      "Convene is open source and writes your notes as Markdown files into a folder you choose, usually an Obsidian vault. Granola is a commercial product that keeps your notes in its own app and on its servers. Neither sends a bot into your meeting. If you want to own the files, pick Convene; if you want a polished product with a team maintaining it, pick Granola.",
+      "Convene is open source and writes your notes as Markdown files into a folder you choose, usually an Obsidian vault. Granola is a commercial product that keeps your notes in its own app and on its servers. Neither sends a bot into your meeting. If you want to own the files, pick Convene. If you want a polished product with a team maintaining it, pick Granola.",
+    id: "difference",
     question: "What is the difference between Convene and Granola?",
   },
   {
     answer:
       "Yes. Convene is MIT licensed and the source is on GitHub, so you can read exactly how it captures audio, where it sends it, and how it writes your notes.",
+    id: "open-source",
     question: "Is Convene really open source?",
   },
   {
     answer:
-      "Convene itself is free forever. You pay AssemblyAI directly for transcription at their published rate, and Anthropic or OpenAI for summaries if you enable them. There is no markup, because there is no Convene server for the request to pass through. Whether that is cheaper than a Granola subscription depends on how many hours of meetings you record — check both providers' current pricing pages.",
+      "Convene itself is free forever. You pay AssemblyAI directly for transcription at their published rate, and Anthropic or OpenAI for summaries if you enable them. There is no markup, because there is no Convene server for the request to pass through. Whether that is cheaper than a Granola subscription depends on how many hours of meetings you record. Check both providers' current pricing pages.",
+    id: "price",
     question: "Is Convene cheaper than Granola?",
   },
   {
     answer:
       "No, and this is the most important caveat. Convene streams your audio to AssemblyAI for transcription, using your own API key. What is different from Granola is that there is no Convene server in the path: the request goes from your Mac to AssemblyAI directly, and we never receive your audio, transcript or notes. If you need transcription that never leaves your machine, use a tool that runs a model locally.",
+    id: "local-audio",
     question: "Does Convene keep my audio on my own machine?",
   },
   {
     answer:
-      "Nothing to migrate, because Convene reads nothing. Old Granola notes stay in Granola; new meetings land in your folder as Markdown from the moment you install Convene. Granola can export, so you can move history across by hand if you want it in one place.",
+      "Nothing to migrate, because Convene reads nothing. Old Granola notes stay in Granola. New meetings land in your folder as Markdown from the moment you install Convene. Granola can export, so you can move history across by hand if you want it in one place.",
+    id: "migrate",
     question: "Can I move my Granola notes to Convene?",
   },
   {
     answer:
-      "Not for calls. Granola has iOS and Android apps on the stores. Convene's iPhone app is built but not yet released, and it works differently — it records the room through the phone's mic for in-person meetings, because iOS does not let an app capture another app's audio.",
+      "Not for calls. Granola has iOS and Android apps on the stores. Convene's iPhone app is built but not yet released, and it works differently. It records the room through the phone's mic for in-person meetings, because iOS does not let an app capture another app's audio.",
+    id: "mobile",
     question: "Does Convene have a mobile app like Granola?",
   },
   {
     answer:
-      "Convene has none, on purpose. It writes plain Markdown into a folder, so anything that reads files — Obsidian, ripgrep, git, your editor, an MCP server pointed at the folder — works without an integration. Granola has real integrations with Notion, Slack, HubSpot and others on paid plans. If you need a note pushed into a CRM automatically, Granola does that today and Convene does not.",
+      "Convene has none, on purpose. It writes plain Markdown into a folder, so anything that reads files (Obsidian, ripgrep, git, your editor, an MCP server pointed at the folder) works without an integration. Granola has real integrations with Notion, Slack, HubSpot and others on paid plans. If you need a note pushed into a CRM automatically, Granola does that today and Convene does not.",
+    id: "integrations",
     question: "What integrations does Convene have?",
   },
 ];
@@ -149,24 +153,32 @@ export default async function GranolaAlternativePage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <JsonLd data={faqPageSchema(FAQ)} />
+      <JsonLd
+        data={articlePageSchema({
+          dateModified: GRANOLA_UPDATED,
+          description: metadata.description as string,
+          items: FAQ,
+          name: "Convene: the open-source Granola alternative",
+          slug: "granola-alternative",
+        })}
+      />
       <SiteHeader downloadUrl={release.downloadUrl} />
 
       <main className="flex-1 pt-14" id="main">
         <ArticleHeader
-          dateline={`Compared against Granola's public pricing page, help centre and product marketing as of ${COMPARED_ON}. Granola ships often — check their site before deciding.`}
+          dateline={`Compared against Granola's public pricing page, help centre and product marketing as of ${COMPARED_ON}. Granola ships often, so check their site before deciding.`}
           lede="Convene records both sides of your call, transcribes it live, and writes the note as a Markdown file into a folder you own. No bot joins the meeting, and there is no Convene server."
           title="Convene: the open-source Granola alternative that saves notes to your own folder"
-          width="max-w-3xl"
         />
 
-        <ArticleBody width="max-w-3xl">
+        <ArticleBody>
           <Prose title="The short answer">
             <p>
-              Granola and Convene solve the same problem the same way — capture
-              the audio your computer is already playing, so nothing has to join
-              the call and announce itself. They differ on one thing that turns
-              out to matter a lot: <Lead>who ends up holding the notes.</Lead>
+              Granola and Convene solve the same problem the same way. Both
+              capture the audio your computer is already playing, so nothing has
+              to join the call and announce itself. They differ on one thing
+              that turns out to matter a lot:{" "}
+              <Lead>who ends up holding the notes.</Lead>
             </p>
             <p>
               Granola keeps them in Granola. Convene writes them into your
@@ -227,8 +239,8 @@ export default async function GranolaAlternativePage() {
 
           <Prose title="Choose Granola if…">
             <p>
-              This is a genuine recommendation, not a straw man. Granola is a
-              good product, and for a lot of people it is the right one.
+              Granola is a good product, and for a lot of people it is the right
+              one.
             </p>
             <Bullets>
               <Bullet>
@@ -301,8 +313,8 @@ export default async function GranolaAlternativePage() {
             <p>
               Convene is not local transcription, and any page that tells you
               otherwise is selling something. Audio streams to AssemblyAI, and
-              summaries go to Anthropic or OpenAI — both over keys you create
-              and pay for yourself.
+              summaries go to Anthropic or OpenAI, both over keys you create and
+              pay for yourself.
             </p>
             <p>
               What is true is narrower and, for most people, more useful:{" "}
@@ -310,19 +322,12 @@ export default async function GranolaAlternativePage() {
               because there is nowhere for it to route. Your keys stay in your
               Keychain and your notes stay in your folder. If your requirement
               is that no audio ever leaves the machine, neither Convene nor
-              Granola meets it — you want something running a model locally.
+              Granola meets it. You want something running a model locally.
             </p>
           </Prose>
 
           <Prose id="faq" title="Granola alternative FAQ">
-            <Accordion className="w-full" collapsible type="single">
-              {FAQ.map((item) => (
-                <AccordionItem key={item.question} value={item.question}>
-                  <AccordionTrigger>{item.question}</AccordionTrigger>
-                  <AccordionContent>{item.answer}</AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+            <FaqList items={FAQ} />
           </Prose>
 
           <div className="mt-14 rounded-xl bg-card p-6 sm:p-8">
@@ -331,7 +336,7 @@ export default async function GranolaAlternativePage() {
             </h2>
             <p className="mt-3 max-w-[52ch] text-muted-foreground leading-relaxed">
               Free and MIT licensed, with no account to create. Record one call
-              and look at the file it leaves behind — that is really the whole
+              and look at the file it leaves behind. That is really the whole
               decision.
             </p>
             <DownloadButton

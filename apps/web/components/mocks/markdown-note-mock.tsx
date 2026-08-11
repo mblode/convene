@@ -47,8 +47,12 @@ const renderInline = (line: string) => {
     }
     nodes.push(
       token.startsWith("[[") ? (
+        // Wikilinks are 11px text on the chrome: `--cerulean` measures 4.22:1
+        // there, under the 4.5:1 AA minimum. `--cerulean-chrome` is 4.66:1.
+        // The underline keeps the softer `--cerulean` tint — it is a
+        // decorative rule, not text, so 3:1 is the bar it has to clear.
         <span
-          className="text-cerulean underline decoration-cerulean/40"
+          className="text-cerulean-chrome underline decoration-cerulean/40"
           key={`w${start}`}
         >
           {token}

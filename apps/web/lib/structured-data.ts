@@ -1,4 +1,5 @@
 import { siteConfig } from "@/lib/config";
+import { PAGE_UPDATED } from "@/lib/landing";
 
 const licenseUrl = `${siteConfig.links.github}/blob/main/LICENSE.md`;
 
@@ -77,21 +78,29 @@ const breadcrumbNode = {
   ],
 };
 
-const questionNodes = (items: { answer: string; question: string }[]) =>
+export interface QuestionSource {
+  answer: string;
+  /** Anchor of the rendered `<h3>` on `pageUrl`. Published as
+   * `acceptedAnswer.url`, so it has to resolve to a heading that exists and is
+   * visible without opening anything. */
+  id: string;
+  question: string;
+}
+
+const questionNodes = (items: readonly QuestionSource[], pageUrl: string) =>
   items.map((item) => ({
     "@type": "Question",
     acceptedAnswer: {
       "@type": "Answer",
       text: item.answer,
+      url: `${pageUrl}#${item.id}`,
     },
     name: item.question,
   }));
 
 /** One script, one @graph. Disconnected ld+json blocks cannot be merged into a
  * single entity by a crawler, so everything the home page asserts lives here. */
-export const homePageSchema = (
-  faqItems: { answer: string; question: string }[]
-) => ({
+export const homePageSchema = (faqItems: readonly QuestionSource[]) => ({
   "@context": "https://schema.org",
   "@graph": [
     {
@@ -99,6 +108,10 @@ export const homePageSchema = (
       "@type": "WebPage",
       about: { "@id": softwareId },
       breadcrumb: { "@id": breadcrumbId },
+      /** Hand-maintained, from `lib/landing.ts`. A build clock here would claim
+       * the page changed on every deploy, which is a freshness signal that
+       * means nothing and gets discounted accordingly. */
+      dateModified: PAGE_UPDATED,
       description: siteConfig.description,
       inLanguage: "en",
       isPartOf: { "@id": websiteId },
@@ -114,17 +127,69 @@ export const homePageSchema = (
       "@type": "FAQPage",
       inLanguage: "en",
       isPartOf: { "@id": websiteId },
-      mainEntity: questionNodes(faqItems),
+      mainEntity: questionNodes(faqItems, siteUrl),
       name: `${siteConfig.name} questions`,
       url: siteUrl,
     },
   ],
 });
 
-export const faqPageSchema = (
-  items: { answer: string; question: string }[]
-) => ({
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: questionNodes(items),
-});
+/**
+ * The graph for a long-form page under the zone.
+ *
+ * This replaced a bare `faqPageSchema()` — a lone `FAQPage` with no `@id`, no
+ * `isPartOf` and no link to anything else on the site. That is the
+ * disconnected-node shape the fleet rule exists to stop: a crawler cannot merge
+ * a node that names no entity into the entity the rest of the site is about, so
+ * the page published seven questions that belonged to nobody.
+ *
+ * Deliberately **no `BreadcrumbList`**, and that is the one thing here that
+ * looks like an omission. These pages render no visible trail —
+ * `components/shared/zone-breadcrumb.tsx` says root page only, and its third
+ * constraint is that the visible trail and the `BreadcrumbList` must match
+ * exactly, because Google treats a mismatch as a markup error. Declaring a
+ * four-level trail that nothing on the page draws would trade one defect for a
+ * different one. `isPartOf` and `about` are what connect the node, and they do.
+ */
+export const articlePageSchema = ({
+  dateModified,
+  description,
+  items,
+  name,
+  slug,
+}: {
+  dateModified: string;
+  description: string;
+  items: readonly QuestionSource[];
+  name: string;
+  slug: string;
+}) => {
+  const pageUrl = `${siteUrl}/${slug}`;
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@id": `${pageUrl}#webpage`,
+        "@type": "WebPage",
+        about: { "@id": softwareId },
+        author: { "@id": personId },
+        dateModified,
+        description,
+        inLanguage: "en",
+        isPartOf: { "@id": websiteId },
+        name,
+        url: pageUrl,
+      },
+      {
+        "@id": `${pageUrl}#faq`,
+        "@type": "FAQPage",
+        inLanguage: "en",
+        isPartOf: { "@id": websiteId },
+        mainEntity: questionNodes(items, pageUrl),
+        name,
+        url: pageUrl,
+      },
+    ],
+  };
+};

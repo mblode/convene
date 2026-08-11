@@ -37,6 +37,21 @@ interface SectionHeadingProps {
   align?: "start" | "center";
 }
 
+/**
+ * Three slots, and which copy goes in which one changed on 2026-08-11 without
+ * the component changing at all.
+ *
+ * `children` is the `h2` and it is now always a question — the literal thing
+ * somebody types, because that is what an answer engine matches a section
+ * against. The display lines that used to be the `h2` ("No badges. Just the
+ * actual route.", "Two minutes, once.", "For the meetings in a room.") were not
+ * deleted; they moved into the front of `lede`, where they still open the
+ * section for a human reader. `eyebrow` is unchanged.
+ *
+ * All of that lives in `lib/landing.ts`, not here. The swap was a copy decision
+ * and reimplementing it as a prop would have added an API to express something
+ * the existing one already expressed.
+ */
 const SectionHeading = ({
   align = "start",
   children,

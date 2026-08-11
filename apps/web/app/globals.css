@@ -34,6 +34,10 @@
    * paper background; `--cerulean` is the app's own #007eed, reserved for
    * non-text marks (dots, rules, recording indicators) where 4.5:1 is moot. */
   --color-cerulean: var(--cerulean);
+  /* The text-safe cut of the accent for the dark chrome the mocks are drawn
+   * in. See the `--cerulean-chrome` note in :root — the mocks were using
+   * `--cerulean` as label text there, against its own documented rule. */
+  --color-cerulean-chrome: var(--cerulean-chrome);
 
   /* The macOS chrome the app mocks are drawn in: a scoped dark palette on an
    * otherwise light page, so a rendered menu bar reads as a real screenshot. */
@@ -81,10 +85,26 @@
   --accent-foreground: #26251e;
   --link: #0064c8;
   --cerulean: #007eed;
+  /* The dark-chrome counterpart to `--link`, and it exists because the code
+   * was contradicting the comment above `--color-cerulean`: the transcript mock
+   * used `--cerulean` for 11px and 13px *label text* on `--chrome`, where it
+   * measures 4.22:1 against the 4.5:1 AA minimum. Lighthouse caught the 11px
+   * one on 2026-08-11; the 13px speaker names are the same defect and were only
+   * missed because they start at opacity-0 and the audit ran before the mock
+   * ticked.
+   *
+   * #0a84ff is macOS's own systemBlue in dark appearance — the colour the real
+   * app draws in this exact context — and measures 4.66:1 on #1c1c1e. So the
+   * mock got more accurate and more legible in the same edit. `--cerulean`
+   * keeps its documented job: non-text marks only. */
+  --cerulean-chrome: #0a84ff;
   --destructive: oklch(0.577 0.245 27.325);
   --border: #26251e0a;
   --input: #26251e0a;
-  --ring: #26251e33;
+  /* 60% ink, not 20%: at 20% the focus ring was 1.48:1 on the paper
+   * background, under the 3:1 a non-text indicator has to clear. `--border`
+   * stays at 4% — a border token and a ring token are two different jobs. */
+  --ring: #26251e99;
 
   --chrome: #1c1c1e;
   --chrome-raised: #2a2a2d;
@@ -112,7 +132,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground font-sans;
@@ -173,4 +193,30 @@
   .chrome-surface::before {
     display: none;
   }
+}
+
+/*
+ * Real italic, one priority tier down.
+ *
+ * The italic face is declared in a separate `next/font` call with
+ * `preload: false` (see app/layout.tsx), which means it is not on the critical
+ * path but also not attached to the sans family by cascade. This rule binds it
+ * where italic is actually asked for, so emphasis renders drawn rather than as
+ * a browser-synthesised slant.
+ *
+ * Nothing on this site emphasises today, which is precisely why the rule is
+ * worth writing now: the first `<em>` somebody adds is the moment it would
+ * otherwise start shipping faux italic, and that is a defect you notice in a
+ * screenshot six months later and cannot explain. `font-synthesis-style: none`
+ * is the enforcement — if this rule is removed or the face fails to load,
+ * emphasis falls back to upright rather than silently faking it.
+ */
+em,
+i,
+cite,
+address {
+  font-family:
+    var(--font-glide-italic), var(--font-glide), ui-sans-serif, system-ui,
+    sans-serif;
+  font-synthesis-style: none;
 }

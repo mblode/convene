@@ -19,7 +19,7 @@ import { getLatestRelease } from "@/lib/release";
 /** Link styling, as a class string. Inline `<a>`s are written by hand so the surrounding
  *  sentence stays readable in the source. */
 export const LINK =
-  "rounded text-link underline decoration-border underline-offset-4 transition-colors hover:decoration-current focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none";
+  "rounded text-link underline decoration-border underline-offset-4 transition-colors hover:decoration-current focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none";
 
 export const DocPage = async ({
   children,
@@ -43,7 +43,7 @@ export const DocPage = async ({
         <Section className="pb-0">
           <Container className="max-w-2xl">
             <Link
-              className="rounded text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              className="rounded text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
               href="/"
             >
               ← Convene

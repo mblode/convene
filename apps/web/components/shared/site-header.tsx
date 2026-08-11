@@ -77,7 +77,7 @@ export const SiteHeader = ({ downloadUrl }: { downloadUrl: string }) => {
     >
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link
-          className="flex items-center gap-2.5 rounded-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          className="flex items-center gap-2.5 rounded-md focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
           href="/"
         >
           <Image
@@ -96,7 +96,7 @@ export const SiteHeader = ({ downloadUrl }: { downloadUrl: string }) => {
         <nav aria-label="Main" className="hidden items-center gap-6 md:flex">
           {NAV.map((item) => (
             <Link
-              className="rounded-md text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              className="rounded-md text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
               href={item.href}
               key={item.href}
             >
@@ -104,7 +104,7 @@ export const SiteHeader = ({ downloadUrl }: { downloadUrl: string }) => {
             </Link>
           ))}
           <a
-            className="rounded-md text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="rounded-md text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
             href={siteConfig.links.github}
             rel="noreferrer"
             target="_blank"
@@ -122,7 +122,7 @@ export const SiteHeader = ({ downloadUrl }: { downloadUrl: string }) => {
           <button
             aria-expanded={open}
             aria-label={open ? "Close menu" : "Open menu"}
-            className="-mr-1 inline-flex size-9 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none md:hidden"
+            className="-mr-1 inline-flex size-9 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none md:hidden"
             onClick={() => setOpen((value) => !value)}
             ref={toggleRef}
             type="button"
@@ -175,7 +175,7 @@ export const SiteHeader = ({ downloadUrl }: { downloadUrl: string }) => {
         {open ? (
           <motion.div
             animate={{ opacity: 1 }}
-            className="border-border/60 border-t bg-background md:hidden"
+            className="fixed inset-x-0 top-14 bottom-0 z-40 overflow-y-auto border-border/60 border-t bg-background md:hidden"
             exit={{ opacity: 0 }}
             initial={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
@@ -187,7 +187,7 @@ export const SiteHeader = ({ downloadUrl }: { downloadUrl: string }) => {
               {[...NAV, { href: siteConfig.links.github, label: "GitHub" }].map(
                 (item) => (
                   <a
-                    className="rounded-md py-2.5 text-base transition-colors hover:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                    className="rounded-md py-2.5 text-base transition-colors hover:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none"
                     href={item.href}
                     key={item.href}
                     onClick={() => setOpen(false)}
