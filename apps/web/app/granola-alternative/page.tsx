@@ -29,12 +29,11 @@ export const metadata: Metadata = {
       "An honest comparison of Convene and Granola, including what Granola does better.",
     images: ogImages,
     siteName: ogSiteName,
-    title: "The open-source Granola alternative",
+    title: "The open-source Granola alternative · Convene",
     type: "article",
     url: "/granola-alternative",
   },
-  title:
-    "The open-source Granola alternative that saves notes to your own folder",
+  title: "The open-source Granola alternative",
 };
 
 /** A real <table>, not a grid of divs: answer engines quote table rows and
