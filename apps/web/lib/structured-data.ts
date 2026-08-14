@@ -42,6 +42,7 @@ const softwareApplicationNode = {
     // is schema.org-legal but Semrush Site Audit flags it as invalid markup.
     price: 0,
     priceCurrency: "USD",
+    url: siteUrl,
   },
   operatingSystem: "macOS 15, iOS 17",
   /** publisher is the Organization: rich results expect one carrying a logo,
