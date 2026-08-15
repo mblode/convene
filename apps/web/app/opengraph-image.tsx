@@ -1,4 +1,5 @@
 import { renderZoneOgImage } from "@/app/og-image-shared";
+import { OgLogo } from "@/app/og-logo";
 import { siteConfig } from "@/lib/config";
 
 export {
@@ -16,9 +17,9 @@ export const alt = "Convene: your meetings, as Markdown in your own folder.";
  */
 export default function OpengraphImage() {
   return renderZoneOgImage({
-    badge: "CONVENE",
-    eyebrow: "blode.co/convene",
-    subtitle: "Your meetings, as Markdown in your own folder.",
+    background: "#516c88",
+    color: "#ffffff",
+    logo: <OgLogo />,
     title: siteConfig.name,
   });
 }
