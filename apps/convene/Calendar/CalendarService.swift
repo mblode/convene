@@ -1,6 +1,6 @@
-import Foundation
-import EventKit
 import AppKit
+import EventKit
+import Foundation
 
 /// Conferencing provider detected from a meeting URL. Drives the "Join <service>" label.
 enum MeetingService: String {
@@ -15,12 +15,12 @@ enum MeetingService: String {
     var joinLabel: String {
         switch self {
         case .googleMeet: return "Join Google Meet"
-        case .zoom:       return "Join Zoom"
-        case .teams:      return "Join Microsoft Teams"
-        case .webex:      return "Join Webex"
-        case .jitsi:      return "Join Jitsi"
-        case .whereby:    return "Join Whereby"
-        case .other:      return "Join Meeting"
+        case .zoom: return "Join Zoom"
+        case .teams: return "Join Microsoft Teams"
+        case .webex: return "Join Webex"
+        case .jitsi: return "Join Jitsi"
+        case .whereby: return "Join Whereby"
+        case .other: return "Join Meeting"
         }
     }
 
@@ -58,6 +58,13 @@ struct MeetingEvent: Identifiable, Hashable {
     var isInProgress: Bool {
         let now = Date()
         return now >= startDate && now <= endDate
+    }
+
+    /// Identity for the dismissal list. `id` is EventKit's event identifier, which is shared by every
+    /// occurrence of a recurring series, so the start date is what makes one occurrence dismissable
+    /// without hiding next week's.
+    var dismissalKey: String {
+        "\(id)|\(startDate.timeIntervalSinceReferenceDate)"
     }
 }
 
@@ -143,7 +150,8 @@ final class CalendarService: ObservableObject {
     }
 
     func openSystemSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")
+        {
             NSWorkspace.shared.open(url)
         }
     }
@@ -163,8 +171,10 @@ final class CalendarService: ObservableObject {
 
         // Passing `calendars: nil` matches every configured source — iCloud, Google, Fastmail, etc.
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+        CalendarSettings.shared.pruneExpiredDismissals()
         let raw = store.events(matching: predicate)
-        events = raw
+        events =
+            raw
             .filter { !$0.isAllDay }
             .map(MeetingEvent.init(event:))
             .sorted { $0.startDate < $1.startDate }
@@ -178,9 +188,9 @@ final class CalendarService: ObservableObject {
     func menuBarEvent(leadMinutes: Int) -> MeetingEvent? {
         let now = Date()
         let lead = TimeInterval(leadMinutes * 60)
-        let dismissed = CalendarSettings.shared.dismissedEventIDs
+        let settings = CalendarSettings.shared
         return visibleEvents.first { event in
-            guard !dismissed.contains(event.id) else { return false }
+            guard !settings.isDismissed(event) else { return false }
             if event.isInProgress { return true }
             let untilStart = event.startDate.timeIntervalSince(now)
             return untilStart > 0 && untilStart <= lead
@@ -195,9 +205,9 @@ final class CalendarService: ObservableObject {
     func currentEventForRecording() -> MeetingEvent? {
         let now = Date()
         let grace: TimeInterval = 5 * 60
-        let dismissed = CalendarSettings.shared.dismissedEventIDs
+        let settings = CalendarSettings.shared
         let matches = visibleEvents.filter { event in
-            guard !dismissed.contains(event.id) else { return false }
+            guard !settings.isDismissed(event) else { return false }
             if event.isInProgress { return true }
             let untilStart = event.startDate.timeIntervalSince(now)
             return untilStart > 0 && untilStart <= grace
@@ -213,9 +223,9 @@ final class CalendarService: ObservableObject {
         // shows with a checkmark. Like Raycast's menu bar, the schedule stays scoped to today.
         // Drop events the user has dismissed from the menu.
         let startOfToday = cal.startOfDay(for: now)
-        let dismissed = CalendarSettings.shared.dismissedEventIDs
+        let settings = CalendarSettings.shared
         let upcoming = visibleEvents.filter {
-            cal.isDateInToday($0.startDate) && $0.endDate >= startOfToday && !dismissed.contains($0.id)
+            cal.isDateInToday($0.startDate) && $0.endDate >= startOfToday && !settings.isDismissed($0)
         }
         let buckets = Dictionary(grouping: upcoming) { cal.startOfDay(for: $0.startDate) }
         return buckets.keys.sorted().map { day in
@@ -257,8 +267,8 @@ final class CalendarService: ObservableObject {
     }
 }
 
-private extension MeetingEvent {
-    init(event: EKEvent) {
+extension MeetingEvent {
+    fileprivate init(event: EKEvent) {
         self.id = event.eventIdentifier ?? UUID().uuidString
         self.title = event.title ?? "(Untitled)"
         self.startDate = event.startDate
@@ -267,7 +277,8 @@ private extension MeetingEvent {
         self.attendees = participants.map(MeetingEvent.displayValue(for:))
         self.selfAttendeeName = participants.first(where: { $0.isCurrentUser })
             .map(MeetingEvent.displayValue(for:))
-        self.otherAttendees = participants
+        self.otherAttendees =
+            participants
             .filter { !$0.isCurrentUser }
             .map(MeetingEvent.displayValue(for:))
         self.calendarTitle = event.calendar?.title ?? ""
@@ -280,7 +291,7 @@ private extension MeetingEvent {
     }
 
     /// Participant's display name when set; otherwise the raw email from the `mailto:` URL.
-    static func displayValue(for participant: EKParticipant) -> String {
+    fileprivate static func displayValue(for participant: EKParticipant) -> String {
         if let name = participant.name, !name.isEmpty { return name }
         // EKParticipant.url is usually mailto:; surface the raw email as a fallback.
         return participant.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
@@ -289,14 +300,16 @@ private extension MeetingEvent {
     /// Email of the account that owns the event's calendar. Google CalDAV sources in macOS Calendar
     /// expose the account email either as the source title or inside `source.description` as a
     /// `mailto:` (the approach MeetingBar uses); fall back to the current-user attendee.
-    static func accountEmail(for event: EKEvent) -> String? {
+    fileprivate static func accountEmail(for event: EKEvent) -> String? {
         if let sourceTitle = event.calendar?.source?.title, sourceTitle.contains("@") {
             return sourceTitle
         }
         if let description = event.calendar?.source?.description,
-           let regex = try? NSRegularExpression(pattern: #"mailto:([^"\s>]+@[^"\s>]+)"#),
-           let match = regex.firstMatch(in: description, range: NSRange(description.startIndex..., in: description)),
-           let range = Range(match.range(at: 1), in: description) {
+            let regex = try? NSRegularExpression(pattern: #"mailto:([^"\s>]+@[^"\s>]+)"#),
+            let match = regex.firstMatch(
+                in: description, range: NSRange(description.startIndex..., in: description)),
+            let range = Range(match.range(at: 1), in: description)
+        {
             return String(description[range])
         }
         if let me = (event.attendees ?? []).first(where: { $0.isCurrentUser }) {
@@ -305,7 +318,7 @@ private extension MeetingEvent {
         return nil
     }
 
-    static func detectMeetingURL(in event: EKEvent) -> URL? {
+    fileprivate static func detectMeetingURL(in event: EKEvent) -> URL? {
         // Search the obvious places for Zoom / Google Meet / Teams / Webex links.
         let haystacks: [String?] = [
             event.location,
@@ -324,7 +337,8 @@ private extension MeetingEvent {
                 || candidate.contains("teams.microsoft.com")
                 || candidate.contains("webex.com")
                 || candidate.contains("meet.jit.si")
-                || candidate.contains("whereby.com") {
+                || candidate.contains("whereby.com")
+            {
                 return URL(string: candidate)
             }
         }
