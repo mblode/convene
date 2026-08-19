@@ -1,6 +1,6 @@
-import Foundation
 import AppKit
 import Combine
+import Foundation
 
 /// User preferences for the calendar / menu-bar-schedule feature. Singleton so the AppKit status
 /// item, the SwiftUI popover, and the settings page all read and react to the same source of truth.
@@ -14,7 +14,9 @@ final class CalendarSettings: ObservableObject {
         static let browserBundleID = "calendar.browserBundleID"
         static let autoRecordOnJoin = "calendar.autoRecordOnJoin"
         static let disabledCalendarIDs = "calendar.disabledCalendarIDs"
-        static let dismissedEventIDs = "calendar.dismissedEventIDs"
+        static let dismissedEvents = "calendar.dismissedEvents"
+        /// Pre-expiry format: a bare array of event identifiers, never pruned. Read once, then removed.
+        static let legacyDismissedEventIDs = "calendar.dismissedEventIDs"
         static let onlyShowEventsWithMeetings = "calendar.onlyShowEventsWithMeetings"
     }
 
@@ -38,14 +40,21 @@ final class CalendarSettings: ObservableObject {
         didSet { UserDefaults.standard.set(Array(disabledCalendarIDs), forKey: Key.disabledCalendarIDs) }
     }
 
-    /// Event identifiers the user dismissed from the menu bar this session/run.
-    @Published var dismissedEventIDs: Set<String> {
-        didSet { UserDefaults.standard.set(Array(dismissedEventIDs), forKey: Key.dismissedEventIDs) }
+    /// Occurrences the user dismissed from the menu bar, keyed by `MeetingEvent.dismissalKey` and
+    /// valued by the moment the dismissal stops mattering (the event's end). Pruned on every refresh
+    /// so the set can't grow without bound.
+    @Published private(set) var dismissedEvents: [String: Date] {
+        didSet {
+            let stored = dismissedEvents.mapValues { $0.timeIntervalSinceReferenceDate }
+            UserDefaults.standard.set(stored, forKey: Key.dismissedEvents)
+        }
     }
 
     /// Only surface events that have a detected meeting link.
     @Published var onlyShowEventsWithMeetings: Bool {
-        didSet { UserDefaults.standard.set(onlyShowEventsWithMeetings, forKey: Key.onlyShowEventsWithMeetings) }
+        didSet {
+            UserDefaults.standard.set(onlyShowEventsWithMeetings, forKey: Key.onlyShowEventsWithMeetings)
+        }
     }
 
     static let defaultBrowserBundleID = "com.google.Chrome"
@@ -56,8 +65,14 @@ final class CalendarSettings: ObservableObject {
         self.browserBundleID = defaults.string(forKey: Key.browserBundleID) ?? Self.defaultBrowserBundleID
         self.autoRecordOnJoin = defaults.object(forKey: Key.autoRecordOnJoin) as? Bool ?? true
         self.disabledCalendarIDs = Set(defaults.stringArray(forKey: Key.disabledCalendarIDs) ?? [])
-        self.dismissedEventIDs = Set(defaults.stringArray(forKey: Key.dismissedEventIDs) ?? [])
-        self.onlyShowEventsWithMeetings = defaults.object(forKey: Key.onlyShowEventsWithMeetings) as? Bool ?? false
+        let storedDismissals = defaults.dictionary(forKey: Key.dismissedEvents) as? [String: Double] ?? [:]
+        self.dismissedEvents = storedDismissals.mapValues(Date.init(timeIntervalSinceReferenceDate:))
+        // The legacy list keyed whole recurring series and never expired, so one dismissal hid every
+        // future occurrence forever. Nothing to migrate — drop it.
+        defaults.removeObject(forKey: Key.legacyDismissedEventIDs)
+        self.onlyShowEventsWithMeetings =
+            defaults.object(forKey: Key.onlyShowEventsWithMeetings) as? Bool ?? false
+        pruneExpiredDismissals()
     }
 
     func isCalendarEnabled(_ identifier: String) -> Bool {
@@ -72,8 +87,21 @@ final class CalendarSettings: ObservableObject {
         }
     }
 
-    func dismiss(eventID: String) {
-        dismissedEventIDs.insert(eventID)
+    /// Hide a single occurrence until it has finished; later occurrences of a series are unaffected.
+    func dismiss(_ event: MeetingEvent) {
+        dismissedEvents[event.dismissalKey] = event.endDate
+    }
+
+    func isDismissed(_ event: MeetingEvent) -> Bool {
+        guard let expiry = dismissedEvents[event.dismissalKey] else { return false }
+        return expiry > Date()
+    }
+
+    /// Drop dismissals for events that have already ended.
+    func pruneExpiredDismissals() {
+        let now = Date()
+        let live = dismissedEvents.filter { $0.value > now }
+        if live.count != dismissedEvents.count { dismissedEvents = live }
     }
 
     /// Resolve the browser app URL for the configured bundle id, falling back to nil (= system default).

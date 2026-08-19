@@ -28,8 +28,9 @@ final class MeetingLauncher {
 
         let shouldRecord = record ?? CalendarSettings.shared.autoRecordOnJoin
         if shouldRecord,
-           let store = meetingStore,
-           !store.captureCoordinator.isCapturing {
+            let store = meetingStore,
+            !store.captureCoordinator.isCapturing
+        {
             store.startRecording(from: event)
         }
     }
@@ -38,8 +39,9 @@ final class MeetingLauncher {
     func launchURL(for event: MeetingEvent) -> URL? {
         guard let base = event.meetingURL else { return nil }
         guard event.meetingService == .googleMeet,
-              let email = event.accountEmail,
-              var components = URLComponents(url: base, resolvingAgainstBaseURL: false) else {
+            let email = event.accountEmail,
+            var components = URLComponents(url: base, resolvingAgainstBaseURL: false)
+        else {
             return base
         }
         var items = components.queryItems ?? []
@@ -57,9 +59,9 @@ final class MeetingLauncher {
         }
     }
 
-    /// Hide this event from the menu-bar pill.
+    /// Hide this occurrence from the menu-bar pill until it has finished.
     func dismiss(_ event: MeetingEvent) {
-        CalendarSettings.shared.dismiss(eventID: event.id)
+        CalendarSettings.shared.dismiss(event)
     }
 
     private func open(_ url: URL) {
@@ -67,7 +69,8 @@ final class MeetingLauncher {
         if let browser = CalendarSettings.shared.browserApplicationURL {
             NSWorkspace.shared.open([url], withApplicationAt: browser, configuration: config) { _, error in
                 if let error {
-                    logError("MeetingLauncher: browser open failed (\(error.localizedDescription)); using default")
+                    logError(
+                        "MeetingLauncher: browser open failed (\(error.localizedDescription)); using default")
                     DispatchQueue.main.async { NSWorkspace.shared.open(url) }
                 }
             }
