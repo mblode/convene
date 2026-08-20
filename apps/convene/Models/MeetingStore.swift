@@ -38,6 +38,8 @@ final class MeetingStore: ObservableObject {
     /// session reads them at persist time and `makeContext` resets them at start.
     @Published var meetingTitle: String = "Untitled meeting"
     @Published var meetingNotes: String = ""
+    /// Filename shown in the menu-bar toast after a stop persist copies the note path. Nil when idle.
+    @Published private(set) var copiedPathToast: String?
 
     let captureCoordinator = AudioCaptureCoordinator()
     let persistence = PersistenceService()
@@ -56,6 +58,7 @@ final class MeetingStore: ObservableObject {
     private var errorCancellable: AnyCancellable?
     private var nestedObjectCancellables = Set<AnyCancellable>()
     private var hotkeyObservers: [NSObjectProtocol] = []
+    private var toastClearTask: Task<Void, Never>?
 
     // MARK: - Session passthroughs
 
@@ -101,7 +104,8 @@ final class MeetingStore: ObservableObject {
             transcriptionKey: { [weak self] in self?.assemblyAIKeyField.value ?? "" },
             shouldSummarize: { [weak self] in self?.generateSummaryAfterMeeting ?? false },
             summarize: { [weak self] meeting in await self?.generateSummary(for: meeting) ?? nil },
-            summaryError: { [weak self] in self?.summary.lastError }
+            summaryError: { [weak self] in self?.summary.lastError },
+            onMeetingSaved: { [weak self] url in self?.copySavedNotePath(url) }
         )
 
         // Capture dropping mid-recording surfaces through the coordinator's startError; hand it to
@@ -145,6 +149,8 @@ final class MeetingStore: ObservableObject {
     }
 
     deinit {
+        let toastTask = toastClearTask
+        toastTask?.cancel()
         let observers = hotkeyObservers
         for observer in observers {
             NotificationCenter.default.removeObserver(observer)
@@ -184,6 +190,20 @@ final class MeetingStore: ObservableObject {
 
     func clearOutputFolder() {
         persistence.clearOutputFolder()
+    }
+
+    /// Copies a note's POSIX path and shows a short confirmation in the menu bar popover.
+    func copySavedNotePath(_ url: URL) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url.path, forType: .string)
+        copiedPathToast = url.lastPathComponent
+        AccessibilityNotification.Announcement("Copied path").post()
+        toastClearTask?.cancel()
+        toastClearTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(2500))
+            guard !Task.isCancelled else { return }
+            copiedPathToast = nil
+        }
     }
 
     func refreshPermissionStates() async {
