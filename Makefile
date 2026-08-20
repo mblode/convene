@@ -16,14 +16,23 @@ BUNDLE_ID = co.blode.convene
 VERSION := $(shell tag=`git describe --tags --abbrev=0 2>/dev/null`; if [ -n "$$tag" ]; then printf "%s" "$$tag" | sed 's/^v//'; else printf "0.0.0"; fi)
 
 CODESIGN_IDENTITY ?= Developer ID Application
-TEAM_ID ?= $(APPLE_TEAM_ID)
-# Local dev builds sign ad-hoc by default: no cert, no keychain writes, no prompts, and it
-# works for any contributor. Override with a real identity name to sign with your own cert.
-LOCAL_CODE_SIGN_IDENTITY ?= -
+# Same team as project.yml. Ad-hoc local installs used to omit this, so TCC saw a new
+# app on every `make install` (Calendar, mic, notifications, screen capture).
+TEAM_ID ?= 84FUKET6NJ
+# Prefer the team Developer ID when it is in the keychain so Debug installs share the
+# same designated requirement as the shipped app. Ad-hoc (`-`) is the fallback when
+# that identity is missing; override explicitly with LOCAL_CODE_SIGN_IDENTITY=...
+PREFERRED_LOCAL_IDENTITY := Developer ID Application: Matthew Blode (84FUKET6NJ)
+ifeq ($(origin LOCAL_CODE_SIGN_IDENTITY),undefined)
+  ifneq ($(shell security find-identity -v -p codesigning 2>/dev/null | grep -F '$(PREFERRED_LOCAL_IDENTITY)'),)
+    LOCAL_CODE_SIGN_IDENTITY := $(PREFERRED_LOCAL_IDENTITY)
+  else
+    LOCAL_CODE_SIGN_IDENTITY := -
+  endif
+endif
 LOCAL_KEYCHAIN ?= $(HOME)/Library/Keychains/login.keychain-db
-# Hardened runtime is disabled for local builds: an ad-hoc/self-signed app can't satisfy the
-# runtime's library-validation Team-ID match against the bundled Sparkle framework and would
-# crash on launch. Release (archive/export) keeps hardened runtime on via the project setting.
+# Hardened runtime stays off for local builds: Sparkle is signed by a different Team ID,
+# and library validation would kill launch. Release (archive/export) keeps it on.
 LOCAL_SIGNING = CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$(LOCAL_CODE_SIGN_IDENTITY)" DEVELOPMENT_TEAM=$(TEAM_ID) ENABLE_DEBUG_DYLIB=NO ENABLE_HARDENED_RUNTIME=NO
 
 .PHONY: project local-signing-identity build debug install test archive export dmg-background dmg notarize ios-icon ios-build ios-run ios-archive screenshots format format-check clean
@@ -45,9 +54,13 @@ project:
 
 local-signing-identity:
 	@if [ "$(LOCAL_CODE_SIGN_IDENTITY)" = "-" ]; then \
-		echo "Using ad-hoc local signing."; \
+		echo "Using ad-hoc local signing (TCC grants will reset on each install)."; \
 	elif security find-identity -v -p codesigning | grep -qF "$(LOCAL_CODE_SIGN_IDENTITY)"; then \
 		echo "Using local signing identity: $(LOCAL_CODE_SIGN_IDENTITY)"; \
+	elif echo "$(LOCAL_CODE_SIGN_IDENTITY)" | grep -Eq 'Developer ID|Apple Development|Apple Distribution'; then \
+		echo "Missing signing identity: $(LOCAL_CODE_SIGN_IDENTITY)"; \
+		echo "Falling back to ad-hoc. TCC grants will reset on each install."; \
+		false; \
 	else \
 		tmpdir=$$(mktemp -d); \
 		pass="convene-local"; \

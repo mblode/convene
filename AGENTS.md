@@ -28,7 +28,7 @@ npm install                     # web only (apps/web)
 
 ```sh
 make project      # regenerate Convene.xcodeproj from project.yml
-make debug        # Debug build of the Mac app (ad-hoc signed)
+make debug        # Debug build of the Mac app (Developer ID when available)
 make build        # Release build of the Mac app
 make install      # Debug build -> /Applications/Convene.app -> relaunch
 make test         # unit tests (ConveneTests, macOS destination)

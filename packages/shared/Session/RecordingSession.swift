@@ -61,6 +61,8 @@ final class RecordingSession: ObservableObject {
     private let shouldSummarize: () -> Bool
     private let summarize: (Meeting) async -> MeetingSummary?
     private let summaryError: () -> String?
+    /// Fired once after a stop persist succeeds. Not called for summary re-saves, retries, or WAL recovery.
+    private let onMeetingSaved: ((URL) -> Void)?
 
     private let walService = TranscriptWALService()
 
@@ -86,7 +88,8 @@ final class RecordingSession: ObservableObject {
         transcriptionKey: @escaping () -> String,
         shouldSummarize: @escaping () -> Bool,
         summarize: @escaping (Meeting) async -> MeetingSummary?,
-        summaryError: @escaping () -> String?
+        summaryError: @escaping () -> String?,
+        onMeetingSaved: ((URL) -> Void)? = nil
     ) {
         self.audioSource = audioSource
         self.persistence = persistence
@@ -96,6 +99,7 @@ final class RecordingSession: ObservableObject {
         self.shouldSummarize = shouldSummarize
         self.summarize = summarize
         self.summaryError = summaryError
+        self.onMeetingSaved = onMeetingSaved
 
         // Segment failures are warnings (keep recording); other transcription errors are fatal
         // and stop the meeting. Unifying both platforms on this behavior.
@@ -413,7 +417,9 @@ final class RecordingSession: ObservableObject {
         if transcript.isEmpty && trimmedNotes.isEmpty && transcriptionError == nil {
             logInfo("RecordingSession: saving meeting with no transcript or notes")
         }
-        saveMeeting(meeting)
+        if let url = saveMeeting(meeting) {
+            onMeetingSaved?(url)
+        }
         meetingStartedAt = nil
 
         // Kick off summary generation in the background. When it lands, re-save and update UI —

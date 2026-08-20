@@ -14,6 +14,7 @@ struct MenuBarView: View {
         }
         .frame(width: 360)
         .background(backdrop)
+        .animation(.easeInOut(duration: 0.2), value: meetingStore.copiedPathToast)
         .task {
             await meetingStore.calendarService.refreshEvents()
         }
@@ -48,6 +49,14 @@ struct MenuBarView: View {
                 Divider().opacity(0.5).padding(.horizontal, 12)
             }
             schedule
+                .overlay(alignment: .bottom) {
+                    if let filename = meetingStore.copiedPathToast {
+                        CopiedPathToast(filename: filename)
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.bottom, Theme.Spacing.sm)
+                            .transition(.opacity)
+                    }
+                }
             footer
         }
     }
@@ -303,9 +312,14 @@ struct MenuBarView: View {
                         meetingStore.persistence.openFile(url)
                     }
                 }
-                .disabled(
-                    meetingStore.persistence.outputFolderURL == nil
-                        && meetingStore.persistence.lastSavedFileURL == nil)
+                .disabled(latestTranscriptUnavailable)
+
+                Button("Copy Latest Path") {
+                    if let url = meetingStore.persistence.latestTranscriptURL() {
+                        meetingStore.copySavedNotePath(url)
+                    }
+                }
+                .disabled(latestTranscriptUnavailable)
 
                 Divider()
 
@@ -331,6 +345,11 @@ struct MenuBarView: View {
         .overlay(alignment: .top) {
             Divider().opacity(0.5)
         }
+    }
+
+    private var latestTranscriptUnavailable: Bool {
+        meetingStore.persistence.outputFolderURL == nil
+            && meetingStore.persistence.lastSavedFileURL == nil
     }
 
     // MARK: - No access
