@@ -1,7 +1,7 @@
-import Foundation
 import AVFoundation
 import AppKit
 import Combine
+import Foundation
 
 /// One source of truth for starting/stopping a meeting recording.
 /// Owns MicCapture (You) and SystemAudioCapture (Others), exposes labeled PCM16 chunk callbacks,
@@ -152,12 +152,13 @@ final class AudioCaptureCoordinator: ObservableObject {
         }
 
         guard await system.requestPermission() else {
-            startError = switch system.permissionState {
-            case .requiresRelaunch:
-                "Restart Convene to finish Screen & System Audio Recording setup"
-            default:
-                "Screen recording permission required"
-            }
+            startError =
+                switch system.permissionState {
+                case .requiresRelaunch:
+                    "Restart Convene to finish Screen & System Audio Recording setup"
+                default:
+                    "Screen recording permission required"
+                }
             return false
         }
 

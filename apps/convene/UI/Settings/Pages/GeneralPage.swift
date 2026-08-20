@@ -25,10 +25,13 @@ struct GeneralPage: View {
                                 .font(.system(size: 12))
                                 .foregroundStyle(Color.accent)
                         } else {
-                            Toggle("", isOn: Binding(
-                                get: { loginItem.isEnabled },
-                                set: { loginItem.setEnabled($0) }
-                            ))
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { loginItem.isEnabled },
+                                    set: { loginItem.setEnabled($0) }
+                                )
+                            )
                             .toggleStyle(OliveToggleStyle())
                             .labelsHidden()
                         }
@@ -98,10 +101,12 @@ struct GeneralPage: View {
                         .disabled(meetingStore.persistence.lastSavedFileURL == nil)
                     }
                 }
-                Text("Tip: pick your Obsidian vault's meeting folder if you want notes to appear there automatically.")
-                    .font(.captionWarm)
-                    .foregroundStyle(Color.textSecondary)
-                    .padding(.horizontal, 4)
+                Text(
+                    "Tip: pick your Obsidian vault's meeting folder if you want notes to appear there automatically."
+                )
+                .font(.captionWarm)
+                .foregroundStyle(Color.textSecondary)
+                .padding(.horizontal, 4)
             }
         }
         .padding(.top, Theme.Spacing.xl)

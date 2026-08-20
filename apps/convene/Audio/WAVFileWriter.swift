@@ -1,5 +1,5 @@
-import Foundation
 import AVFoundation
+import Foundation
 
 /// Minimal Float32 mono WAV file writer at the capture sample rate.
 /// Useful for debug dumps and the optional "save audio file" toggle.
@@ -26,7 +26,9 @@ final class WAVFileWriter {
 
     func append(samples: UnsafePointer<Float>, count: Int) {
         guard count > 0 else { return }
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)) else { return }
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)) else {
+            return
+        }
         buffer.frameLength = AVAudioFrameCount(count)
         guard let dst = buffer.floatChannelData?[0] else { return }
         memcpy(dst, samples, count * MemoryLayout<Float>.size)

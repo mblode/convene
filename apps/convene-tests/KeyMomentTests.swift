@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import Convene
 
 final class KeyMomentTests: XCTestCase {
@@ -26,7 +27,8 @@ final class KeyMomentTests: XCTestCase {
 
     func testKeyMomentsIndexLinksToTranscriptSection() throws {
         let moment = KeyMoment(offset: 95, text: "Pricing decision")
-        let markdown = MarkdownRenderer.renderMarkdown(meeting(keyMoments: [moment], transcript: transcript()))
+        let markdown = MarkdownRenderer.renderMarkdown(
+            meeting(keyMoments: [moment], transcript: transcript()))
 
         XCTAssertTrue(markdown.contains("## Key Moments"))
         // 95s formats as 01:35; falls under the 01:30 section header.
@@ -35,7 +37,8 @@ final class KeyMomentTests: XCTestCase {
 
     func testBareFlagRendersWithoutDash() throws {
         let moment = KeyMoment(offset: 2, text: "")
-        let markdown = MarkdownRenderer.renderMarkdown(meeting(keyMoments: [moment], transcript: transcript()))
+        let markdown = MarkdownRenderer.renderMarkdown(
+            meeting(keyMoments: [moment], transcript: transcript()))
 
         XCTAssertTrue(markdown.contains("## Key Moments"))
         // No annotation: just the link, no " — " separator.
@@ -45,7 +48,8 @@ final class KeyMomentTests: XCTestCase {
 
     func testInlineMarkerLandsBeforeTheBlockItPrecedes() throws {
         let moment = KeyMoment(offset: 95, text: "Pricing decision")
-        let markdown = MarkdownRenderer.renderMarkdown(meeting(keyMoments: [moment], transcript: transcript()))
+        let markdown = MarkdownRenderer.renderMarkdown(
+            meeting(keyMoments: [moment], transcript: transcript()))
 
         let marker = "> ⭐ **Key moment** (01:35) — Pricing decision"
         XCTAssertTrue(markdown.contains(marker))
@@ -59,7 +63,8 @@ final class KeyMomentTests: XCTestCase {
 
     func testMomentAfterLastBlockStillRenders() throws {
         let moment = KeyMoment(offset: 500, text: "Closing thought")
-        let markdown = MarkdownRenderer.renderMarkdown(meeting(keyMoments: [moment], transcript: transcript()))
+        let markdown = MarkdownRenderer.renderMarkdown(
+            meeting(keyMoments: [moment], transcript: transcript()))
 
         XCTAssertTrue(markdown.contains("> ⭐ **Key moment** (08:20) — Closing thought"))
         // Past transcript end, so the index falls back to a plain label (no dead wikilink).
@@ -76,15 +81,15 @@ final class KeyMomentTests: XCTestCase {
 
     func testLegacyMeetingJSONWithoutKeyMomentsDecodes() throws {
         let json = """
-        {
-            "id": "11111111-1111-1111-1111-111111111111",
-            "title": "Legacy",
-            "attendees": [],
-            "startedAt": "2024-01-01T00:00:00Z",
-            "transcript": [],
-            "notes": ""
-        }
-        """
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "title": "Legacy",
+                "attendees": [],
+                "startedAt": "2024-01-01T00:00:00Z",
+                "transcript": [],
+                "notes": ""
+            }
+            """
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let meeting = try decoder.decode(Meeting.self, from: XCTUnwrap(json.data(using: .utf8)))

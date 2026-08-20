@@ -39,13 +39,16 @@ final class AudioSampleConverter {
             ceil(Double(buffer.frameLength) * TranscriptionAudio.targetFormat.sampleRate / format.sampleRate)
         )
         guard outFrames > 0,
-              let out = AVAudioPCMBuffer(pcmFormat: TranscriptionAudio.targetFormat, frameCapacity: outFrames)
+            let out = AVAudioPCMBuffer(pcmFormat: TranscriptionAudio.targetFormat, frameCapacity: outFrames)
         else { return nil }
 
         var consumed = false
         var error: NSError?
         let status = converter.convert(to: out, error: &error) { _, status in
-            if consumed { status.pointee = .noDataNow; return nil }
+            if consumed {
+                status.pointee = .noDataNow
+                return nil
+            }
             consumed = true
             status.pointee = .haveData
             return buffer

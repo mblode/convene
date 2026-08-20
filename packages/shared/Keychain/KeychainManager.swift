@@ -87,7 +87,8 @@ enum KeychainManager {
         case .add:
             return status == errSecNotAvailable || status == errSecInteractionNotAllowed
         case .copy, .delete:
-            return status == errSecItemNotFound || status == errSecNotAvailable || status == errSecInteractionNotAllowed
+            return status == errSecItemNotFound || status == errSecNotAvailable
+                || status == errSecInteractionNotAllowed
         }
     }
 
@@ -95,7 +96,9 @@ enum KeychainManager {
         let dataProtectionQuery = withDataProtectionKeychain(baseQuery)
         let dataProtectionStatus = SecItemAdd(dataProtectionQuery as CFDictionary, nil)
         guard dataProtectionStatus != errSecSuccess else { return dataProtectionStatus }
-        guard shouldFallbackToLegacy(for: dataProtectionStatus, operation: .add) else { return dataProtectionStatus }
+        guard shouldFallbackToLegacy(for: dataProtectionStatus, operation: .add) else {
+            return dataProtectionStatus
+        }
         return SecItemAdd(baseQuery as CFDictionary, nil)
     }
 
@@ -112,11 +115,15 @@ enum KeychainManager {
         return dataProtectionStatus != errSecItemNotFound ? dataProtectionStatus : legacyStatus
     }
 
-    private static func copyMatchingWithFallback(_ baseQuery: [String: Any], result: inout AnyObject?) -> OSStatus {
+    private static func copyMatchingWithFallback(_ baseQuery: [String: Any], result: inout AnyObject?)
+        -> OSStatus
+    {
         let dataProtectionQuery = withDataProtectionKeychain(baseQuery)
         let dataProtectionStatus = SecItemCopyMatching(dataProtectionQuery as CFDictionary, &result)
         guard dataProtectionStatus != errSecSuccess else { return dataProtectionStatus }
-        guard shouldFallbackToLegacy(for: dataProtectionStatus, operation: .copy) else { return dataProtectionStatus }
+        guard shouldFallbackToLegacy(for: dataProtectionStatus, operation: .copy) else {
+            return dataProtectionStatus
+        }
         result = nil
         return SecItemCopyMatching(baseQuery as CFDictionary, &result)
     }

@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import Convene
 
 final class TranscriptFormatterTests: XCTestCase {
@@ -139,25 +140,29 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testDisplayNameUsesDiarizedLabelForGroupMeetings() {
         XCTAssertEqual(
-            TranscriptFormatter.displayName(for: .others, selfName: nil, othersName: nil, diarizedSpeaker: "A"),
+            TranscriptFormatter.displayName(
+                for: .others, selfName: nil, othersName: nil, diarizedSpeaker: "A"),
             "Speaker A"
         )
         XCTAssertEqual(
-            TranscriptFormatter.displayName(for: .others, selfName: "Matthew", othersName: nil, diarizedSpeaker: "B"),
+            TranscriptFormatter.displayName(
+                for: .others, selfName: "Matthew", othersName: nil, diarizedSpeaker: "B"),
             "Speaker B"
         )
     }
 
     func testDisplayNameOthersNameWinsOverDiarizedLabel() {
         XCTAssertEqual(
-            TranscriptFormatter.displayName(for: .others, selfName: nil, othersName: "Michael", diarizedSpeaker: "A"),
+            TranscriptFormatter.displayName(
+                for: .others, selfName: nil, othersName: "Michael", diarizedSpeaker: "A"),
             "Michael"
         )
     }
 
     func testDisplayNameNilDiarizedLabelFallsBackToOthers() {
         XCTAssertEqual(
-            TranscriptFormatter.displayName(for: .others, selfName: nil, othersName: nil, diarizedSpeaker: nil),
+            TranscriptFormatter.displayName(
+                for: .others, selfName: nil, othersName: nil, diarizedSpeaker: nil),
             "Others"
         )
     }
@@ -224,15 +229,15 @@ final class TranscriptFormatterTests: XCTestCase {
 
     func testMeetingDecodesOldJSONWithoutSelfName() throws {
         let json = """
-        {
-            "id": "11111111-2222-3333-4444-555555555555",
-            "title": "Old meeting",
-            "attendees": [],
-            "startedAt": "2026-01-05T10:00:00Z",
-            "transcript": [],
-            "notes": ""
-        }
-        """
+            {
+                "id": "11111111-2222-3333-4444-555555555555",
+                "title": "Old meeting",
+                "attendees": [],
+                "startedAt": "2026-01-05T10:00:00Z",
+                "transcript": [],
+                "notes": ""
+            }
+            """
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let meeting = try decoder.decode(Meeting.self, from: Data(json.utf8))

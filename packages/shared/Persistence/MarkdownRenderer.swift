@@ -104,8 +104,10 @@ enum MarkdownRenderer {
                 appendBullets(title: "Key Points", items: summary.keyPoints, to: &out)
             }
             appendBullets(title: "Decisions", items: summary.decisions, to: &out, emptyText: "None captured.")
-            appendChecklist(title: "Action Items", items: summary.actionItems, to: &out, emptyText: "None captured.")
-            appendBullets(title: "Open Questions", items: summary.openQuestions, to: &out, emptyText: "None captured.")
+            appendChecklist(
+                title: "Action Items", items: summary.actionItems, to: &out, emptyText: "None captured.")
+            appendBullets(
+                title: "Open Questions", items: summary.openQuestions, to: &out, emptyText: "None captured.")
             appendBullets(title: "Follow-ups", items: summary.followUps, to: &out)
         }
 
@@ -115,8 +117,10 @@ enum MarkdownRenderer {
             out += "\n\n"
         }
 
-        if let transcriptionError = meeting.transcriptionError?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !transcriptionError.isEmpty {
+        if let transcriptionError = meeting.transcriptionError?.trimmingCharacters(
+            in: .whitespacesAndNewlines),
+            !transcriptionError.isEmpty
+        {
             out += "## Transcription Error\n\n"
             out += transcriptionError
             out += "\n\n"
@@ -131,7 +135,8 @@ enum MarkdownRenderer {
                 out += "### \(TranscriptFormatter.timestampString(section.startedAt))\n\n"
                 for block in section.blocks {
                     while momentIndex < keyMoments.count,
-                          keyMoments[momentIndex].offset <= block.startedAt {
+                        keyMoments[momentIndex].offset <= block.startedAt
+                    {
                         out += inlineKeyMomentMarker(keyMoments[momentIndex])
                         momentIndex += 1
                     }
@@ -196,7 +201,8 @@ enum MarkdownRenderer {
     ) -> String {
         let label = TranscriptFormatter.timestampString(offset)
         guard offset <= transcriptEnd,
-              let anchor = TranscriptFormatter.sectionTimestamp(for: offset, in: sections) else {
+            let anchor = TranscriptFormatter.sectionTimestamp(for: offset, in: sections)
+        else {
             return label
         }
         return "[[#\(anchor)|\(label)]]"
@@ -220,7 +226,8 @@ enum MarkdownRenderer {
     }
 
     static func yamlEscape(_ value: String) -> String {
-        let escaped = value
+        let escaped =
+            value
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
             .replacingOccurrences(of: "\n", with: "\\n")
@@ -266,8 +273,9 @@ enum MarkdownRenderer {
         let trimmed = rawTimestamp.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "" }
         guard let time = parseTimestamp(trimmed),
-              time <= transcriptEnd,
-              let anchor = TranscriptFormatter.sectionTimestamp(for: time, in: sections) else {
+            time <= transcriptEnd,
+            let anchor = TranscriptFormatter.sectionTimestamp(for: time, in: sections)
+        else {
             return trimmed
         }
         return "[[#\(anchor)|\(trimmed)]]"
@@ -277,7 +285,8 @@ enum MarkdownRenderer {
     private static func parseTimestamp(_ raw: String) -> TimeInterval? {
         let parts = raw.split(separator: ":").map(String.init)
         guard (2...3).contains(parts.count),
-              parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) else {
+            parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) })
+        else {
             return nil
         }
         let numbers = parts.compactMap(Int.init)
@@ -335,7 +344,8 @@ enum MarkdownRenderer {
     }
 
     private static func cleanParagraphs(_ value: String) -> String {
-        let paragraphs = value
+        let paragraphs =
+            value
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")
             .components(separatedBy: "\n")
@@ -345,7 +355,8 @@ enum MarkdownRenderer {
     }
 
     private static func cleanInline(_ value: String) -> String {
-        let flattened = value
+        let flattened =
+            value
             .replacingOccurrences(of: "\r\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
             .replacingOccurrences(of: "\n", with: " ")
@@ -355,7 +366,8 @@ enum MarkdownRenderer {
                 with: "",
                 options: .regularExpression
             )
-        return flattened
+        return
+            flattened
             .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }

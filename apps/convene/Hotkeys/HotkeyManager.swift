@@ -1,5 +1,5 @@
-import Foundation
 import Cocoa
+import Foundation
 import KeyboardShortcuts
 
 extension KeyboardShortcuts.Name {

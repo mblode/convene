@@ -17,10 +17,13 @@ struct CapturePage: View {
                         description: "Notifies when Zoom, Teams, Webex, Meet, BlueJeans launch",
                         showsDivider: true
                     ) {
-                        Toggle("", isOn: Binding(
-                            get: { meetingStore.meetingDetector.enabled },
-                            set: { meetingStore.meetingDetector.enabled = $0 }
-                        ))
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { meetingStore.meetingDetector.enabled },
+                                set: { meetingStore.meetingDetector.enabled = $0 }
+                            )
+                        )
                         .toggleStyle(OliveToggleStyle())
                         .labelsHidden()
                     }
@@ -30,10 +33,13 @@ struct CapturePage: View {
                         description: "Stops recording once you quit the last open meeting app",
                         showsDivider: false
                     ) {
-                        Toggle("", isOn: Binding(
-                            get: { meetingStore.meetingDetector.autoStopOnMeetingEnd },
-                            set: { meetingStore.meetingDetector.autoStopOnMeetingEnd = $0 }
-                        ))
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { meetingStore.meetingDetector.autoStopOnMeetingEnd },
+                                set: { meetingStore.meetingDetector.autoStopOnMeetingEnd = $0 }
+                            )
+                        )
                         .toggleStyle(OliveToggleStyle())
                         .labelsHidden()
                         .disabled(!meetingStore.meetingDetector.enabled)
@@ -51,7 +57,8 @@ struct CapturePage: View {
                     SettingsRow(
                         icon: "speaker.wave.2.fill",
                         title: "Reduce speaker bleed",
-                        description: "Drops mic audio that's just the remote speaker playing through your speakers",
+                        description:
+                            "Drops mic audio that's just the remote speaker playing through your speakers",
                         showsDivider: false
                     ) {
                         Toggle("", isOn: $reduceSpeakerBleed)

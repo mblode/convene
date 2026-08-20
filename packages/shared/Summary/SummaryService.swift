@@ -94,8 +94,9 @@ final class SummaryService: ObservableObject {
             lastResult = result
 
             guard let httpResponse = result.1 as? HTTPURLResponse,
-                  isRetryable(statusCode: httpResponse.statusCode),
-                  attempt < 2 else {
+                isRetryable(statusCode: httpResponse.statusCode),
+                attempt < 2
+            else {
                 return result
             }
 
@@ -129,8 +130,9 @@ final class SummaryService: ObservableObject {
             return nil
         }
         guard let content = responseText(from: json),
-              let contentData = content.data(using: .utf8),
-              let parsed = try? JSONDecoder().decode(SummaryPayload.self, from: contentData) else {
+            let contentData = content.data(using: .utf8),
+            let parsed = try? JSONDecoder().decode(SummaryPayload.self, from: contentData)
+        else {
             lastError = "Summary content was not valid JSON"
             return nil
         }
@@ -179,13 +181,17 @@ final class SummaryService: ObservableObject {
             return "\(operation) could not run because this OpenAI project has no usable quota."
         }
         if normalizedCode == "invalid_api_key" || normalizedCode == "incorrect_api_key"
-            || normalizedMessage.contains("invalid api key") || normalizedMessage.contains("incorrect api key") {
+            || normalizedMessage.contains("invalid api key")
+            || normalizedMessage.contains("incorrect api key")
+        {
             return "\(operation) could not run because the API key was rejected. Update the key in Settings."
         }
         if normalizedCode == "rate_limit_exceeded" || normalizedMessage.contains("rate limit") {
             return "\(operation) hit a rate limit. Wait a moment, then retry."
         }
-        if normalizedCode == "model_not_found" || (normalizedMessage.contains("model") && normalizedMessage.contains("not found")) {
+        if normalizedCode == "model_not_found"
+            || (normalizedMessage.contains("model") && normalizedMessage.contains("not found"))
+        {
             return "\(operation) could not run because the selected model is unavailable."
         }
         return "\(operation) failed: \(message)"

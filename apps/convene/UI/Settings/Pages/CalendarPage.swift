@@ -1,5 +1,5 @@
-import SwiftUI
 import EventKit
+import SwiftUI
 
 struct CalendarPage: View {
     @ObservedObject private var settings = CalendarSettings.shared
@@ -105,7 +105,8 @@ struct CalendarPage: View {
                     .padding(.top, Theme.Spacing.md)
                     .padding(.bottom, Theme.Spacing.xs)
 
-                ForEach(Array(group.calendars.enumerated()), id: \.element.calendarIdentifier) { calIndex, cal in
+                ForEach(Array(group.calendars.enumerated()), id: \.element.calendarIdentifier) {
+                    calIndex, cal in
                     let isLastRow = groupIndex == groups.count - 1 && calIndex == group.calendars.count - 1
                     calendarRow(cal, showsDivider: !isLastRow)
                 }
@@ -123,10 +124,13 @@ struct CalendarPage: View {
                     .font(.rowTitle)
                     .foregroundStyle(Color.textPrimary)
                 Spacer(minLength: Theme.Spacing.md)
-                Toggle("", isOn: Binding(
-                    get: { settings.isCalendarEnabled(cal.calendarIdentifier) },
-                    set: { settings.setCalendar(cal.calendarIdentifier, enabled: $0) }
-                ))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { settings.isCalendarEnabled(cal.calendarIdentifier) },
+                        set: { settings.setCalendar(cal.calendarIdentifier, enabled: $0) }
+                    )
+                )
                 .toggleStyle(OliveToggleStyle())
                 .labelsHidden()
             }

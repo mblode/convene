@@ -29,7 +29,8 @@ final class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegat
         switch response.actionIdentifier {
         case "ConveneStart", UNNotificationDefaultActionIdentifier:
             // Tapping the body or the Start button both start only when idle.
-            NotificationCenter.default.post(name: NSNotification.Name("ConveneStartRecordingIfIdle"), object: nil)
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ConveneStartRecordingIfIdle"), object: nil)
         default:
             break
         }

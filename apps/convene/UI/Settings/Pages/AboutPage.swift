@@ -22,8 +22,10 @@ struct AboutPage: View {
                         description: "Open the Convene log file"
                     ) {
                         Button {
-                            let logsDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-                                .appendingPathComponent("Logs/Convene.log")
+                            let logsDir = FileManager.default.urls(
+                                for: .libraryDirectory, in: .userDomainMask
+                            ).first!
+                            .appendingPathComponent("Logs/Convene.log")
                             NSWorkspace.shared.open(logsDir)
                         } label: {
                             Image(systemName: "arrow.up.right.square")

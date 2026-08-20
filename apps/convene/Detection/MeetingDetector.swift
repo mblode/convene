@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 import UserNotifications
 
 /// Detects when known meeting apps launch (Zoom, Teams, Webex, etc.) and posts a user
@@ -20,14 +20,17 @@ final class MeetingDetector: ObservableObject {
         // meeting signal. A Slack huddle would need call-state detection, not app-launch.
     ]
 
-    @Published var enabled: Bool = UserDefaults.standard.object(forKey: "meetingAutoDetect") as? Bool ?? true {
+    @Published var enabled: Bool = UserDefaults.standard.object(forKey: "meetingAutoDetect") as? Bool ?? true
+    {
         didSet {
             UserDefaults.standard.set(enabled, forKey: "meetingAutoDetect")
             if enabled { startObserving() } else { stopObserving() }
         }
     }
     /// When on, quitting the last running meeting app auto-stops an in-progress recording.
-    @Published var autoStopOnMeetingEnd: Bool = UserDefaults.standard.object(forKey: "autoStopOnMeetingEnd") as? Bool ?? true {
+    @Published var autoStopOnMeetingEnd: Bool =
+        UserDefaults.standard.object(forKey: "autoStopOnMeetingEnd") as? Bool ?? true
+    {
         didSet { UserDefaults.standard.set(autoStopOnMeetingEnd, forKey: "autoStopOnMeetingEnd") }
     }
     @Published private(set) var notificationStatus: UNAuthorizationStatus = .notDetermined
@@ -120,7 +123,8 @@ final class MeetingDetector: ObservableObject {
 
     private func handleLaunch(_ note: Notification) {
         guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-              let bundleID = app.bundleIdentifier else { return }
+            let bundleID = app.bundleIdentifier
+        else { return }
 
         // Avoid double-fire on subsequent launches in the same session.
         if seenBundleIDs.contains(bundleID) { return }
@@ -133,8 +137,9 @@ final class MeetingDetector: ObservableObject {
 
     private func handleTerminate(_ note: Notification) {
         guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-              let bundleID = app.bundleIdentifier,
-              Self.trackedApps.contains(where: { $0.bundleID == bundleID }) else { return }
+            let bundleID = app.bundleIdentifier,
+            Self.trackedApps.contains(where: { $0.bundleID == bundleID })
+        else { return }
 
         runningTrackedBundleIDs.remove(bundleID)
         guard autoStopOnMeetingEnd else { return }
@@ -147,8 +152,9 @@ final class MeetingDetector: ObservableObject {
     private func postDetectionNotification(appName: String) async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         notificationStatus = settings.authorizationStatus
-        guard (settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional),
-              settings.alertSetting != .disabled else {
+        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional,
+            settings.alertSetting != .disabled
+        else {
             logInfo("MeetingDetector: \(appName) launched but notification permission missing")
             return
         }
@@ -161,7 +167,8 @@ final class MeetingDetector: ObservableObject {
         let category = UNNotificationCategory(
             identifier: "ConveneMeetingDetected",
             actions: [
-                UNNotificationAction(identifier: "ConveneStart", title: "Start Recording", options: [.foreground])
+                UNNotificationAction(
+                    identifier: "ConveneStart", title: "Start Recording", options: [.foreground])
             ],
             intentIdentifiers: [],
             options: []

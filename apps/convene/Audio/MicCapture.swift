@@ -1,6 +1,6 @@
-import Foundation
 @preconcurrency import AVFoundation
 import AppKit
+import Foundation
 
 enum MicAudioConstants {
     static let sampleRate = Double(TranscriptionAudio.sampleRate)
@@ -71,8 +71,9 @@ final class MicCapture: ObservableObject {
     func start() throws {
         guard !isStreaming else { return }
         guard permissionState == .granted else {
-            throw NSError(domain: "co.blode.convene.mic", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "Microphone permission denied"])
+            throw NSError(
+                domain: "co.blode.convene.mic", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Microphone permission denied"])
         }
 
         let engine = AVAudioEngine()
@@ -85,18 +86,20 @@ final class MicCapture: ObservableObject {
         // the speaker stays at full volume. The noise-gate threshold compensates.
         let inputFormat = input.outputFormat(forBus: 0)
         guard inputFormat.channelCount > 0, inputFormat.sampleRate > 0 else {
-            throw NSError(domain: "co.blode.convene.mic", code: -2,
-                          userInfo: [NSLocalizedDescriptionKey: "Invalid input format"])
+            throw NSError(
+                domain: "co.blode.convene.mic", code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid input format"])
         }
 
         let captureFormat: AVAudioFormat
         if inputFormat.channelCount == TranscriptionAudio.channels {
             captureFormat = inputFormat
         } else {
-            captureFormat = AVAudioFormat(
-                standardFormatWithSampleRate: inputFormat.sampleRate,
-                channels: TranscriptionAudio.channels
-            ) ?? TranscriptionAudio.targetFormat
+            captureFormat =
+                AVAudioFormat(
+                    standardFormatWithSampleRate: inputFormat.sampleRate,
+                    channels: TranscriptionAudio.channels
+                ) ?? TranscriptionAudio.targetFormat
             logInfo("MicCapture: downmixing \(inputFormat.channelCount)-channel input to mono")
         }
 
@@ -113,7 +116,8 @@ final class MicCapture: ObservableObject {
         let onFloat32 = self.onFloat32
         let queue = audioQueue
 
-        mixer.installTap(onBus: 0, bufferSize: MicAudioConstants.captureBufferSize, format: captureFormat) { buffer, _ in
+        mixer.installTap(onBus: 0, bufferSize: MicAudioConstants.captureBufferSize, format: captureFormat) {
+            buffer, _ in
             queue.async {
                 processor.process(buffer: buffer, onFloat32: onFloat32, onPCM16: onPCM16)
             }
@@ -161,7 +165,9 @@ private final class MicAudioProcessor: @unchecked Sendable {
         onFloat32: (@Sendable (UnsafePointer<Float>, Int) -> Void)?,
         onPCM16: (@Sendable (Data) -> Void)?
     ) {
-        guard let final = converter.convert(buffer, from: captureFormat), let floatData = final.floatChannelData else { return }
+        guard let final = converter.convert(buffer, from: captureFormat),
+            let floatData = final.floatChannelData
+        else { return }
         let frameCount = Int(final.frameLength)
         guard frameCount > 0 else { return }
 
