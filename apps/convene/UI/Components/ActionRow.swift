@@ -22,8 +22,10 @@ struct ActionRow: View {
             .foregroundStyle(tint)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(hovering ? Color.hoverBackground : .clear,
-                       in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+            .background(
+                hovering ? Color.hoverBackground : .clear,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

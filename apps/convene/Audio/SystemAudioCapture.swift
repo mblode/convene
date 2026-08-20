@@ -1,9 +1,9 @@
-import Foundation
-import ScreenCaptureKit
 @preconcurrency import AVFoundation
 import AppKit
-import CoreMedia
 import CoreGraphics
+import CoreMedia
+import Foundation
+import ScreenCaptureKit
 
 enum SystemAudioPermissionState: String {
     case notDetermined
@@ -48,13 +48,14 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
             Self.clearPermissionRequiresRelaunch()
             permissionState = .granted
         } else {
-            permissionState = if Self.permissionRequiresRelaunch {
-                .requiresRelaunch
-            } else if Self.hasRequestedPermission {
-                .requiresSystemSettings
-            } else {
-                .notDetermined
-            }
+            permissionState =
+                if Self.permissionRequiresRelaunch {
+                    .requiresRelaunch
+                } else if Self.hasRequestedPermission {
+                    .requiresSystemSettings
+                } else {
+                    .notDetermined
+                }
         }
     }
 
@@ -89,7 +90,9 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
 
     @MainActor
     func openSystemSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+        if let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+        {
             NSWorkspace.shared.open(url)
         }
     }
@@ -109,19 +112,26 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
             throw NSError(
                 domain: "co.blode.convene.systemaudio",
                 code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Screen recording permission required: \(error.localizedDescription)"]
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "Screen recording permission required: \(error.localizedDescription)"
+                ]
             )
         }
 
         guard let display = Self.preferredDisplay(from: content.displays) else {
-            throw NSError(domain: "co.blode.convene.systemaudio", code: -2,
-                          userInfo: [NSLocalizedDescriptionKey: "No display found"])
+            throw NSError(
+                domain: "co.blode.convene.systemaudio", code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "No display found"])
         }
 
         let ourBundleID = Bundle.main.bundleIdentifier ?? "co.blode.convene"
         let excludedApps = content.applications.filter { $0.bundleIdentifier == ourBundleID }
-        let filter = SCContentFilter(display: display, excludingApplications: excludedApps, exceptingWindows: [])
-        logInfo("SystemAudioCapture: using display \(display.displayID) (\(display.width)x\(display.height)); excluding \(excludedApps.count) app(s)")
+        let filter = SCContentFilter(
+            display: display, excludingApplications: excludedApps, exceptingWindows: [])
+        logInfo(
+            "SystemAudioCapture: using display \(display.displayID) (\(display.width)x\(display.height)); excluding \(excludedApps.count) app(s)"
+        )
 
         let config = SCStreamConfiguration()
         config.capturesAudio = true
@@ -172,10 +182,13 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
 
     // MARK: - SCStreamOutput (audioQueue)
 
-    nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
+    nonisolated func stream(
+        _ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType
+    ) {
         guard type == .audio, sampleBuffer.isValid, sampleBuffer.dataReadiness == .ready else { return }
         guard let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer),
-              let asbdPointer = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc) else { return }
+            let asbdPointer = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)
+        else { return }
         var asbd = asbdPointer.pointee
         guard let inputFormat = AVAudioFormat(streamDescription: &asbd) else { return }
 
@@ -194,7 +207,8 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         guard status == noErr else { return }
 
         let frameCount = AVAudioFrameCount(CMSampleBufferGetNumSamples(sampleBuffer))
-        guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, bufferListNoCopy: &audioBufferList) else { return }
+        guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, bufferListNoCopy: &audioBufferList)
+        else { return }
         inputBuffer.frameLength = frameCount
 
         // Already on audioQueue per addStreamOutput's sampleHandlerQueue; process synchronously.
@@ -248,7 +262,8 @@ final class SystemAudioCapture: NSObject, ObservableObject, SCStreamOutput, SCSt
         let screenNumberKey = NSDeviceDescriptionKey("NSScreenNumber")
         let mainDisplayID = (NSScreen.main?.deviceDescription[screenNumberKey] as? NSNumber)?.uint32Value
         if let mainDisplayID,
-           let display = displays.first(where: { $0.displayID == mainDisplayID }) {
+            let display = displays.first(where: { $0.displayID == mainDisplayID })
+        {
             return display
         }
         return displays.first
@@ -276,13 +291,16 @@ private final class ProcessorBox: @unchecked Sendable {
 
     func process(buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat) {
         guard let out = converter.convert(buffer, from: inputFormat),
-              let floats = out.floatChannelData else { return }
+            let floats = out.floatChannelData
+        else { return }
         let frameCount = Int(out.frameLength)
         guard frameCount > 0 else { return }
 
         #if DEBUG
         if debugChunkCount < 6 {
-            let inputRMS = buffer.floatChannelData.map { AudioSampleConverter.rms($0[0], frameCount: Int(buffer.frameLength)) }
+            let inputRMS = buffer.floatChannelData.map {
+                AudioSampleConverter.rms($0[0], frameCount: Int(buffer.frameLength))
+            }
             let outputRMS = AudioSampleConverter.rms(floats[0], frameCount: frameCount)
             logInfo(
                 "SystemAudioCapture: chunk \(debugChunkCount + 1) input=\(formatSummary(inputFormat)) frames=\(buffer.frameLength) rms=\(inputRMS.map { "\($0)" } ?? "n/a") outputFrames=\(frameCount) outputRMS=\(outputRMS)"

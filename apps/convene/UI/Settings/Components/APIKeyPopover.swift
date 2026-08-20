@@ -18,7 +18,9 @@ struct APIKeyPopover: View {
             switch self {
             case .openAI: return "Stored in your macOS Keychain. Required for transcription and summary."
             case .anthropic: return "Stored in your macOS Keychain. Required for Claude summaries."
-            case .assemblyAI: return "Stored in your macOS Keychain. Required for transcription. Get a key at assemblyai.com/dashboard/api-keys."
+            case .assemblyAI:
+                return
+                    "Stored in your macOS Keychain. Required for transcription. Get a key at assemblyai.com/dashboard/api-keys."
             }
         }
 

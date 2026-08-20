@@ -32,9 +32,11 @@ struct TranscriptTurnAccumulator {
         let text = turn.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = turnKey(speaker: speaker, turnOrder: turn.turnOrder)
         let connectElapsed = connectElapsedBySpeaker[speaker.rawValue] ?? 0
-        let startedAt = turn.words.first.map { connectElapsed + TimeInterval($0.start) / 1000 }
+        let startedAt =
+            turn.words.first.map { connectElapsed + TimeInterval($0.start) / 1000 }
             ?? currentElapsed
-        let endedAt = turn.words.last.map { connectElapsed + TimeInterval($0.end) / 1000 }
+        let endedAt =
+            turn.words.last.map { connectElapsed + TimeInterval($0.end) / 1000 }
             ?? currentElapsed
         let diarized = Self.diarizedSpeaker(from: turn.speakerLabel)
 
@@ -42,7 +44,8 @@ struct TranscriptTurnAccumulator {
             guard !text.isEmpty else { return nil }
             // Partials carry the full turn text so far: replace, never append.
             if let id = segmentIDsByTurnKey[key],
-               let index = segments.firstIndex(where: { $0.id == id }) {
+                let index = segments.firstIndex(where: { $0.id == id })
+            {
                 segments[index].text = text
                 segments[index].endedAt = endedAt
                 segments[index].diarizedSpeaker = diarized
@@ -72,7 +75,8 @@ struct TranscriptTurnAccumulator {
 
         let finalized: TranscriptSegment
         if let id = segmentIDsByTurnKey[key],
-           let index = segments.firstIndex(where: { $0.id == id }) {
+            let index = segments.firstIndex(where: { $0.id == id })
+        {
             segments[index].text = text
             segments[index].endedAt = endedAt
             segments[index].isFinal = true
@@ -123,11 +127,13 @@ struct TranscriptTurnAccumulator {
         for (turnOrder, label) in revision.revisions {
             let key = turnKey(speaker: speaker, turnOrder: turnOrder)
             guard let id = segmentIDsByTurnKey[key],
-                  let index = segments.firstIndex(where: { $0.id == id }) else { continue }
+                let index = segments.firstIndex(where: { $0.id == id })
+            else { continue }
             segments[index].diarizedSpeaker = Self.diarizedSpeaker(from: label)
             applied += 1
         }
-        logInfo("TranscriptTurnAccumulator[\(speaker.rawValue)]: applied speaker revision to \(applied) turn(s)")
+        logInfo(
+            "TranscriptTurnAccumulator[\(speaker.rawValue)]: applied speaker revision to \(applied) turn(s)")
     }
 
     private mutating func evictSegment(withID id: UUID) {

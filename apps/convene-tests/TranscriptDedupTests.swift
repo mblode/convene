@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import Convene
 
 final class TranscriptDedupTests: XCTestCase {
@@ -9,18 +10,19 @@ final class TranscriptDedupTests: XCTestCase {
     /// Each phrase appears in exactly two raw segments — one .you (mic bleed)
     /// and one .others (system audio) — and must survive exactly once, as .others.
     private static let knownDuplicatePhrases = [
-        "offline for like the last month",      // ~173s, the "Robin" pair
-        "this notification and then hope",      // ~448s, "say"/"send this notification"
-        "reason being that it's",               // ~820s, "cheap"/"shit for non-engineers" (Braze emails)
-        "figure out what the content is",       // ~1207s, "back and forth" pair
-        "this makes me happy"                   // ~1863s, closing thanks
+        "offline for like the last month",  // ~173s, the "Robin" pair
+        "this notification and then hope",  // ~448s, "say"/"send this notification"
+        "reason being that it's",  // ~820s, "cheap"/"shit for non-engineers" (Braze emails)
+        "figure out what the content is",  // ~1207s, "back and forth" pair
+        "this makes me happy"  // ~1863s, closing thanks
     ]
 
     private func loadFixtureMeeting() throws -> Meeting {
         try TestFixtures.meeting("meeting-4ec85721")
     }
 
-    private func segments(containing phrase: String, in segments: [TranscriptSegment]) -> [TranscriptSegment] {
+    private func segments(containing phrase: String, in segments: [TranscriptSegment]) -> [TranscriptSegment]
+    {
         segments.filter { $0.text.lowercased().contains(phrase.lowercased()) }
     }
 
@@ -39,21 +41,25 @@ final class TranscriptDedupTests: XCTestCase {
         for phrase in Self.knownDuplicatePhrases {
             let raw = segments(containing: phrase, in: meeting.transcript)
             XCTAssertEqual(raw.count, 2, "Expected fixture to contain a duplicate pair for \"\(phrase)\"")
-            XCTAssertEqual(Set(raw.map(\.speaker)), [.you, .others], "Expected one copy per stream for \"\(phrase)\"")
+            XCTAssertEqual(
+                Set(raw.map(\.speaker)), [.you, .others], "Expected one copy per stream for \"\(phrase)\"")
 
             let survivors = segments(containing: phrase, in: deduped)
             XCTAssertEqual(survivors.count, 1, "Expected \"\(phrase)\" to survive exactly once")
-            XCTAssertEqual(survivors.first?.speaker, .others, "Expected the .others copy of \"\(phrase)\" to win")
+            XCTAssertEqual(
+                survivors.first?.speaker, .others, "Expected the .others copy of \"\(phrase)\" to win")
         }
     }
 
     // MARK: - Dedup behavior
 
     func testLaterOthersCopyReplacesEarlierYouCopy() {
-        let mic = makeSegment(.you, start: 100, end: 105,
-                          text: "moving away from braids for some all of our marketing emails")
-        let system = makeSegment(.others, start: 103, end: 108,
-                             text: "moving away from Braze for some or all of our marketing emails")
+        let mic = makeSegment(
+            .you, start: 100, end: 105,
+            text: "moving away from braids for some all of our marketing emails")
+        let system = makeSegment(
+            .others, start: 103, end: 108,
+            text: "moving away from Braze for some or all of our marketing emails")
 
         let deduped = [mic, system].removingLikelyEchoDuplicates()
         XCTAssertEqual(deduped.count, 1)
@@ -62,10 +68,12 @@ final class TranscriptDedupTests: XCTestCase {
     }
 
     func testEarlierOthersCopySuppressesLaterYouCopy() {
-        let system = makeSegment(.others, start: 100, end: 105,
-                             text: "moving away from Braze for some or all of our marketing emails")
-        let mic = makeSegment(.you, start: 103, end: 108,
-                          text: "moving away from braids for some all of our marketing emails")
+        let system = makeSegment(
+            .others, start: 100, end: 105,
+            text: "moving away from Braze for some or all of our marketing emails")
+        let mic = makeSegment(
+            .you, start: 103, end: 108,
+            text: "moving away from braids for some all of our marketing emails")
 
         let deduped = [system, mic].removingLikelyEchoDuplicates()
         XCTAssertEqual(deduped.count, 1)
@@ -93,10 +101,12 @@ final class TranscriptDedupTests: XCTestCase {
 
     func testDifferentLongSentencesWithinWindowAreNotDeduped() {
         let input = [
-            makeSegment(.you, start: 30, end: 34,
-                    text: "I went to the supermarket yesterday evening to buy vegetables for dinner"),
-            makeSegment(.others, start: 32, end: 36,
-                    text: "Our quarterly revenue numbers exceeded every forecast the finance team modelled")
+            makeSegment(
+                .you, start: 30, end: 34,
+                text: "I went to the supermarket yesterday evening to buy vegetables for dinner"),
+            makeSegment(
+                .others, start: 32, end: 36,
+                text: "Our quarterly revenue numbers exceeded every forecast the finance team modelled")
         ]
         XCTAssertEqual(input.removingLikelyEchoDuplicates().count, 2)
     }
@@ -144,10 +154,12 @@ final class TranscriptDedupTests: XCTestCase {
 
     func testCrossStreamAsrVariantsWithinWidenedWindowAreDeduped() {
         // Real-world style pair: same utterance, ~6s commit-clock drift between sessions.
-        let mic = makeSegment(.you, start: 200.0, end: 204.0,
-                          text: "we are moving away from braids for all of our marketing emails")
-        let system = makeSegment(.others, start: 206.0, end: 210.0,
-                             text: "we are moving away from Braze for all of our marketing emails")
+        let mic = makeSegment(
+            .you, start: 200.0, end: 204.0,
+            text: "we are moving away from braids for all of our marketing emails")
+        let system = makeSegment(
+            .others, start: 206.0, end: 210.0,
+            text: "we are moving away from Braze for all of our marketing emails")
 
         XCTAssertTrue(TranscriptSegment.isLikelyEchoDuplicate(system, of: mic))
 

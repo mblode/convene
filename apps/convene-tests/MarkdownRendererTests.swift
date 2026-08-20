@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import Convene
 
 final class MarkdownRendererTests: XCTestCase {
@@ -117,7 +118,8 @@ final class MarkdownRendererTests: XCTestCase {
             meeting(attendees: ["matthew@linktr.ee", "michael@linktr.ee"])
         )
         XCTAssertTrue(markdown.contains("attendees:\n  - \"Matthew\"\n  - \"Michael\"\n"))
-        XCTAssertTrue(markdown.contains("attendee_emails:\n  - \"matthew@linktr.ee\"\n  - \"michael@linktr.ee\"\n"))
+        XCTAssertTrue(
+            markdown.contains("attendee_emails:\n  - \"matthew@linktr.ee\"\n  - \"michael@linktr.ee\"\n"))
     }
 
     func testAttendeeEmailsKeyOmittedWhenNamesAlreadyDisplayNames() {

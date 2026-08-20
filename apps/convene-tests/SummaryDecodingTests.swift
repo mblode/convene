@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import Convene
 
 final class SummaryDecodingTests: XCTestCase {
@@ -12,27 +13,27 @@ final class SummaryDecodingTests: XCTestCase {
 
     func testSummaryWithDetailsDecodes() throws {
         let json = """
-        {
-            "overview": "A short abstract. More context.",
-            "topics": ["Notifications"],
-            "keyPoints": ["Point one"],
-            "details": [
-                {
-                    "title": "Notification platform",
-                    "narrative": "Michael committed to sharing context on push support.",
-                    "timestamps": ["05:00", "07:23"]
-                }
-            ],
-            "actionItems": ["Michael: Share context on push support — one sentence."],
-            "decisions": [],
-            "openQuestions": [],
-            "followUps": [],
-            "generatedAt": "2026-06-10T03:49:30Z",
-            "provider": "anthropic",
-            "model": "claude-fable-5",
-            "promptVersion": "meeting-summary-v3"
-        }
-        """
+            {
+                "overview": "A short abstract. More context.",
+                "topics": ["Notifications"],
+                "keyPoints": ["Point one"],
+                "details": [
+                    {
+                        "title": "Notification platform",
+                        "narrative": "Michael committed to sharing context on push support.",
+                        "timestamps": ["05:00", "07:23"]
+                    }
+                ],
+                "actionItems": ["Michael: Share context on push support — one sentence."],
+                "decisions": [],
+                "openQuestions": [],
+                "followUps": [],
+                "generatedAt": "2026-06-10T03:49:30Z",
+                "provider": "anthropic",
+                "model": "claude-fable-5",
+                "promptVersion": "meeting-summary-v3"
+            }
+            """
         let summary = try decoder().decode(MeetingSummary.self, from: Data(json.utf8))
         XCTAssertEqual(summary.details.count, 1)
         XCTAssertEqual(summary.details[0].title, "Notification platform")
@@ -41,8 +42,8 @@ final class SummaryDecodingTests: XCTestCase {
 
     func testDetailWithoutTimestampsDecodesToEmptyArray() throws {
         let json = """
-        {"title": "T", "narrative": "N"}
-        """
+            {"title": "T", "narrative": "N"}
+            """
         let detail = try decoder().decode(SummaryDetail.self, from: Data(json.utf8))
         XCTAssertEqual(detail.timestamps, [])
     }
@@ -51,17 +52,17 @@ final class SummaryDecodingTests: XCTestCase {
 
     func testLegacySummaryWithoutDetailsDecodesToEmptyDetails() throws {
         let json = """
-        {
-            "overview": "Legacy summary",
-            "topics": [],
-            "keyPoints": [],
-            "actionItems": [],
-            "decisions": [],
-            "openQuestions": [],
-            "followUps": [],
-            "generatedAt": "2026-01-05T10:00:00Z"
-        }
-        """
+            {
+                "overview": "Legacy summary",
+                "topics": [],
+                "keyPoints": [],
+                "actionItems": [],
+                "decisions": [],
+                "openQuestions": [],
+                "followUps": [],
+                "generatedAt": "2026-01-05T10:00:00Z"
+            }
+            """
         let summary = try decoder().decode(MeetingSummary.self, from: Data(json.utf8))
         XCTAssertEqual(summary.details, [])
         XCTAssertEqual(summary.overview, "Legacy summary")

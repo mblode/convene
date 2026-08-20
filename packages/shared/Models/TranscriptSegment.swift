@@ -55,13 +55,15 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
         return String(format: "[%02d:%02d]", mm, ss)
     }
 
-    init(id: UUID = UUID(),
-         speaker: Speaker,
-         startedAt: TimeInterval,
-         endedAt: TimeInterval,
-         text: String,
-         isFinal: Bool,
-         diarizedSpeaker: String? = nil) {
+    init(
+        id: UUID = UUID(),
+        speaker: Speaker,
+        startedAt: TimeInterval,
+        endedAt: TimeInterval,
+        text: String,
+        isFinal: Bool,
+        diarizedSpeaker: String? = nil
+    ) {
         self.id = id
         self.speaker = speaker
         self.startedAt = startedAt
@@ -100,7 +102,8 @@ extension TranscriptSegment {
         for candidate: TranscriptSegment,
         in segments: [TranscriptSegment]
     ) -> EchoDedupResolution {
-        guard let duplicate = likelyEchoDuplicate(for: candidate, in: segments, excluding: candidate.id) else {
+        guard let duplicate = likelyEchoDuplicate(for: candidate, in: segments, excluding: candidate.id)
+        else {
             return .keep
         }
         let preferred = preferredCopy(duplicate, candidate)
@@ -118,7 +121,8 @@ extension TranscriptSegment {
         }
     }
 
-    static func isLikelyEchoDuplicate(_ candidate: TranscriptSegment, of existing: TranscriptSegment) -> Bool {
+    static func isLikelyEchoDuplicate(_ candidate: TranscriptSegment, of existing: TranscriptSegment) -> Bool
+    {
         guard candidate.isFinal, existing.isFinal else { return false }
         guard candidate.speaker != existing.speaker else { return false }
         guard isTemporallyClose(candidate, existing) else { return false }
@@ -126,7 +130,8 @@ extension TranscriptSegment {
         let candidateText = normalizedEchoText(candidate.text)
         let existingText = normalizedEchoText(existing.text)
         guard candidateText.count >= minimumEchoCharacters,
-              existingText.count >= minimumEchoCharacters else { return false }
+            existingText.count >= minimumEchoCharacters
+        else { return false }
 
         if candidateText == existingText {
             return true
@@ -136,21 +141,24 @@ extension TranscriptSegment {
         let existingTokens = existingText.split(separator: " ").map(String.init)
         guard min(candidateTokens.count, existingTokens.count) >= minimumEchoTokens else { return false }
 
-        let (shorter, longer) = candidateTokens.count <= existingTokens.count
+        let (shorter, longer) =
+            candidateTokens.count <= existingTokens.count
             ? (candidateTokens, existingTokens)
             : (existingTokens, candidateTokens)
         var consumed = [Bool](repeating: false, count: longer.count)
         var matchedCount = 0
         for token in shorter {
-            if let index = longer.indices.first(where: { !consumed[$0] && echoTokensMatch(token, longer[$0]) }) {
+            if let index = longer.indices.first(where: { !consumed[$0] && echoTokensMatch(token, longer[$0]) }
+            ) {
                 consumed[index] = true
                 matchedCount += 1
             }
         }
 
         let coverage = Double(matchedCount) / Double(shorter.count)
-        let lengthRatio = Double(min(candidateText.count, existingText.count)) /
-            Double(max(candidateText.count, existingText.count))
+        let lengthRatio =
+            Double(min(candidateText.count, existingText.count))
+            / Double(max(candidateText.count, existingText.count))
         return coverage >= echoTokenCoverage && lengthRatio >= echoLengthRatio
     }
 
@@ -195,12 +203,12 @@ extension TranscriptSegment {
         if abs(lhs.startedAt - rhs.startedAt) <= echoWindow {
             return true
         }
-        return lhs.startedAt <= rhs.endedAt + echoPadding &&
-            rhs.startedAt <= lhs.endedAt + echoPadding
+        return lhs.startedAt <= rhs.endedAt + echoPadding && rhs.startedAt <= lhs.endedAt + echoPadding
     }
 
     private static func normalizedEchoText(_ text: String) -> String {
-        var normalized = text
+        var normalized =
+            text
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
             .lowercased()
 
@@ -224,7 +232,8 @@ extension TranscriptSegment {
             )
         }
 
-        return normalized
+        return
+            normalized
             .replacingOccurrences(of: #"[^a-z0-9]+"#, with: " ", options: .regularExpression)
             .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -246,7 +255,11 @@ extension Array where Element == TranscriptSegment {
     func removingLikelyEchoDuplicates() -> [TranscriptSegment] {
         var kept: [TranscriptSegment] = []
         for segment in chronologicallySorted() {
-            guard let index = kept.firstIndex(where: { TranscriptSegment.isLikelyEchoDuplicate(segment, of: $0) }) else {
+            guard
+                let index = kept.firstIndex(where: {
+                    TranscriptSegment.isLikelyEchoDuplicate(segment, of: $0)
+                })
+            else {
                 kept.append(segment)
                 continue
             }

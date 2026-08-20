@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 
 @MainActor
 final class PersistenceService: ObservableObject {
@@ -17,7 +17,8 @@ final class PersistenceService: ObservableObject {
     init() {
         outputFolderURL = resolveStoredBookmark(forKey: bookmarkKey)
         if outputFolderURL == nil,
-           let obsidianURL = resolveStoredBookmark(forKey: "obsidianFolderBookmark") {
+            let obsidianURL = resolveStoredBookmark(forKey: "obsidianFolderBookmark")
+        {
             outputFolderURL = obsidianURL
             if let data = UserDefaults.standard.data(forKey: "obsidianFolderBookmark") {
                 UserDefaults.standard.set(data, forKey: bookmarkKey)
@@ -66,12 +67,15 @@ final class PersistenceService: ObservableObject {
 
     private func defaultSuggestedFolder() -> URL? {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let obsidianPath = home
-            .appendingPathComponent("Library/Mobile Documents/iCloud~md~obsidian/Documents", isDirectory: true)
+        let obsidianPath =
+            home
+            .appendingPathComponent(
+                "Library/Mobile Documents/iCloud~md~obsidian/Documents", isDirectory: true)
         if FileManager.default.fileExists(atPath: obsidianPath.path) {
             return obsidianPath
         }
-        let icloudPath = home
+        let icloudPath =
+            home
             .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs", isDirectory: true)
         if FileManager.default.fileExists(atPath: icloudPath.path) {
             return icloudPath
@@ -150,13 +154,16 @@ final class PersistenceService: ObservableObject {
     }
 
     private func localFallbackFolder() throws -> URL {
-        guard let applicationSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first else {
+        guard
+            let applicationSupport = FileManager.default.urls(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask
+            ).first
+        else {
             throw CocoaError(.fileNoSuchFile)
         }
-        let folder = applicationSupport
+        let folder =
+            applicationSupport
             .appendingPathComponent("Convene", isDirectory: true)
             .appendingPathComponent("Meetings", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -173,19 +180,22 @@ final class PersistenceService: ObservableObject {
         guard let folder = outputFolderURL else { return lastSavedFileURL }
         let didStart = folder.startAccessingSecurityScopedResource()
         defer { if didStart { folder.stopAccessingSecurityScopedResource() } }
-        let files = (try? FileManager.default.contentsOfDirectory(
-            at: folder,
-            includingPropertiesForKeys: [.contentModificationDateKey],
-            options: [.skipsHiddenFiles]
-        )) ?? []
-        let latest = files
+        let files =
+            (try? FileManager.default.contentsOfDirectory(
+                at: folder,
+                includingPropertiesForKeys: [.contentModificationDateKey],
+                options: [.skipsHiddenFiles]
+            )) ?? []
+        let latest =
+            files
             .filter { $0.pathExtension == "md" }
             .max { Self.modifiedDate($0) < Self.modifiedDate($1) }
         return latest ?? lastSavedFileURL
     }
 
     private static func modifiedDate(_ url: URL) -> Date {
-        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
+            ?? .distantPast
     }
 
     /// Open a saved note in Obsidian (notes live in the user's vault), falling back to the default app.
@@ -197,11 +207,14 @@ final class PersistenceService: ObservableObject {
     /// Open a note in Obsidian via its URL scheme. Returns false if Obsidian isn't installed or the
     /// URL couldn't be built.
     private func openInObsidian(path: String) -> Bool {
-        guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "md.obsidian") != nil else { return false }
+        guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "md.obsidian") != nil else {
+            return false
+        }
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "/-._~")
         guard let encoded = path.addingPercentEncoding(withAllowedCharacters: allowed),
-              let obsidianURL = URL(string: "obsidian://open?path=\(encoded)") else {
+            let obsidianURL = URL(string: "obsidian://open?path=\(encoded)")
+        else {
             return false
         }
         NSWorkspace.shared.open(obsidianURL)

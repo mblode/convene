@@ -34,9 +34,10 @@ enum TranscriptFormatter {
         var blocks: [Block] = []
         for segment in segments {
             if let last = blocks.last,
-               last.speaker == segment.speaker,
-               last.diarizedSpeaker == segment.diarizedSpeaker,
-               segment.startedAt - last.endedAt <= gapThreshold {
+                last.speaker == segment.speaker,
+                last.diarizedSpeaker == segment.diarizedSpeaker,
+                segment.startedAt - last.endedAt <= gapThreshold
+            {
                 blocks[blocks.count - 1] = Block(
                     speaker: last.speaker,
                     diarizedSpeaker: last.diarizedSpeaker,
@@ -46,14 +47,15 @@ enum TranscriptFormatter {
                     isPartial: last.isPartial || !segment.isFinal
                 )
             } else {
-                blocks.append(Block(
-                    speaker: segment.speaker,
-                    diarizedSpeaker: segment.diarizedSpeaker,
-                    text: segment.text,
-                    startedAt: segment.startedAt,
-                    endedAt: segment.endedAt,
-                    isPartial: !segment.isFinal
-                ))
+                blocks.append(
+                    Block(
+                        speaker: segment.speaker,
+                        diarizedSpeaker: segment.diarizedSpeaker,
+                        text: segment.text,
+                        startedAt: segment.startedAt,
+                        endedAt: segment.endedAt,
+                        isPartial: !segment.isFinal
+                    ))
             }
         }
         return blocks
@@ -129,7 +131,8 @@ enum TranscriptFormatter {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.contains("@"), !trimmed.contains(" ") else { return trimmed }
         let localPart = trimmed.split(separator: "@").first.map(String.init) ?? trimmed
-        let words = localPart
+        let words =
+            localPart
             .components(separatedBy: CharacterSet(charactersIn: "._-+"))
             .filter { !$0.isEmpty }
             .map { $0.prefix(1).uppercased() + $0.dropFirst() }

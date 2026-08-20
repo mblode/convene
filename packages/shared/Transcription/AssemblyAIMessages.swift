@@ -131,7 +131,8 @@ struct AssemblyAISpeakerRevisionMessage: Decodable, Equatable {
                 }
             }
             if collected.isEmpty,
-               let map = try? container.decodeIfPresent([String: String].self, forKey: .speakerLabels) {
+                let map = try? container.decodeIfPresent([String: String].self, forKey: .speakerLabels)
+            {
                 for (key, label) in map {
                     if let order = Int(key) {
                         collected[order] = label

@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import ServiceManagement
-import Combine
 
 /// Controls whether Convene launches automatically at login via SMAppService (macOS 13+).
 /// The OS — not UserDefaults — is the source of truth; `refresh()` re-reads SMAppService.mainApp.status
@@ -33,7 +33,8 @@ final class LoginItemManager: ObservableObject {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
-            NSLog("[LoginItem] Failed to \(enabled ? "register" : "unregister"): \(error.localizedDescription)")
+            NSLog(
+                "[LoginItem] Failed to \(enabled ? "register" : "unregister"): \(error.localizedDescription)")
         }
         refresh()
     }

@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+
 @testable import Convene
 
 // Shared factories and fixture loaders for the test target, replacing the per-file copies that
@@ -75,14 +76,15 @@ func makeTurn(
     speakerLabel: String? = nil,
     words: [AssemblyAIWord] = []
 ) -> AssemblyAIServerMessage {
-    .turn(AssemblyAITurnMessage(
-        turnOrder: order,
-        endOfTurn: endOfTurn,
-        transcript: transcript,
-        endOfTurnConfidence: endOfTurn ? 0.9 : 0.1,
-        speakerLabel: speakerLabel,
-        words: words
-    ))
+    .turn(
+        AssemblyAITurnMessage(
+            turnOrder: order,
+            endOfTurn: endOfTurn,
+            transcript: transcript,
+            endOfTurnConfidence: endOfTurn ? 0.9 : 0.1,
+            speakerLabel: speakerLabel,
+            words: words
+        ))
 }
 
 enum TestFixtures {

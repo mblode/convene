@@ -66,7 +66,9 @@ final class CrossStreamGate {
         if drop {
             droppedChunkCount += 1
             if droppedChunkCount % 100 == 0 {
-                logInfo("CrossStreamGate: dropped \(droppedChunkCount) mic chunks so far (passed \(passedChunkCount)) recentSystemRMS=\(recentSystemRMS)")
+                logInfo(
+                    "CrossStreamGate: dropped \(droppedChunkCount) mic chunks so far (passed \(passedChunkCount)) recentSystemRMS=\(recentSystemRMS)"
+                )
             }
         } else {
             passedChunkCount += 1

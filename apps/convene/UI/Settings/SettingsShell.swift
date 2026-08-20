@@ -14,13 +14,13 @@ struct SettingsShell: View {
                 ScrollView {
                     Group {
                         switch selection {
-                        case .general:     GeneralPage()
-                        case .models:      ModelsPage()
-                        case .capture:     CapturePage()
-                        case .calendar:    CalendarPage()
-                        case .hotkeys:     HotkeysPage()
+                        case .general: GeneralPage()
+                        case .models: ModelsPage()
+                        case .capture: CapturePage()
+                        case .calendar: CalendarPage()
+                        case .hotkeys: HotkeysPage()
                         case .permissions: PermissionsPage()
-                        case .about:       AboutPage()
+                        case .about: AboutPage()
                         }
                     }
                     .frame(maxWidth: 640, alignment: .leading)

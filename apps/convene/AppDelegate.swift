@@ -43,8 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
         guard !didRunCaptureSmokeTest else { return }
         if let rawSeconds = ProcessInfo.processInfo.environment["CONVENE_TRANSCRIPTION_SMOKE_TEST_SECONDS"],
-           let seconds = Double(rawSeconds),
-           seconds > 0 {
+            let seconds = Double(rawSeconds),
+            seconds > 0
+        {
             didRunCaptureSmokeTest = true
             Task { @MainActor in
                 logInfo("TranscriptionSmokeTest: starting for \(seconds)s")
@@ -56,8 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         guard let rawSeconds = ProcessInfo.processInfo.environment["CONVENE_CAPTURE_SMOKE_TEST_SECONDS"],
-              let seconds = Double(rawSeconds),
-              seconds > 0 else { return }
+            let seconds = Double(rawSeconds),
+            seconds > 0
+        else { return }
         didRunCaptureSmokeTest = true
 
         let baseURL = MeetingStore.debugWAVBaseURL()
@@ -66,7 +68,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             logInfo("CaptureSmokeTest: starting for \(seconds)s at \(baseURL.path)")
             try? await Task.sleep(nanoseconds: 500_000_000)
             guard await meetingStore.captureCoordinator.requestPermissions() else {
-                logError("CaptureSmokeTest: start failed: \(meetingStore.captureCoordinator.startError ?? "permission required")")
+                logError(
+                    "CaptureSmokeTest: start failed: \(meetingStore.captureCoordinator.startError ?? "permission required")"
+                )
                 NSApp.terminate(nil)
                 return
             }
