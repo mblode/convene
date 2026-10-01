@@ -9,10 +9,18 @@ struct TranscriptSheet: View {
     let meeting: Meeting
 
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var exporter = MeetingExportController()
 
     var body: some View {
         NavigationStack {
             ScrollView {
+                if meeting.transcript.allSatisfy({
+                    $0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                }) {
+                    ContentUnavailableView(
+                        "No Transcript", systemImage: "text.alignleft",
+                        description: Text("No speech was captured for this meeting."))
+                }
                 TranscriptView(
                     segments: meeting.transcript,
                     selfName: meeting.selfName,
@@ -25,11 +33,23 @@ struct TranscriptSheet: View {
             .navigationTitle("Transcript")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        exporter.copyTranscript(meeting)
+                    } label: {
+                        Label("Copy Transcript", systemImage: "doc.on.doc")
+                    }
+                    .disabled(
+                        !meeting.transcript.contains {
+                            !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        })
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
             }
         }
+        .overlay(alignment: .bottom) { ExportFeedback(message: exporter.feedback) }
         .presentationDragIndicator(.visible)
     }
 }

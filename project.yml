@@ -104,6 +104,18 @@ targets:
         # Hardened runtime is a macOS notarization setting; the shared base turns it on for the Mac app.
         ENABLE_HARDENED_RUNTIME: NO
 
+  ConveneMobileTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [apps/mobile-tests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene.mobile.tests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: ConveneMobile
+
   # UI tests exist for one reason: driving the iPhone app through the screens the App Store listing
   # needs and attaching a capture of each. See screenshots/README.md — the fixture they run against
   # is `#if DEBUG` only, so this is a Debug-configuration target by construction.
@@ -142,6 +154,7 @@ schemes:
     test:
       config: Debug
       targets:
+        - ConveneMobileTests
         - ConveneMobileUITests
     archive:
       config: Release

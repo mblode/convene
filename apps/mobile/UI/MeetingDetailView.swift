@@ -12,20 +12,15 @@ struct MeetingDetailView: View {
 
     @State private var isShowingTranscript = false
 
-    /// The shareable markdown, rendered once.
-    ///
-    /// `ShareLink`'s item is evaluated with the view body, so building it inline re-rendered the
-    /// whole meeting — transcript included — on every redraw, to produce a string the user only
-    /// wants when they tap Share.
-    @State private var markdown = ""
+    @StateObject private var exporter = MeetingExportController()
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: MobileTheme.Spacing.xxl) {
                 header
 
-                if let error = meeting.transcriptionError {
-                    BannerView(text: error, isError: true)
+                if let error = meeting.recordingNotice {
+                    BannerView(text: error, isError: !meeting.wasRecovered)
                 }
 
                 summarySection
@@ -58,7 +53,7 @@ struct MeetingDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
-                        UIPasteboard.general.string = MarkdownRenderer.renderMarkdown(meeting)
+                        exporter.copyMarkdown(meeting)
                     } label: {
                         Label("Copy Markdown", systemImage: "doc.on.doc")
                     }
@@ -76,23 +71,39 @@ struct MeetingDetailView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: markdown, preview: SharePreview(meeting.title))
+                Button {
+                    exporter.share(meeting)
+                } label: {
+                    Label("Share Text File", systemImage: "square.and.arrow.up")
+                }
+                .disabled(exporter.isPreparing || exporter.sharedFile != nil)
+                .accessibilityHint("Shares this meeting as a .txt file")
             }
         }
         .sheet(isPresented: $isShowingTranscript) {
             TranscriptSheet(meeting: meeting)
         }
-        // Re-rendered when the summary lands, which is the one thing that changes under an open
-        // detail view.
-        .task(id: meeting) {
-            markdown = MarkdownRenderer.renderMarkdown(meeting)
+        .sheet(item: $exporter.sharedFile, onDismiss: exporter.dismissShare) { file in
+            TextFileShareSheet(file: file) { exporter.finishSharing(error: $0) }
+        }
+        .overlay(alignment: .bottom) { ExportFeedback(message: exporter.feedback) }
+        .alert(
+            "Couldn’t Export",
+            isPresented: Binding(
+                get: { exporter.errorMessage != nil },
+                set: { if !$0 { exporter.errorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { exporter.errorMessage = nil }
+        } message: {
+            Text(exporter.errorMessage ?? "Please try again.")
         }
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: MobileTheme.Spacing.md) {
             Text(meeting.title)
-                .typeStyle(.display)
+                .typeStyle(.title)
                 .foregroundStyle(Color.textPrimary)
                 .textSelection(.enabled)
                 .accessibilityAddTraits(.isHeader)

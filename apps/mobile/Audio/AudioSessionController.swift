@@ -13,6 +13,8 @@ final class AudioSessionController {
     var onInterruptionEnded: ((_ shouldResume: Bool) -> Void)?
     /// The input route changed in a way that invalidates the running engine.
     var onRouteChanged: (() -> Void)?
+    /// The media server reset. Apple requires a user action before recording restarts.
+    var onMediaServicesReset: (() -> Void)?
 
     private var observers: [NSObjectProtocol] = []
 
@@ -28,15 +30,17 @@ final class AudioSessionController {
         // phone sitting in the middle of the table needs. The built-in mic array is the better
         // instrument for a room, so let it stay the input even when AirPods are connected.
         try session.setCategory(.record, mode: .default)
-        try session.setActive(true)
+        // Best effort: banner-style incoming calls need not interrupt room recording until the
+        // user accepts. Full-screen calls and accepted calls still take the microphone away.
+        // Failure of this preference must not prevent recording on an otherwise usable route.
+        do {
+            try session.setPrefersNoInterruptionsFromSystemAlerts(true)
+        } catch {
+            logError("AudioSessionController: alert preference unavailable: \(error.localizedDescription)")
+        }
         startObserving()
+        try session.setActive(true)
         logInfo("AudioSessionController: session active (\(routeDescription()))")
-    }
-
-    /// Reactivate after an interruption, without re-running category setup.
-    func reactivate() throws {
-        try AVAudioSession.sharedInstance().setActive(true)
-        logInfo("AudioSessionController: session reactivated (\(routeDescription()))")
     }
 
     func deactivate() {
@@ -69,6 +73,14 @@ final class AudioSessionController {
                 forName: AVAudioSession.interruptionNotification, object: session, queue: .main
             ) { [weak self] note in
                 MainActor.assumeIsolated { self?.handleInterruption(note) }
+            }
+        )
+
+        observers.append(
+            center.addObserver(
+                forName: AVAudioSession.mediaServicesWereResetNotification, object: session, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.onMediaServicesReset?() }
             }
         )
 
@@ -113,9 +125,10 @@ final class AudioSessionController {
         else { return }
 
         switch reason {
-        case .oldDeviceUnavailable, .newDeviceAvailable, .override:
-            // The input hardware changed, so the engine's cached format is stale. Every other
-            // reason (a category change we made ourselves, a wake from sleep) leaves capture fine.
+        case .oldDeviceUnavailable, .newDeviceAvailable, .override, .routeConfigurationChange,
+            .noSuitableRouteForCategory:
+            // The input hardware or its configuration changed. Ignore our own category changes
+            // to avoid a restart loop when activating a recovery attempt.
             logInfo("AudioSessionController: route changed -> \(routeDescription())")
             onRouteChanged?()
         default:
