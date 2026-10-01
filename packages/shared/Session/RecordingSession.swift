@@ -68,11 +68,14 @@ final class RecordingSession: ObservableObject {
     private var recordingMeetingId: UUID?
     /// A failed save must keep its recovery journal, even when another meeting starts.
     private var pendingWALs: [UUID: URL] = [:]
+    /// A fatal callback during awaited capture startup must be handled before startup succeeds.
+    private var pendingFatalStop = false
 
     /// Identifier of the meeting that's currently the "active" one in the UI. Used to invalidate
     /// stale summary tasks when the user starts a new meeting before the previous summary lands.
     private var activeMeetingId: UUID?
-    private var pendingUnsavedMeeting: Meeting?
+    private var pendingUnsavedMeetings: [UUID: Meeting] = [:]
+    private var lastSaveError: String?
 
     private var transcriptionErrorCancellable: AnyCancellable?
     private var nestedObjectCancellables = Set<AnyCancellable>()
@@ -117,7 +120,9 @@ final class RecordingSession: ObservableObject {
                     isSegmentFailure
                     ? .transcriptionWarning("Transcription warning: \(error)")
                     : .error("Transcription error: \(error)")
-                if !isSegmentFailure && self.transcriber.isRunning {
+                if !isSegmentFailure && self.togglePhase == .starting {
+                    self.pendingFatalStop = true
+                } else if !isSegmentFailure && self.transcriber.isRunning {
                     self.run(.stopping, reportBusy: false) {
                         await self.stopRecording()
                     }
@@ -192,7 +197,9 @@ final class RecordingSession: ObservableObject {
     /// The macOS $startError sink calls this when capture drops mid-recording.
     func handleCaptureFailure(_ message: String) {
         captureStatus = .error("Error: \(message)")
-        if transcriber.isRunning {
+        if togglePhase == .starting {
+            pendingFatalStop = true
+        } else if transcriber.isRunning {
             run(.stopping, reportBusy: false) {
                 await self.stopAfterCaptureFailure()
             }
@@ -210,9 +217,18 @@ final class RecordingSession: ObservableObject {
         return moment
     }
 
+    var pendingSaveError: String? {
+        pendingUnsavedMeetings.isEmpty
+            ? nil : (lastSaveError ?? "Some meetings couldn’t be saved. Try again.")
+    }
+
     func retryPendingSave() {
-        guard let meeting = pendingUnsavedMeeting else { return }
-        saveMeeting(meeting)
+        // Snapshot because successful saves remove their entry. Retry every failed meeting,
+        // including multiple recovered journals, without touching the active recording's WAL.
+        for meeting in Array(pendingUnsavedMeetings.values) {
+            saveMeeting(meeting)
+        }
+        if let pendingSaveError { captureStatus = .saveFailed(message: pendingSaveError) }
     }
 
     /// Recover any WAL files left behind by a crash and persist them. Call at launch.
@@ -269,6 +285,7 @@ final class RecordingSession: ObservableObject {
         activeMeetingId = nil
         recordingMeetingId = nil
         pendingContext = nil
+        pendingFatalStop = false
         keyMoments = []
         meetingStartedAt = Date()
 
@@ -313,6 +330,7 @@ final class RecordingSession: ObservableObject {
             walService.appendSegment(segment)
         }
         startMirroringMetadata()
+        pendingContext = context
 
         do {
             try await audioSource.start { [weak self] speaker, data in
@@ -320,6 +338,14 @@ final class RecordingSession: ObservableObject {
             }
         } catch {
             captureStatus = .error("Capture failed: \(error.localizedDescription)")
+        }
+
+        // The socket or capture backend can fail while its start call is suspended. Finish here
+        // under the existing start guard rather than dropping the error or racing another stop.
+        if pendingFatalStop {
+            await stopRecording()
+            pendingFatalStop = false
+            return
         }
 
         if !audioSource.isCapturing {
@@ -331,8 +357,6 @@ final class RecordingSession: ObservableObject {
             meetingStartedAt = nil
         } else {
             captureStatus = .recording
-            // Snapshot the resolved names for persistence at stop.
-            pendingContext = context
         }
     }
 
@@ -454,7 +478,7 @@ final class RecordingSession: ObservableObject {
                         if let summary {
                             var enriched = meeting
                             enriched.summary = summary
-                            let shouldTrackFailure = self.pendingUnsavedMeeting?.id == meetingId
+                            let shouldTrackFailure = self.pendingUnsavedMeetings[meetingId] != nil
                             self.saveMeeting(
                                 enriched,
                                 updateStatus: false,
@@ -491,9 +515,8 @@ final class RecordingSession: ObservableObject {
             if let walURL = pendingWALs.removeValue(forKey: meeting.id) {
                 TranscriptWALService.deleteWAL(at: walURL)
             }
-            if pendingUnsavedMeeting?.id == meeting.id {
-                pendingUnsavedMeeting = nil
-            }
+            pendingUnsavedMeetings.removeValue(forKey: meeting.id)
+            if pendingUnsavedMeetings.isEmpty { lastSaveError = nil }
             if updateLastSaved {
                 lastSavedURL = url
             }
@@ -504,7 +527,8 @@ final class RecordingSession: ObservableObject {
         }
 
         if trackFailure {
-            pendingUnsavedMeeting = meeting
+            pendingUnsavedMeetings[meeting.id] = meeting
+            lastSaveError = persistence.lastError
         }
         if updateStatus, let err = persistence.lastError {
             captureStatus = .saveFailed(message: err)

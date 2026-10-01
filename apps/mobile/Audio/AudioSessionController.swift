@@ -45,11 +45,17 @@ final class AudioSessionController {
 
     func deactivate() {
         stopObserving()
+        releaseAudioSession()
+    }
+
+    /// Give other apps their audio priority back when capture cannot restart. Keep observing so
+    /// an interruption or media-service reset can still update this recoverable meeting.
+    func releaseAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
         } catch {
-            // Non-fatal: recording has already stopped, so this only means other apps get the
-            // input back a moment later than intended.
+            // Non-fatal: capture has already stopped. Retain the meeting and allow a later
+            // user-initiated activation even if the system cannot deactivate right now.
             logError("AudioSessionController: deactivate failed: \(error.localizedDescription)")
         }
     }

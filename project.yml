@@ -113,6 +113,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: co.blode.convene.mobile.tests
         GENERATE_INFOPLIST_FILE: YES
+        # The iOS product is Convene.app although its target is named ConveneMobile.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Convene.app/Convene"
+        BUNDLE_LOADER: "$(TEST_HOST)"
     dependencies:
       - target: ConveneMobile
 
