@@ -46,7 +46,7 @@ final class MeetingExportController: ObservableObject {
         feedback = confirmation
         UIAccessibility.post(notification: .announcement, argument: confirmation)
         feedbackTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled else { return }
             self?.feedback = nil
         }
@@ -128,6 +128,8 @@ struct ExportFeedback: View {
                 .background(.regularMaterial, in: Capsule())
                 .padding()
                 .allowsHitTesting(false)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(message)
                 .accessibilityIdentifier("exportFeedback")
         }
     }
