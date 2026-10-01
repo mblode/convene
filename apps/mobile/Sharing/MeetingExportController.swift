@@ -66,14 +66,16 @@ final class MeetingExportController: ObservableObject {
         }
     }
 
-    func finishSharing(error: Error? = nil) {
+    func finishSharing(id: UUID, error: Error? = nil) {
+        guard activeFile?.id == id else { return }
         // Keep the URL alive until the system activity has finished or the sheet is dismissed.
         sharedFile = nil
         if let error { errorMessage = "Sharing failed. \(error.localizedDescription)" }
     }
 
     func dismissShare() {
-        activeFile?.remove()
+        // Release our ownership. UIKit's item source can still retain the export while an
+        // extension finishes reading, so only the export's final deinit removes its directory.
         activeFile = nil
         sharedFile = nil
     }

@@ -250,6 +250,9 @@ final class MicRecorder: ObservableObject {
             self.interruptionMessage =
                 "The microphone is unavailable. Resume when the call or other audio has finished."
             self.recoveryTask = nil
+            // Activation may have succeeded even though engine startup failed. Do not keep an
+            // exclusive .record session while waiting indefinitely for the user to retry.
+            self.session.releaseAudioSession()
         }
     }
 
