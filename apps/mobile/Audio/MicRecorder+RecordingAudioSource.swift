@@ -8,9 +8,7 @@ extension MicRecorder: RecordingAudioSource {
         case .denied:
             return "Microphone access is off. Turn it on in Settings › Convene to record."
         case .undetermined, .granted:
-            // Granted-but-failed means the request itself errored, and the recorder's own message
-            // is the more specific one in that case.
-            return lastError ?? "Microphone access is required to record."
+            return "Microphone access is required to record."
         }
     }
 

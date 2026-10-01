@@ -30,11 +30,14 @@ enum MicrophonePermissionState {
 /// underneath and the meeting keeps its transcript, with a gap for the seconds the input was gone.
 @MainActor
 final class MicRecorder: ObservableObject {
-    @Published private(set) var isRecording = false
+    @Published private var recovery = MicrophoneRecoveryState()
     @Published private(set) var permissionState: MicrophonePermissionState = .current()
-    @Published private(set) var lastError: String?
-    /// True while the system holds the input. Capture resumes on its own when it's handed back.
-    @Published private(set) var isInterrupted = false
+    /// Recoverable availability errors must not flow into RecordingSession's fatal-error path.
+    @Published private(set) var interruptionMessage: String?
+
+    var isRecording: Bool { recovery.isRecording }
+    var isInterrupted: Bool { recovery.isInterrupted }
+    var canResume: Bool { recovery.canResume }
 
     /// Emits 16 kHz mono PCM16 chunks. Called from a background audio queue.
     var onPCM16: (@Sendable (Data) -> Void)?
@@ -46,6 +49,9 @@ final class MicRecorder: ObservableObject {
     private let session = AudioSessionController()
     private let audioQueue = DispatchQueue(label: "co.blode.convene.mobile.mic")
     private var configurationObserver: NSObjectProtocol?
+    private var processor: MicAudioProcessor?
+    private var activeEngineID: UUID?
+    private var recoveryTask: Task<Void, Never>?
 
     init() {
         session.onInterruptionBegan = { [weak self] in self?.handleInterruptionBegan() }
@@ -53,6 +59,7 @@ final class MicRecorder: ObservableObject {
             self?.handleInterruptionEnded(shouldResume: shouldResume)
         }
         session.onRouteChanged = { [weak self] in self?.handleRouteChanged() }
+        session.onMediaServicesReset = { [weak self] in self?.handleMediaServicesReset() }
     }
 
     // MARK: - Permission
@@ -80,12 +87,17 @@ final class MicRecorder: ObservableObject {
             )
         }
 
-        try session.activate()
-        try startEngine()
-        observeConfigurationChanges()
-        isRecording = true
-        isInterrupted = false
-        lastError = nil
+        do {
+            try session.activate()
+            try startEngine()
+        } catch {
+            teardownEngine()
+            session.deactivate()
+            onPCM16 = nil
+            throw error
+        }
+        recovery.start()
+        interruptionMessage = nil
         logInfo("MicRecorder: started (16kHz PCM16 mono)")
     }
 
@@ -94,13 +106,14 @@ final class MicRecorder: ObservableObject {
     /// transcriber before it's told to finish up.
     func stop() {
         guard isRecording else { return }
-        stopConfigurationObserver()
+        // Invalidate retry intent before tearing down. A delayed recovery must never reopen a
+        // microphone after Stop/Discard, even if the next meeting has already started.
+        recovery.stop()
+        cancelRecovery()
         teardownEngine()
-        audioQueue.sync {}
         session.deactivate()
-        isRecording = false
-        isInterrupted = false
-        levelMeter.reset()
+        onPCM16 = nil
+        interruptionMessage = nil
         logInfo("MicRecorder: stopped")
     }
 
@@ -112,8 +125,8 @@ final class MicRecorder: ObservableObject {
     /// `level` is fed as an RMS through the meter's own envelope rather than assigned, so the bars
     /// settle exactly where a room at that volume would put them.
     func debugPoseAsCapturing(level rms: Float) {
-        isRecording = true
-        isInterrupted = false
+        recovery.start()
+        interruptionMessage = nil
         for _ in 0..<24 { levelMeter.update(rms: rms) }
     }
     #endif
@@ -136,107 +149,163 @@ final class MicRecorder: ObservableObject {
         // route ever hands us more than one channel). Routing through a mixer to force mono first —
         // as the Mac does — buys nothing here, and it's one more connection to fail when the route
         // changes mid-meeting.
-        let processor = MicAudioProcessor(captureFormat: inputFormat)
-        let sink = onPCM16
-        let queue = audioQueue
-        let meter = levelMeter
-        let onLevel: @Sendable (Float) -> Void = { rms in
-            DispatchQueue.main.async { MainActor.assumeIsolated { meter.update(rms: rms) } }
+        let engineID = UUID()
+        activeEngineID = engineID
+        let onLevel: @Sendable (Float) -> Void = { [weak self] rms in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self, self.activeEngineID == engineID, !self.isInterrupted,
+                        self.isRecording
+                    else { return }
+                    self.levelMeter.update(rms: rms)
+                }
+            }
         }
-
+        let processor = MicAudioProcessor(
+            captureFormat: inputFormat, queue: audioQueue, onPCM16: onPCM16, onLevel: onLevel
+        )
         input.installTap(onBus: 0, bufferSize: MicRecorderConstants.captureBufferSize, format: inputFormat) {
             buffer, _ in
-            queue.async { processor.process(buffer: buffer, onPCM16: sink, onLevel: onLevel) }
+            processor.enqueue(buffer: buffer)
         }
 
-        engine.prepare()
-        try engine.start()
+        do {
+            engine.prepare()
+            try engine.start()
+        } catch {
+            // The local engine isn't installed on self yet, so ordinary teardown cannot clean
+            // up its tap. Drain it here and don't leave an active audio session after failed start.
+            activeEngineID = nil
+            input.removeTap(onBus: 0)
+            engine.stop()
+            processor.finish()
+            throw error
+        }
         self.engine = engine
+        self.processor = processor
+        observeConfigurationChanges(for: engine)
         logInfo(
             "MicRecorder: engine running at \(Int(inputFormat.sampleRate))Hz/\(inputFormat.channelCount)ch")
     }
 
     private func teardownEngine() {
+        stopConfigurationObserver()
+        activeEngineID = nil
         engine?.inputNode.removeTap(onBus: 0)
         engine?.stop()
         engine = nil
+        // Stop accepting callbacks, then deliver queued pre-interruption audio before replacing
+        // the processor or finalizing the meeting. Stale callbacks cannot leak into a new session.
+        processor?.finish()
+        processor = nil
+        levelMeter.reset()
     }
 
-    /// Rebuild the engine on the current route, after an interruption or a device change: the old
-    /// engine's cached input format no longer matches the hardware.
-    private func restartEngine(reason: String) {
-        guard isRecording else { return }
+    /// The explicit Resume control is also an escape hatch when iOS never sends an ended event.
+    /// Reactivation still goes through AVAudioSession, so a call that owns the mic cannot be tapped.
+    func resume() {
+        guard let token = recovery.resumeRequested() else { return }
+        restartEngine(token: token, reason: "user resume")
+    }
+
+    /// Rebuild on the current route. Activation can race the system handing hardware back, so
+    /// allow a short, bounded settling period instead of ending the entire meeting on one error.
+    private func restartEngine(token: UInt64, reason: String) {
+        cancelRecovery()
         teardownEngine()
-        do {
-            try session.reactivate()
-            try startEngine()
-            isInterrupted = false
-            lastError = nil
-            logInfo("MicRecorder: engine restarted after \(reason)")
-        } catch {
-            logError("MicRecorder: restart after \(reason) failed: \(error.localizedDescription)")
-            failCapture(
-                "Recording stopped — the microphone became unavailable (\(error.localizedDescription))")
+        interruptionMessage = "Reconnecting the microphone… Your meeting is still open."
+        recoveryTask = Task { @MainActor [weak self] in
+            let retryDelays: [UInt64] = [0, 300_000_000, 1_000_000_000]
+            for delay in retryDelays {
+                if delay > 0 {
+                    do {
+                        try await Task.sleep(nanoseconds: delay)
+                    } catch {
+                        return
+                    }
+                }
+                guard let self, !Task.isCancelled, self.recovery.acceptsRecovery(token) else { return }
+                do {
+                    // Reapply configuration too: a media-services reset restores session defaults.
+                    try self.session.activate()
+                    guard !Task.isCancelled, self.recovery.acceptsRecovery(token) else { return }
+                    try self.startEngine()
+                    guard self.recovery.acceptsRecovery(token) else {
+                        self.teardownEngine()
+                        return
+                    }
+                    self.recovery.recoverySucceeded(token)
+                    self.interruptionMessage = nil
+                    self.recoveryTask = nil
+                    logInfo("MicRecorder: engine restarted after \(reason)")
+                    return
+                } catch {
+                    guard self.recovery.acceptsRecovery(token) else { return }
+                    self.teardownEngine()
+                    logError("MicRecorder: restart after \(reason) failed: \(error.localizedDescription)")
+                }
+            }
+            guard let self, self.recovery.acceptsRecovery(token) else { return }
+            self.recovery.recoveryFailed(token)
+            self.interruptionMessage =
+                "The microphone is unavailable. Resume when the call or other audio has finished."
+            self.recoveryTask = nil
         }
     }
 
-    /// Give up on the in-flight recording.
-    ///
-    /// Capture is torn down *before* the error is published, because publishing it is what makes
-    /// the session finalise and save the meeting — and `RecordingSession` doesn't stop the audio
-    /// source on that path. Leaving `isRecording` true would persist the meeting while the UI still
-    /// showed a stop button, and pressing it would save the whole thing a second time.
-    private func failCapture(_ message: String) {
-        stopConfigurationObserver()
-        teardownEngine()
-        audioQueue.sync {}
-        session.deactivate()
-        isRecording = false
-        isInterrupted = false
-        levelMeter.reset()
-        lastError = message
+    private func cancelRecovery() {
+        recoveryTask?.cancel()
+        recoveryTask = nil
     }
 
     // MARK: - System events
 
     private func handleInterruptionBegan() {
         guard isRecording else { return }
-        isInterrupted = true
+        recovery.interruptionBegan()
+        cancelRecovery()
         teardownEngine()
-        // No audio is arriving, so the halo would otherwise sit frozen at whatever level the call
-        // interrupted — reading as though the room were still being heard.
-        levelMeter.reset()
+        interruptionMessage =
+            "Microphone paused by iOS. Your meeting is still open; audio during this gap isn't recorded."
     }
 
     private func handleInterruptionEnded(shouldResume: Bool) {
-        guard isRecording else { return }
-        guard shouldResume else {
-            // The system declined to hand the input back, usually because the interrupting app is
-            // still holding it. End the meeting rather than leave one that records silence.
-            logError("MicRecorder: interruption ended without shouldResume")
-            failCapture("Recording stopped — another app took over the microphone")
-            return
+        guard recovery.phase == .interrupted else { return }
+        if let token = recovery.interruptionEnded(shouldResume: shouldResume) {
+            restartEngine(token: token, reason: "interruption")
+        } else {
+            interruptionMessage = "The microphone is paused. Tap Resume microphone to continue this meeting."
+            logInfo("MicRecorder: interruption ended; waiting for user to resume")
         }
-        restartEngine(reason: "interruption")
     }
 
     private func handleRouteChanged() {
-        guard isRecording, !isInterrupted else { return }
-        restartEngine(reason: "route change")
+        guard let token = recovery.routeChanged() else { return }
+        restartEngine(token: token, reason: "route change")
     }
 
-    /// `AVAudioEngineConfigurationChange` fires when the engine's own hardware format shifts (e.g.
-    /// the sample rate moves with the route). The engine is already stopped when it arrives.
-    private func observeConfigurationChanges() {
-        guard configurationObserver == nil else { return }
+    private func handleMediaServicesReset() {
+        guard isRecording else { return }
+        recovery.requireUserResume()
+        cancelRecovery()
+        teardownEngine()
+        interruptionMessage = "iOS reset its audio service. Tap Resume microphone to continue this meeting."
+    }
+
+    /// Observe only the current engine. An old engine's queued format-change notification must
+    /// not tear down its replacement or start a route/configuration restart loop.
+    private func observeConfigurationChanges(for engine: AVAudioEngine) {
+        stopConfigurationObserver()
         configurationObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange,
-            object: nil,
+            object: engine,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self, weak engine] _ in
             MainActor.assumeIsolated {
-                guard let self, self.isRecording, !self.isInterrupted else { return }
-                self.restartEngine(reason: "engine configuration change")
+                guard let self, let engine, self.engine === engine, !engine.isRunning,
+                    let token = self.recovery.routeChanged()
+                else { return }
+                self.restartEngine(token: token, reason: "engine configuration change")
             }
         }
     }
@@ -249,26 +318,69 @@ final class MicRecorder: ObservableObject {
     }
 }
 
-/// Per-stream conversion state, confined to the audio dispatch queue.
+/// Per-engine conversion state. The lock only gates queue submission; conversion is confined to
+/// the serial audio queue. Closing the gate before draining accounts for a tap callback already
+/// in flight when its engine is removed, without retaining it past the next recording.
 private final class MicAudioProcessor: @unchecked Sendable {
     private let captureFormat: AVAudioFormat
     private let converter = AudioSampleConverter()
+    private let queue: DispatchQueue
+    private let onPCM16: (@Sendable (Data) -> Void)?
+    private let onLevel: @Sendable (Float) -> Void
+    private let lock = NSLock()
+    private var acceptsBuffers = true
 
-    init(captureFormat: AVAudioFormat) {
+    init(
+        captureFormat: AVAudioFormat,
+        queue: DispatchQueue,
+        onPCM16: (@Sendable (Data) -> Void)?,
+        onLevel: @escaping @Sendable (Float) -> Void
+    ) {
         self.captureFormat = captureFormat
+        self.queue = queue
+        self.onPCM16 = onPCM16
+        self.onLevel = onLevel
     }
 
-    func process(
-        buffer: AVAudioPCMBuffer,
-        onPCM16: (@Sendable (Data) -> Void)?,
-        onLevel: (@Sendable (Float) -> Void)?
-    ) {
-        guard let converted = converter.convert(buffer, from: captureFormat),
-            let data = AudioSampleConverter.pcm16Data(from: converted)
-        else { return }
-        onPCM16?(data)
-        // Metered from the same chunk that goes to the transcriber, so the halo shows exactly what
-        // is being sent — not a separate reading that could disagree with it.
-        onLevel?(AudioSampleConverter.rms(pcm16: data))
+    func enqueue(buffer: AVAudioPCMBuffer) {
+        // Own the samples before leaving the tap callback rather than relying on the lifetime of
+        // AVAudioEngine's supplied storage while conversion waits on another queue.
+        guard let owned = Self.copyBuffer(buffer) else { return }
+        lock.lock()
+        defer { lock.unlock() }
+        guard acceptsBuffers else { return }
+        queue.async { [self] in
+            guard let converted = converter.convert(owned, from: captureFormat),
+                let data = AudioSampleConverter.pcm16Data(from: converted)
+            else { return }
+            onPCM16?(data)
+            onLevel(AudioSampleConverter.rms(pcm16: data))
+        }
+    }
+
+    func finish() {
+        lock.lock()
+        acceptsBuffers = false
+        lock.unlock()
+        queue.sync {}
+    }
+
+    private static func copyBuffer(_ source: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        guard source.frameLength > 0,
+            let copy = AVAudioPCMBuffer(pcmFormat: source.format, frameCapacity: source.frameLength)
+        else { return nil }
+        copy.frameLength = source.frameLength
+        let sourceBuffers = UnsafeMutableAudioBufferListPointer(source.mutableAudioBufferList)
+        let destinationBuffers = UnsafeMutableAudioBufferListPointer(copy.mutableAudioBufferList)
+        guard sourceBuffers.count == destinationBuffers.count else { return nil }
+        for index in 0..<sourceBuffers.count {
+            let sourceBuffer = sourceBuffers[index]
+            let destinationBuffer = destinationBuffers[index]
+            guard let sourceData = sourceBuffer.mData, let destinationData = destinationBuffer.mData,
+                sourceBuffer.mDataByteSize <= destinationBuffer.mDataByteSize
+            else { return nil }
+            memcpy(destinationData, sourceData, Int(sourceBuffer.mDataByteSize))
+        }
+        return copy
     }
 }

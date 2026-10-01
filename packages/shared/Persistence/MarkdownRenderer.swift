@@ -117,7 +117,7 @@ enum MarkdownRenderer {
             out += "\n\n"
         }
 
-        if let transcriptionError = meeting.transcriptionError?.trimmingCharacters(
+        if let transcriptionError = meeting.recordingNotice?.trimmingCharacters(
             in: .whitespacesAndNewlines),
             !transcriptionError.isEmpty
         {

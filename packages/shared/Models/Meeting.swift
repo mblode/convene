@@ -11,6 +11,20 @@ struct Meeting: Identifiable, Codable, Equatable {
         return "Meeting on \(formatter.string(from: date))"
     }
 
+    static let recoveryNotice =
+        "Recovered after the recording ended unexpectedly. The saved transcript may be incomplete."
+
+    /// Older app versions inferred a crash and missing labels from any unfinished journal.
+    /// A journal establishes neither; keep existing saved meetings accurate when displaying them.
+    var recordingNotice: String? {
+        if transcriptionError == "Recovered from crash — speaker labels not available" {
+            return Self.recoveryNotice
+        }
+        return transcriptionError
+    }
+
+    var wasRecovered: Bool { recordingNotice == Self.recoveryNotice }
+
     let id: UUID
     var title: String
     var attendees: [String]

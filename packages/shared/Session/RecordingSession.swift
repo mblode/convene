@@ -64,7 +64,10 @@ final class RecordingSession: ObservableObject {
     /// Fired once after a stop persist succeeds. Not called for summary re-saves, retries, or WAL recovery.
     private let onMeetingSaved: ((URL) -> Void)?
 
-    private let walService = TranscriptWALService()
+    private let walService: TranscriptWALService
+    private var recordingMeetingId: UUID?
+    /// A failed save must keep its recovery journal, even when another meeting starts.
+    private var pendingWALs: [UUID: URL] = [:]
 
     /// Identifier of the meeting that's currently the "active" one in the UI. Used to invalidate
     /// stale summary tasks when the user starts a new meeting before the previous summary lands.
@@ -89,7 +92,8 @@ final class RecordingSession: ObservableObject {
         shouldSummarize: @escaping () -> Bool,
         summarize: @escaping (Meeting) async -> MeetingSummary?,
         summaryError: @escaping () -> String?,
-        onMeetingSaved: ((URL) -> Void)? = nil
+        onMeetingSaved: ((URL) -> Void)? = nil,
+        walService: TranscriptWALService = TranscriptWALService()
     ) {
         self.audioSource = audioSource
         self.persistence = persistence
@@ -100,6 +104,7 @@ final class RecordingSession: ObservableObject {
         self.summarize = summarize
         self.summaryError = summaryError
         self.onMeetingSaved = onMeetingSaved
+        self.walService = walService
 
         // Segment failures are warnings (keep recording); other transcription errors are fatal
         // and stop the meeting. Unifying both platforms on this behavior.
@@ -113,8 +118,8 @@ final class RecordingSession: ObservableObject {
                     ? .transcriptionWarning("Transcription warning: \(error)")
                     : .error("Transcription error: \(error)")
                 if !isSegmentFailure && self.transcriber.isRunning {
-                    Task { @MainActor [weak self] in
-                        await self?.stopRecording()
+                    self.run(.stopping, reportBusy: false) {
+                        await self.stopRecording()
                     }
                 }
             }
@@ -168,6 +173,7 @@ final class RecordingSession: ObservableObject {
                 TranscriptWALService.deleteWAL(at: walURL)
             }
             self.meetingStartedAt = nil
+            self.recordingMeetingId = nil
             self.captureStatus = .cancelled
         }
     }
@@ -187,8 +193,8 @@ final class RecordingSession: ObservableObject {
     func handleCaptureFailure(_ message: String) {
         captureStatus = .error("Error: \(message)")
         if transcriber.isRunning {
-            Task { @MainActor [weak self] in
-                await self?.stopAfterCaptureFailure()
+            run(.stopping, reportBusy: false) {
+                await self.stopAfterCaptureFailure()
             }
         }
     }
@@ -217,11 +223,16 @@ final class RecordingSession: ObservableObject {
         for walURL in orphans {
             do {
                 let meeting = try TranscriptWALService.recoverMeeting(from: walURL)
-                if !meeting.transcript.isEmpty || !meeting.keyMoments.isEmpty {
-                    persistence.save(meeting)
-                    logInfo("RecordingSession: recovered meeting from WAL: \(meeting.title)")
+                if !meeting.transcript.isEmpty || !meeting.keyMoments.isEmpty
+                    || !meeting.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                {
+                    pendingWALs[meeting.id] = walURL
+                    if saveMeeting(meeting) != nil {
+                        logInfo("RecordingSession: recovered meeting from WAL")
+                    }
+                } else {
+                    TranscriptWALService.deleteWAL(at: walURL)
                 }
-                TranscriptWALService.deleteWAL(at: walURL)
             } catch {
                 logError("RecordingSession: WAL recovery failed: \(error)")
             }
@@ -256,6 +267,8 @@ final class RecordingSession: ObservableObject {
         lastSavedURL = nil
         currentSummary = nil
         activeMeetingId = nil
+        recordingMeetingId = nil
+        pendingContext = nil
         keyMoments = []
         meetingStartedAt = Date()
 
@@ -288,8 +301,10 @@ final class RecordingSession: ObservableObject {
             return
         }
 
+        let meetingId = UUID()
+        recordingMeetingId = meetingId
         walService.beginSession(
-            meetingId: UUID(),
+            meetingId: meetingId,
             title: context.title,
             attendees: context.attendees,
             startedAt: meetingStartedAt!
@@ -312,6 +327,7 @@ final class RecordingSession: ObservableObject {
             await transcriber.stop()
             transcriber.onSegmentConfirmed = nil
             walService.endSession()
+            recordingMeetingId = nil
             meetingStartedAt = nil
         } else {
             captureStatus = .recording
@@ -380,13 +396,15 @@ final class RecordingSession: ObservableObject {
     /// Shared tail of a normal stop and a capture-failure stop: drain the transcriber, persist
     /// the meeting, and close out the WAL.
     private func finalizeMeeting() async {
+        mirrorMetadataToWAL()
         stopMirroringMetadata()
         await transcriber.stop()
         transcriber.onSegmentConfirmed = nil
-        persistCurrentMeeting()
-        if let walURL = walService.endSession() {
-            TranscriptWALService.deleteWAL(at: walURL)
+        if let walURL = walService.endSession(), let id = recordingMeetingId {
+            pendingWALs[id] = walURL
         }
+        persistCurrentMeeting()
+        recordingMeetingId = nil
     }
 
     private func persistCurrentMeeting() {
@@ -399,6 +417,7 @@ final class RecordingSession: ObservableObject {
         let transcriptionError = transcriber.lastError
 
         let meeting = Meeting(
+            id: recordingMeetingId ?? UUID(),
             title: trimmedTitle.isEmpty ? "Untitled meeting" : trimmedTitle,
             attendees: context.attendees,
             startedAt: started,
@@ -469,6 +488,9 @@ final class RecordingSession: ObservableObject {
         statusMessage: ((URL) -> String)? = nil
     ) -> URL? {
         if let url = persistence.save(meeting) {
+            if let walURL = pendingWALs.removeValue(forKey: meeting.id) {
+                TranscriptWALService.deleteWAL(at: walURL)
+            }
             if pendingUnsavedMeeting?.id == meeting.id {
                 pendingUnsavedMeeting = nil
             }

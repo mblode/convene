@@ -211,8 +211,10 @@ struct RecordingSheet: View {
             }
         } else if store.isRecording {
             HStack(spacing: MobileTheme.Spacing.sm) {
-                ProgressView().controlSize(.small)
-                Text("Listening…")
+                if !store.isInterrupted {
+                    ProgressView().controlSize(.small)
+                }
+                Text(store.isInterrupted ? "Microphone paused" : "Listening…")
                     .typeStyle(.caption)
                     .foregroundStyle(Color.textSecondary)
             }
@@ -237,6 +239,9 @@ struct RecordingSheet: View {
     private var controlBar: some View {
         VStack(spacing: MobileTheme.Spacing.sm) {
             if store.isRecording {
+                if store.isInterrupted {
+                    resumeMicrophoneButton
+                }
                 liveControls
 
                 if !store.keyMoments.isEmpty {
@@ -288,6 +293,24 @@ struct RecordingSheet: View {
         .glassActionButton(isProminent: true)
         .tint(.accent)
         .accessibilityHint("Marks this moment in the transcript")
+    }
+
+    private var resumeMicrophoneButton: some View {
+        Button {
+            store.resumeMicrophone()
+        } label: {
+            Label(
+                store.canResumeMicrophone ? "Resume microphone" : "Reconnecting microphone…",
+                systemImage: "mic.fill"
+            )
+            .typeStyle(.bodyEmphasis)
+            .padding(.horizontal, MobileTheme.Spacing.lg)
+            .frame(maxWidth: .infinity, minHeight: 56)
+        }
+        .glassActionButton()
+        .tint(.accent)
+        .disabled(!store.canResumeMicrophone || store.isToggling)
+        .accessibilityHint("Retries microphone access for this meeting when iOS allows it")
     }
 
     private var stopButton: some View {

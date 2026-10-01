@@ -96,7 +96,13 @@ enum TranscriptFormatter {
             return selfName ?? "You"
         case .others:
             if let othersName { return othersName }
-            if let diarizedSpeaker { return "Speaker \(diarizedSpeaker)" }
+            if let diarizedSpeaker {
+                let label = diarizedSpeaker.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !["", "PENDING", "UNKNOWN"].contains(label.uppercased()) {
+                    return "Speaker \(label)"
+                }
+                return "Speaker"
+            }
             return "Others"
         case .named(let name):
             return name

@@ -45,7 +45,6 @@ final class MobileMeetingStore: ObservableObject {
 
     private(set) var session: RecordingSession!
 
-    private var captureErrorCancellable: AnyCancellable?
     private var savedCancellable: AnyCancellable?
     private var nestedObjectCancellables = Set<AnyCancellable>()
 
@@ -59,6 +58,9 @@ final class MobileMeetingStore: ObservableObject {
     var currentSummary: MeetingSummary? { session.currentSummary }
     var keyMoments: [KeyMoment] { session.keyMoments }
     var isInterrupted: Bool { recorder.isInterrupted }
+    var canResumeMicrophone: Bool { recorder.canResume }
+
+    func resumeMicrophone() { recorder.resume() }
 
     func toggleRecording() { session.toggleRecording() }
     func cancelRecording() { session.cancelRecording() }
@@ -81,8 +83,8 @@ final class MobileMeetingStore: ObservableObject {
     /// A short line for the recording screen's banner: failures, plus the transient states worth
     /// showing. Nil when the pulse and the elapsed timer already say everything.
     var banner: (text: String, isError: Bool)? {
-        if recorder.isInterrupted {
-            return ("Paused — another app is using the microphone", false)
+        if let message = recorder.interruptionMessage {
+            return (message, false)
         }
         switch captureStatus {
         case .error(let message), .saveFailed(let message):
@@ -119,15 +121,8 @@ final class MobileMeetingStore: ObservableObject {
             summaryError: { [weak self] in self?.summary.lastError }
         )
 
-        // The mic dropping mid-meeting (a call the system never handed back, a route that failed to
-        // rebuild) surfaces as the recorder's lastError. Hand it to the session so the meeting stops
-        // and saves what it has instead of recording silence.
-        captureErrorCancellable = recorder.$lastError
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] error in
-                guard let self, let error, !error.isEmpty, self.transcriber.isRunning else { return }
-                self.session.handleCaptureFailure(error)
-            }
+        // Temporary microphone loss stays recoverable in MicRecorder. It must not enter the
+        // session's fatal capture-error path, which finalizes and saves the entire meeting.
 
         // Both the initial save and the later summary re-save land on `.saved`, so this is the one
         // signal that keeps the Meetings tab current without polling the filesystem.
