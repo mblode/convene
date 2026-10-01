@@ -16,20 +16,35 @@ final class MeetingExportUITests: XCTestCase {
         card.tap()
         app.buttons["More"].tap()
         app.buttons["Copy Markdown"].tap()
-        XCTAssertTrue(app.staticTexts["Markdown copied"].waitForExistence(timeout: 3))
+        let feedback = app.descendants(matching: .any).matching(identifier: "exportFeedback").firstMatch
+        XCTAssertTrue(feedback.waitForExistence(timeout: 3))
+        XCTAssertEqual(feedback.label, "Markdown copied")
         for _ in 0..<2 {
             app.buttons["More"].tap()
             app.buttons["Show Transcript"].tap()
             let copy = app.buttons["Copy Transcript"]
             XCTAssertTrue(copy.waitForExistence(timeout: 3))
             copy.tap()
-            XCTAssertTrue(app.staticTexts["Transcript copied"].waitForExistence(timeout: 3))
+            XCTAssertTrue(feedback.waitForExistence(timeout: 3))
+            XCTAssertEqual(feedback.label, "Transcript copied")
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.name = "transcript-copy-confirmation"
             screenshot.lifetime = .keepAlways
             add(screenshot)
             app.buttons["Done"].tap()
         }
-        XCTAssertTrue(app.buttons["Share Text File"].exists)
+        let share = app.buttons["Share Text File"]
+        XCTAssertTrue(share.exists)
+        for _ in 0..<2 {
+            share.tap()
+            let close = app.buttons["Close"].firstMatch
+            XCTAssertTrue(close.waitForExistence(timeout: 5), "The system share sheet must open")
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "text-file-share-sheet"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            close.tap()
+            XCTAssertTrue(share.waitForExistence(timeout: 5))
+        }
     }
 }
