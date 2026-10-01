@@ -185,7 +185,7 @@ final class TranscriptWALService: Sendable {
             transcript: segments,
             keyMoments: keyMoments,
             notes: metadata?.notes ?? "",
-            transcriptionError: segments.isEmpty ? nil : "Recovered from crash — speaker labels not available"
+            transcriptionError: Meeting.recoveryNotice
         )
     }
 

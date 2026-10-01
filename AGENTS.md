@@ -120,5 +120,5 @@ swift-format collapses that. Don't remove the directive to "fix" their formattin
   *Symptom:* "is only available in iOS 26.0 or newer" at compile time.
 
 - **`ConveneTests` is a macOS-only bundle that depends on the `Convene` target.** Shared code is
-  tested through the Mac app; there is no iOS test target, so `make test` will not catch an
-  iOS-specific break. Verify with `make ios-build`.
+  tested through the Mac app; `ConveneMobileTests` and `ConveneMobileUITests` cover iOS separately, so `make test` will not catch an
+  iOS-specific break. Verify with `make ios-build` and the `ConveneMobile` test scheme.
