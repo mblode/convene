@@ -41,21 +41,47 @@ final class MeetingExportControllerTests: XCTestCase {
     func testShareOwnsTextFileUntilDismissalAndCanRepeat() throws {
         let controller = MeetingExportController()
         controller.share(Meeting(title: "Notes", notes: "First export"))
-        let first = try XCTUnwrap(controller.sharedFile)
+        let firstURL = try XCTUnwrap(controller.sharedFile?.url)
+        let firstID = controller.sharedFile?.id
         controller.share(Meeting(notes: "A second tap must not replace the active file"))
-        XCTAssertEqual(controller.sharedFile?.id, first.id)
-        XCTAssertEqual(first.url.pathExtension, "txt")
-        XCTAssertTrue(try String(contentsOf: first.url, encoding: .utf8).contains("First export"))
-        controller.finishSharing()
-        XCTAssertTrue(FileManager.default.fileExists(atPath: first.url.path))
+        XCTAssertEqual(controller.sharedFile?.id, firstID)
+        XCTAssertEqual(firstURL.pathExtension, "txt")
+        XCTAssertTrue(try String(contentsOf: firstURL, encoding: .utf8).contains("First export"))
+        controller.finishSharing(id: try XCTUnwrap(firstID))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: firstURL.path))
         controller.dismissShare()
-        XCTAssertFalse(FileManager.default.fileExists(atPath: first.url.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: firstURL.path))
         controller.share(Meeting(notes: "Second export"))
-        let second = try XCTUnwrap(controller.sharedFile)
-        XCTAssertNotEqual(first.url, second.url)
+        let secondURL = try XCTUnwrap(controller.sharedFile?.url)
+        XCTAssertNotEqual(firstURL, secondURL)
         controller.dismissShare()
         controller.dismissShare()
-        XCTAssertFalse(FileManager.default.fileExists(atPath: second.url.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: secondURL.path))
+    }
+
+    func testSwipeDismissalDoesNotRemoveFileStillOwnedByAnActivity() throws {
+        let controller = MeetingExportController()
+        controller.share(Meeting(notes: "Keep until the activity is finished"))
+        // Models the item source retaining its export after SwiftUI dismisses the presentation.
+        var activityExport = controller.sharedFile
+        let url = try XCTUnwrap(activityExport?.url)
+        controller.dismissShare()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+        activityExport = nil
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+    }
+
+    func testLateCompletionCannotDismissANewerShare() throws {
+        let controller = MeetingExportController()
+        controller.share(Meeting(notes: "First"))
+        let firstID = try XCTUnwrap(controller.sharedFile?.id)
+        controller.dismissShare()
+        controller.share(Meeting(notes: "Second"))
+        let secondID = try XCTUnwrap(controller.sharedFile?.id)
+        controller.finishSharing(id: firstID, error: CocoaError(.fileWriteUnknown))
+        XCTAssertEqual(controller.sharedFile?.id, secondID)
+        XCTAssertNil(controller.errorMessage)
+        controller.dismissShare()
     }
 
     func testShareFailureHasFeedbackAndAllowsRetry() throws {
@@ -71,7 +97,8 @@ final class MeetingExportControllerTests: XCTestCase {
         shouldFail = false
         controller.share(Meeting())
         XCTAssertNotNil(controller.sharedFile)
-        controller.finishSharing(error: CocoaError(.fileWriteUnknown))
+        controller.finishSharing(
+            id: try XCTUnwrap(controller.sharedFile?.id), error: CocoaError(.fileWriteUnknown))
         XCTAssertNotNil(controller.errorMessage)
         controller.dismissShare()
     }

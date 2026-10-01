@@ -73,8 +73,7 @@ final class MobileMeetingStore: ObservableObject {
     /// refused it. `RecordingSession` keeps that meeting on hand for `retryPendingSave()`, so the
     /// only thing missing was a way for the user to ask — which is what this feeds.
     var pendingSaveError: String? {
-        guard case .saveFailed(let message) = captureStatus else { return nil }
-        return message
+        session.pendingSaveError
     }
 
     @discardableResult

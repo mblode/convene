@@ -84,7 +84,7 @@ struct MeetingDetailView: View {
             TranscriptSheet(meeting: meeting)
         }
         .sheet(item: $exporter.sharedFile, onDismiss: exporter.dismissShare) { file in
-            TextFileShareSheet(file: file) { exporter.finishSharing(error: $0) }
+            TextFileShareSheet(file: file) { exporter.finishSharing(id: file.id, error: $0) }
         }
         .overlay(alignment: .bottom) { ExportFeedback(message: exporter.feedback) }
         .alert(
