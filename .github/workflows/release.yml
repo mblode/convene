@@ -98,6 +98,7 @@ jobs:
             build
 
       - name: Test iOS exports and reading flows
+        timeout-minutes: 20
         run: |
           device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(next(d["udid"] for devices in json.load(sys.stdin)["devices"].values() for d in devices if d["name"].startswith("iPhone")))')
           xcodebuild test \
@@ -106,10 +107,31 @@ jobs:
             -destination "platform=iOS Simulator,id=$device" \
             -derivedDataPath /tmp/convene-ios \
             -resultBundlePath /tmp/convene-ios-tests.xcresult \
+            -parallel-testing-enabled NO \
             -only-testing:ConveneMobileTests \
             -only-testing:ConveneMobileUITests/MeetingExportUITests \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
+
+      - name: Export iOS screenshots
+        if: always()
+        run: |
+          if [[ -d /tmp/convene-ios-tests.xcresult ]]; then
+            xcrun xcresulttool export attachments \
+              --path /tmp/convene-ios-tests.xcresult \
+              --output-path /tmp/convene-ios-screenshots
+          fi
+
+      - name: Preserve iOS test results and screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ios-test-results
+          path: |
+            /tmp/convene-ios-tests.xcresult
+            /tmp/convene-ios-screenshots
+          if-no-files-found: ignore
+          retention-days: 7
 
   swift-format:
     name: Swift Format
