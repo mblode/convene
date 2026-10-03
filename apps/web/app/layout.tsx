@@ -1,6 +1,6 @@
 import { Agentation } from "agentation";
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
+import { Geist_Mono, Inter } from "next/font/google";
 
 import { MotionProvider } from "@/components/shared/motion-provider";
 import {
@@ -12,44 +12,21 @@ import {
 
 import "./globals.css";
 
-/**
- * Roman and italic are declared separately so only the roman is preloaded.
- *
- * `next/font` emits a `<link rel="preload">` for every face in a call, and
- * `preload` is a per-call option, not per-face. Declared together, the italic
- * was fetched at the highest priority to render zero glyphs — grep this app for
- * `<em>`, `<i>` or `italic` and the only hits are in `app/og-image-shared.tsx`,
- * which draws the OG card from its own TTFs in `lib/og-assets/` and never
- * touches this face — while competing for the same connection as the roman,
- * which *is* the LCP font. The 2026-08-11 baseline measured this page's LCP
- * element as the `h1`, so that contention is not theoretical.
- *
- * Deleting the italic outright would have been simpler and is the wrong trade:
- * the browser then synthesises an oblique the first time anyone writes `<em>`,
- * and faked italic is exactly the kind of defect the house type rules exist to
- * stop. So it stays, real and drawn, one priority tier down — see the `em, i`
- * rule in globals.css that binds it.
- */
-const glide = localFont({
+// `style: ["normal", "italic"]` loads both faces under one family, so
+// `<em>`/`<i>` get a real drawn italic via the browser's own font-style
+// matching rather than a synthesised oblique — see the `em, i` rule in
+// globals.css.
+const inter = Inter({
   display: "swap",
-  src: [{ path: "./fonts/glide-variable.woff2", style: "normal" }],
-  variable: "--font-glide",
-  weight: "100 950",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
-const glideItalic = localFont({
+const geistMono = Geist_Mono({
   display: "swap",
-  preload: false,
-  src: [{ path: "./fonts/glide-variable-italic.woff2", style: "italic" }],
-  variable: "--font-glide-italic",
-  weight: "100 950",
-});
-
-const glideMono = localFont({
-  display: "swap",
-  src: "./fonts/glide-mono.woff2",
-  variable: "--font-glide-mono",
-  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
 });
 
 const siteUrl = "https://blode.co/convene";
@@ -127,10 +104,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      className={`${glide.variable} ${glideItalic.variable} ${glideMono.variable}`}
-      lang="en"
-    >
+    <html className={`${inter.variable} ${geistMono.variable}`} lang="en">
       <head>
         <link href={process.env.NEXT_PUBLIC_POSTHOG_HOST} rel="preconnect" />
       </head>

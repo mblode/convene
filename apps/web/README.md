@@ -28,7 +28,7 @@ npm run lint:fix      # biome check --write
 - Next.js 16 (App Router, React Compiler, Turbopack)
 - React 19
 - Tailwind CSS v4 with the Tatem dark + Sky Gradient visual system
-- Glide variable font (`app/fonts/glide-*.woff2`, loaded through `next/font/local`)
+- Inter + Geist Mono (loaded through `next/font/google`)
 - Biome + ultracite for lint and format
 - Vercel for hosting (production tracks `main`)
 
@@ -36,7 +36,7 @@ npm run lint:fix      # biome check --write
 
 ```
 app/
-  layout.tsx        Glide font load, metadata, Agentation dev toolbar
+  layout.tsx        Inter + Geist Mono font load, metadata, Agentation dev toolbar
   page.tsx          Hero + download CTA, fetches latest GitHub release
   globals.css       Tatem theme tokens (colors, type scale, gradient)
   manifest.json     PWA manifest
