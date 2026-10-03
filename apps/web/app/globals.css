@@ -5,13 +5,13 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans:
-    var(--font-glide), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
   --font-mono:
-    var(--font-glide-mono), ui-monospace, "SFMono-Regular", "SF Mono", Menlo,
+    var(--font-geist-mono), ui-monospace, "SFMono-Regular", "SF Mono", Menlo,
     Consolas, "Liberation Mono", monospace;
-  --font-display: var(--font-glide);
-  --font-heading: var(--font-glide);
+  --font-display: var(--font-inter);
+  --font-heading: var(--font-inter);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -196,27 +196,18 @@
 }
 
 /*
- * Real italic, one priority tier down.
+ * Real italic.
  *
- * The italic face is declared in a separate `next/font` call with
- * `preload: false` (see app/layout.tsx), which means it is not on the critical
- * path but also not attached to the sans family by cascade. This rule binds it
- * where italic is actually asked for, so emphasis renders drawn rather than as
- * a browser-synthesised slant.
- *
- * Nothing on this site emphasises today, which is precisely why the rule is
- * worth writing now: the first `<em>` somebody adds is the moment it would
- * otherwise start shipping faux italic, and that is a defect you notice in a
- * screenshot six months later and cannot explain. `font-synthesis-style: none`
- * is the enforcement — if this rule is removed or the face fails to load,
- * emphasis falls back to upright rather than silently faking it.
+ * `app/layout.tsx` loads Inter with `style: ["normal", "italic"]`, so the
+ * italic face ships under the same family and the browser's own font-style
+ * matching picks it up here — `font-synthesis-style: none` is the
+ * enforcement — if the face fails to load for some reason, emphasis falls
+ * back to upright rather than silently faking it.
  */
 em,
 i,
 cite,
 address {
-  font-family:
-    var(--font-glide-italic), var(--font-glide), ui-sans-serif, system-ui,
-    sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   font-synthesis-style: none;
 }

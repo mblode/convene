@@ -9,7 +9,7 @@
  * Prereq: screenshots/capture.sh
  */
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 
 import { chromium } from "playwright";
@@ -17,10 +17,6 @@ import { chromium } from "playwright";
 const HERE = import.meta.dirname;
 const RAW = path.join(HERE, "raw");
 const OUT = path.join(HERE, "out");
-const FONT_SOURCE = path.join(
-  HERE,
-  "../apps/web/app/fonts/glide-variable.woff2"
-);
 
 // Apple's 6.9" iPhone display slot, and the simulator's native resolution.
 const WIDTH = 1320;
@@ -45,20 +41,6 @@ if (missing.length > 0) {
 
 await rm(OUT, { force: true, recursive: true });
 await mkdir(OUT, { recursive: true });
-
-// The page loads the font relatively, so it has to sit beside frame.html. Read-only: the web app
-// owns this file and nothing here writes back to it.
-//
-// A missing font is a warning rather than a failure. `frame.html` falls back to the system sans, so
-// the slides still come out at the right size with readable captions — which beats failing the run
-// outright when the marketing site has moved its assets around.
-if (existsSync(FONT_SOURCE)) {
-  await copyFile(FONT_SOURCE, path.join(HERE, "glide-variable.woff2"));
-} else {
-  console.warn(
-    `Warning: ${path.relative(process.cwd(), FONT_SOURCE)} is missing — captions will use the system sans, not Glide.`
-  );
-}
 
 const browser = await chromium.launch();
 const page = await browser.newPage({

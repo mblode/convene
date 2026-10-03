@@ -2,5 +2,3 @@
 raw/
 out/
 .capture.xcresult/
-# Copied from apps/web/public so frame.html can load it locally.
-glide-variable.woff2

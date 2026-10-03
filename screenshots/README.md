@@ -80,6 +80,5 @@ attachment name from `slides.json`. To change what the screens *show*, edit the 
 `ScreenshotFixture.swift` — meetings are written through the real `MeetingFileWriter` /
 `MarkdownRenderer` path, so what a slide shows is what a recorded meeting produces.
 
-`frame.html` needs the Glide face; `compose.mjs` copies it from `apps/web/app/fonts/glide-variable.woff2`
-beside the page each run. Colours come from `apps/web/app/globals.css` and
-`apps/mobile/UI/Theme/Palette.swift`.
+`frame.html` loads Inter from Google Fonts directly. Colours come from `apps/web/app/globals.css`
+and `apps/mobile/UI/Theme/Palette.swift`.
