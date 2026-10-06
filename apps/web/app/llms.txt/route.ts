@@ -36,9 +36,9 @@ meeting can be recovered after a crash.
 
 ## Transcription and summaries
 
-Transcription is AssemblyAI Universal-3 Pro streaming, using your own AssemblyAI
-API key. Audio leaves your machine to reach AssemblyAI; this is not on-device
-transcription.
+Transcription is AssemblyAI Universal-3.6 Pro streaming, using your own
+AssemblyAI API key. Audio leaves your machine to reach AssemblyAI; this is not
+on-device transcription.
 
 AI summaries are optional and run on Anthropic (Claude) or OpenAI, again with
 your own API key. Without a summary key you still get the full transcript.

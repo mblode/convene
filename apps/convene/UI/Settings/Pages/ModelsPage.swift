@@ -17,7 +17,7 @@ struct ModelsPage: View {
                         title: "Engine",
                         description: "Cloud transcription through your AssemblyAI API key"
                     ) {
-                        Text("AssemblyAI Universal-3 Pro Streaming")
+                        Text("AssemblyAI Universal-3.6 Pro Streaming")
                             .font(.system(size: 12))
                             .foregroundStyle(Color.textSecondary)
                     }

@@ -1,7 +1,7 @@
 import Foundation
 
 private let assemblyAISampleRate = TranscriptionAudio.sampleRate
-private let assemblyAISpeechModel = "u3-rt-pro"
+private let assemblyAISpeechModel = "universal-3-6-pro"
 private let assemblyAIEndpoint = "wss://streaming.assemblyai.com/v3/ws"
 
 /// Streams meeting audio to AssemblyAI Universal-Streaming (v3) over one WebSocket per
