@@ -221,6 +221,34 @@ final class AssemblyAITurnMappingTests: XCTestCase {
         XCTAssertEqual(transcriber.segments.count, 2)
     }
 
+    // MARK: - Dutch and English code-switching
+
+    func testDutchAndEnglishTurnsOnSeparateStreamsKeepDiacriticsIntact() {
+        let transcriber = makeTranscriber()
+
+        transcriber.handleServerMessage(
+            makeTurn(
+                order: 0, endOfTurn: true,
+                transcript: "Zullen we beginnen met de vergadering?",
+                words: [makeWord("Zullen", start: 1000, end: 1300)]),
+            for: .you
+        )
+        transcriber.handleServerMessage(
+            makeTurn(
+                order: 0, endOfTurn: true,
+                transcript: "Yes, let's start — ik stel voor dat we eerst de agenda doornemen.",
+                words: [makeWord("Yes,", start: 1500, end: 1700)]),
+            for: .others
+        )
+
+        XCTAssertEqual(transcriber.segments.count, 2)
+        XCTAssertEqual(transcriber.segments[0].text, "Zullen we beginnen met de vergadering?")
+        XCTAssertEqual(
+            transcriber.segments[1].text,
+            "Yes, let's start — ik stel voor dat we eerst de agenda doornemen."
+        )
+    }
+
     // MARK: - Legacy persistence
 
     func testLegacySegmentJSONWithoutDiarizedSpeakerDecodes() throws {
