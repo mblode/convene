@@ -24,5 +24,10 @@
     "turbo": "^2",
     "ultracite": "7.9.3"
   },
+  "overrides": {
+    "sharp": "0.35.5",
+    "source-map-js": "1.2.2",
+    "tinypool": "2.1.2"
+  },
   "packageManager": "npm@10.9.3"
 }
