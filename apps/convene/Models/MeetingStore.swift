@@ -69,6 +69,7 @@ final class MeetingStore: ObservableObject {
     var togglePhase: RecordingSession.TogglePhase { session.togglePhase }
     var meetingStartedAt: Date? { session.meetingStartedAt }
     var currentMeetingOffset: TimeInterval? { session.currentMeetingOffset }
+    var recordingContext: RecordingSession.Context? { session.pendingContext }
 
     @discardableResult
     func flagKeyMoment(text: String = "") -> KeyMoment? { session.flagKeyMoment(text: text) }

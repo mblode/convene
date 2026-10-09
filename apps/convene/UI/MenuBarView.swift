@@ -44,8 +44,8 @@ struct MenuBarView: View {
             noAccessState
         } else {
             header
-            if let active = activeEvent {
-                contextualActions(for: active)
+            if meetingStore.captureCoordinator.isCapturing || hasTranscript || activeEvent != nil {
+                contextualActions
                 Divider().opacity(0.5).padding(.horizontal, 12)
             }
             schedule
@@ -154,33 +154,53 @@ struct MenuBarView: View {
             : String(format: "%d:%02d", m, s)
     }
 
-    // MARK: - Contextual actions (active event)
+    // MARK: - Contextual actions (recording, active event)
 
-    @ViewBuilder
-    private func contextualActions(for event: MeetingEvent) -> some View {
+    /// The last recording's transcript stays in memory until the next one starts. Convene has no
+    /// Dock icon or ⌘-Tab entry, so this row is the only way back to its window after a stop.
+    private var hasTranscript: Bool { !meetingStore.transcriber.segments.isEmpty }
+
+    private var contextualActions: some View {
         VStack(spacing: 1) {
-            if event.meetingURL != nil {
-                if !meetingStore.captureCoordinator.isCapturing {
-                    ActionRow(icon: "record.circle", label: "Join and Record", tint: Color.accent) {
-                        MeetingLauncher.shared.join(event, record: true)
-                        StatusItemController.shared.hidePanel()
-                    }
-                }
-                ActionRow(icon: "video.fill", label: event.meetingService?.joinLabel ?? "Join Meeting") {
-                    MeetingLauncher.shared.join(event, record: false)
+            let isCapturing = meetingStore.captureCoordinator.isCapturing
+            if isCapturing || hasTranscript {
+                ActionRow(
+                    icon: "text.quote",
+                    label: isCapturing ? "Show Live Transcript" : "Show Transcript"
+                ) {
                     StatusItemController.shared.hidePanel()
+                    TranscriptWindowController.shared.show()
                 }
             }
-            ActionRow(icon: "calendar", label: "Open in Calendar") {
-                MeetingLauncher.shared.openCalendarApp()
-                StatusItemController.shared.hidePanel()
-            }
-            ActionRow(icon: "xmark.circle", label: "Dismiss Event", tint: Color.secondary) {
-                MeetingLauncher.shared.dismiss(event)
+            if let event = activeEvent {
+                eventActions(for: event)
             }
         }
         .padding(.horizontal, 6)
         .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private func eventActions(for event: MeetingEvent) -> some View {
+        if event.meetingURL != nil {
+            if !meetingStore.captureCoordinator.isCapturing {
+                ActionRow(icon: "record.circle", label: "Join and Record", tint: Color.accent) {
+                    MeetingLauncher.shared.join(event, record: true)
+                    StatusItemController.shared.hidePanel()
+                }
+            }
+            ActionRow(icon: "video.fill", label: event.meetingService?.joinLabel ?? "Join Meeting") {
+                MeetingLauncher.shared.join(event, record: false)
+                StatusItemController.shared.hidePanel()
+            }
+        }
+        ActionRow(icon: "calendar", label: "Open in Calendar") {
+            MeetingLauncher.shared.openCalendarApp()
+            StatusItemController.shared.hidePanel()
+        }
+        ActionRow(icon: "xmark.circle", label: "Dismiss Event", tint: Color.secondary) {
+            MeetingLauncher.shared.dismiss(event)
+        }
     }
 
     // MARK: - Schedule

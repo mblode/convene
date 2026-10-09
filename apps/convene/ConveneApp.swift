@@ -12,5 +12,7 @@ struct ConveneApp: App {
         Settings {
             EmptyView()
         }
+        // Adds Edit > Find, the only route for ⌘F to reach the transcript window's find bar.
+        .commands { TextEditingCommands() }
     }
 }

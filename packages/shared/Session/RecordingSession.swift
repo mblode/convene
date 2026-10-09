@@ -361,7 +361,8 @@ final class RecordingSession: ObservableObject {
     }
 
     /// Context captured at start, read back at persist time so attribution matches the meeting.
-    private var pendingContext: Context?
+    /// Kept after stop, so the live transcript names speakers the way the saved note does.
+    private(set) var pendingContext: Context?
 
     // MARK: - Metadata mirroring
 

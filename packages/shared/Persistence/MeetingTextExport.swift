@@ -3,14 +3,23 @@ import Foundation
 /// Human-readable exports, separate from the Markdown document saved to a notes vault.
 enum MeetingTextExport {
     static func transcript(_ meeting: Meeting) -> String {
-        let segments = meeting.transcript.filter {
+        transcript(meeting.transcript, selfName: meeting.selfName, othersName: meeting.othersName)
+    }
+
+    /// Same text for raw segments, so a live recording copies exactly what its saved meeting will.
+    static func transcript(
+        _ segments: [TranscriptSegment],
+        selfName: String?,
+        othersName: String?
+    ) -> String {
+        let segments = segments.filter {
             !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
         return TranscriptFormatter.mergedBlocks(segments).map { block in
             let name = TranscriptFormatter.displayName(
                 for: block.speaker,
-                selfName: meeting.selfName,
-                othersName: meeting.othersName,
+                selfName: selfName,
+                othersName: othersName,
                 diarizedSpeaker: block.diarizedSpeaker
             )
             let partial = block.isPartial ? " (partial)" : ""
